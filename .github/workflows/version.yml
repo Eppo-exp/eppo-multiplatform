@@ -1,0 +1,51 @@
+# This workflow runs changesets action to update version
+# strings/changelogs throught the repo and open a pull request with
+# latest version.
+#
+# Merging the PR does not cause automatic releases (yet). After you
+# merge the PR, you must create tags for all updated packages to
+# trigger release workflows.
+#
+# If you don't plan to release all changed packages simultaneously,
+# you may temporarily disable some packages by adding them to
+# .changeset/config.json's `ignore` field.
+name: Prepare release
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  prepare_release:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20.x
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Setup rust
+        run: rustup update stable && rustup default stable
+
+      - name: Install cargo-edit
+        run: cargo install cargo-edit
+
+      - name: Create Version Pull Request
+        uses: changesets/action@v1
+        with:
+          commit: "chore: bump versions before release"
+          title: "chore: bump versions before release"
+          createGithubReleases: false
+          version: npm run version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
