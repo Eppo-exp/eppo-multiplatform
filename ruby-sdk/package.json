@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "name": "ruby-sdk",
+  "version": "3.3.0",
+  "dependencies": {
+    "eppo_core": "6.0.0"
+  },
+  "devDependencies": {},
+  "scripts": {}
+}
