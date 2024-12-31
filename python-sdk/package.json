@@ -6,5 +6,7 @@
     "eppo_core": "6.0.0"
   },
   "devDependencies": {},
-  "scripts": {}
+  "scripts": {
+    "postversion": "./postversion.sh"
+  }
 }
