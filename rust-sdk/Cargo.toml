@@ -1,6 +1,6 @@
 [package]
 name = "eppo"
-version = "4.1.1"
+version = "4.0.1"
 edition = "2021"
 description = "Eppo SDK for Rust"
 homepage = "https://docs.geteppo.com/sdks/server-sdks/rust"
