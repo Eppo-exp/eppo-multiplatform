@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
-pub struct BatchEventProcessor {
+pub struct BatchEventQueue {
     batch_size: usize,
     event_queue: Arc<Mutex<VecDeque<Event>>>,
 }
@@ -11,10 +11,10 @@ pub struct BatchEventProcessor {
 const MIN_BATCH_SIZE: usize = 100;
 const MAX_BATCH_SIZE: usize = 10_000;
 
-impl BatchEventProcessor {
+impl BatchEventQueue {
     pub fn new(batch_size: usize) -> Self {
         // clamp batch size between min and max
-        BatchEventProcessor {
+        BatchEventQueue {
             batch_size: batch_size.clamp(MIN_BATCH_SIZE, MAX_BATCH_SIZE),
             event_queue: Arc::new(Mutex::new(VecDeque::new())),
         }

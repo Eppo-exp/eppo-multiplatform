@@ -1,4 +1,4 @@
-use crate::events::batch_event_processor::BatchEventProcessor;
+use crate::events::batch_event_queue::BatchEventQueue;
 use crate::events::event::Event;
 use log::info;
 use std::sync::{Arc, Mutex};
@@ -17,22 +17,22 @@ pub struct EventDispatcherConfig {
 
 pub struct EventDispatcher {
     config: EventDispatcherConfig,
-    batch_processor: BatchEventProcessor,
+    batch_queue: BatchEventQueue,
     delivery_task_active: Arc<Mutex<bool>>,
 }
 
 impl EventDispatcher {
-    pub fn new(config: EventDispatcherConfig, batch_processor: BatchEventProcessor) -> Self {
+    pub fn new(config: EventDispatcherConfig, batch_queue: BatchEventQueue) -> Self {
         EventDispatcher {
             config,
-            batch_processor,
+            batch_queue,
             delivery_task_active: Arc::new(Mutex::new(false)),
         }
     }
 
     /// Enqueues an event in the batch event processor and starts delivery if needed.
     pub fn dispatch(&self, event: Event) {
-        self.batch_processor.push(event);
+        self.batch_queue.push(event);
 
         // Start the delivery loop if it's not already active
         if !self.is_delivery_timer_active() {
@@ -43,7 +43,7 @@ impl EventDispatcher {
     fn start_delivery_loop(&self) {
         let active_flag = Arc::clone(&self.delivery_task_active);
         let config = self.config.clone();
-        let batch_processor = self.batch_processor.clone();
+        let batch_queue = self.batch_queue.clone();
 
         // Mark the delivery loop as active
         {
@@ -55,7 +55,7 @@ impl EventDispatcher {
             let mut interval = interval_at(Instant::now() + config.delivery_interval, config.delivery_interval);
             loop {
                 interval.tick().await;
-                let events_to_process = batch_processor.next_batch();
+                let events_to_process = batch_queue.next_batch();
                 if !events_to_process.is_empty() {
                     EventDispatcher::deliver(&config.ingestion_url, &events_to_process).await;
                 } else {
@@ -101,8 +101,8 @@ mod tests {
             max_retries: Some(3),
         };
 
-        let batch_processor = BatchEventProcessor::new(10);
-        let dispatcher = EventDispatcher::new(config, batch_processor.clone());
+        let batch_queue = BatchEventQueue::new(10);
+        let dispatcher = EventDispatcher::new(config, batch_queue.clone());
 
         // Add an event
         dispatcher.dispatch(Event {
@@ -115,7 +115,7 @@ mod tests {
         // Wait a short time to allow delivery task to execute
         tokio::time::sleep(Duration::from_millis(120)).await;
 
-        // Ensure the batch processor is empty after delivery
-        assert_eq!(batch_processor.is_empty(), true);
+        // Ensure the batch queue is empty after delivery
+        assert_eq!(batch_queue.is_empty(), true);
     }
 }
