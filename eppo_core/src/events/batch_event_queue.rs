@@ -1,11 +1,11 @@
-use crate::events::event::Event;
+use crate::events::event::GenericEvent;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
 pub struct BatchEventQueue {
     batch_size: usize,
-    event_queue: Arc<Mutex<VecDeque<Event>>>,
+    event_queue: Arc<Mutex<VecDeque<GenericEvent>>>,
 }
 
 const MIN_BATCH_SIZE: usize = 100;
@@ -20,12 +20,12 @@ impl BatchEventQueue {
         }
     }
 
-    pub fn push(&self, event: Event) {
+    pub fn push(&self, event: GenericEvent) {
         let mut queue = self.event_queue.lock().unwrap();
         queue.push_back(event);
     }
 
-    pub fn next_batch(&self) -> Vec<Event> {
+    pub fn next_batch(&self) -> Vec<GenericEvent> {
         let mut queue = self.event_queue.lock().unwrap();
         let mut batch = vec![];
         while let Some(event) = queue.pop_front() {

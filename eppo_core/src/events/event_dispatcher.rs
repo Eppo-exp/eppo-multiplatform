@@ -1,9 +1,9 @@
 use crate::events::batch_event_queue::BatchEventQueue;
-use crate::events::event::Event;
+use crate::events::event::{Event, GenericEvent};
 use log::info;
 use std::sync::{Arc, Mutex};
-use tokio::sync::{Notify, OnceCell};
-use tokio::time::{interval, interval_at, Duration, Instant};
+use serde::Serialize;
+use tokio::time::{interval_at, Duration, Instant};
 
 #[derive(Debug, Clone)]
 pub struct EventDispatcherConfig {
@@ -31,8 +31,17 @@ impl EventDispatcher {
     }
 
     /// Enqueues an event in the batch event processor and starts delivery if needed.
-    pub fn dispatch(&self, event: Event) {
-        self.batch_queue.push(event);
+    pub fn dispatch<T : Serialize>(&self, event: Event<T>) {
+        // Convert the generic payload into a serde_json::Value
+        let serialized_payload = serde_json::to_value(event.payload).expect("Serialization failed");
+        // Create a new Event with the serialized payload
+        let event_with_value = Event {
+            uuid: event.uuid,
+            timestamp: event.timestamp,
+            event_type: event.event_type,
+            payload: serialized_payload,
+        };
+        self.batch_queue.push(event_with_value);
 
         // Start the delivery loop if it's not already active
         if !self.is_delivery_timer_active() {
@@ -52,7 +61,10 @@ impl EventDispatcher {
         }
 
         tokio::spawn(async move {
-            let mut interval = interval_at(Instant::now() + config.delivery_interval, config.delivery_interval);
+            let mut interval = interval_at(
+                Instant::now() + config.delivery_interval,
+                config.delivery_interval,
+            );
             loop {
                 interval.tick().await;
                 let events_to_process = batch_queue.next_batch();
@@ -68,7 +80,7 @@ impl EventDispatcher {
         });
     }
 
-    async fn deliver(ingestion_url: &str, events: &[Event]) {
+    async fn deliver(ingestion_url: &str, events: &[GenericEvent]) {
         // Simulated HTTP request or delivery logic
         info!(
             "Pretending to deliver {} events to {}",
@@ -84,11 +96,16 @@ impl EventDispatcher {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use super::*;
+    use crate::timestamp::now;
     use tokio::time::Duration;
     use uuid::Uuid;
-    use crate::timestamp::now;
+
+    #[derive(Debug, Clone, Serialize)]
+    struct LoginPayload {
+        pub user_id: String,
+        pub session_id: String,
+    }
 
     #[tokio::test]
     async fn test_dispatch_starts_delivery() {
@@ -109,7 +126,10 @@ mod tests {
             uuid: Uuid::new_v4(),
             timestamp: now(),
             event_type: "test".to_string(),
-            payload: HashMap::from([(String::from("key"), serde_json::to_value("value").unwrap())]),
+            payload: LoginPayload {
+                user_id: "user123".to_string(),
+                session_id: "session456".to_string(),
+            },
         });
 
         // Wait a short time to allow delivery task to execute
