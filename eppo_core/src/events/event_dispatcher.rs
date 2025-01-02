@@ -88,6 +88,7 @@ mod tests {
     use std::collections::HashMap;
     use super::*;
     use tokio::time::Duration;
+    use uuid::Uuid;
     use crate::timestamp::now;
 
     #[tokio::test]
@@ -106,7 +107,7 @@ mod tests {
 
         // Add an event
         dispatcher.dispatch(Event {
-            uuid: "1".to_string(),
+            uuid: Uuid::new_v4(),
             timestamp: now(),
             event_type: "test".to_string(),
             payload: HashMap::from([(String::from("key"), serde_json::to_value("value").unwrap())]),
