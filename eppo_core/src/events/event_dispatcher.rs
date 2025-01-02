@@ -9,9 +9,9 @@ use tokio::time::{interval, interval_at, Duration, Instant};
 pub struct EventDispatcherConfig {
     pub sdk_key: String,
     pub ingestion_url: String,
-    pub delivery_interval_ms: u64,
-    pub retry_interval_ms: u64,
-    pub max_retry_delay_ms: u64,
+    pub delivery_interval: Duration,
+    pub retry_interval: Duration,
+    pub max_retry_delay: Duration,
     pub max_retries: Option<u32>,
 }
 
@@ -52,8 +52,7 @@ impl EventDispatcher {
         }
 
         tokio::spawn(async move {
-            let interval_duration = Duration::from_millis(config.delivery_interval_ms);
-            let mut interval = interval_at(Instant::now() + interval_duration, interval_duration);
+            let mut interval = interval_at(Instant::now() + config.delivery_interval, config.delivery_interval);
             loop {
                 interval.tick().await;
                 let events_to_process = batch_processor.next_batch();
@@ -96,9 +95,9 @@ mod tests {
         let config = EventDispatcherConfig {
             sdk_key: "test-sdk-key".to_string(),
             ingestion_url: "http://example.com".to_string(),
-            delivery_interval_ms: 100,
-            retry_interval_ms: 1000,
-            max_retry_delay_ms: 5000,
+            delivery_interval: Duration::from_millis(100),
+            retry_interval: Duration::from_millis(1000),
+            max_retry_delay: Duration::from_millis(5000),
             max_retries: Some(3),
         };
 
