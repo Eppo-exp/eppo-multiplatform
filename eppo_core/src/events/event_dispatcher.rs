@@ -1,9 +1,15 @@
 use crate::events::batch_event_queue::BatchEventQueue;
 use crate::events::event::{Event, GenericEvent};
 use log::info;
-use std::sync::{Arc, Mutex};
 use serde::Serialize;
-use tokio::time::{interval_at, Duration, Instant};
+use serde_json::to_value;
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+use tokio::time::{Duration, Instant};
+
+enum EventDispatcherCommand {
+    Event(GenericEvent),
+    Flush,
+}
 
 #[derive(Debug, Clone)]
 pub struct EventDispatcherConfig {
@@ -18,22 +24,25 @@ pub struct EventDispatcherConfig {
 pub struct EventDispatcher {
     config: EventDispatcherConfig,
     batch_queue: BatchEventQueue,
-    delivery_task_active: Arc<Mutex<bool>>,
+    tx: UnboundedSender<EventDispatcherCommand>,
+    rx: UnboundedReceiver<EventDispatcherCommand>,
 }
 
 impl EventDispatcher {
     pub fn new(config: EventDispatcherConfig, batch_queue: BatchEventQueue) -> Self {
+        let (tx, rx) = unbounded_channel();
         EventDispatcher {
             config,
             batch_queue,
-            delivery_task_active: Arc::new(Mutex::new(false)),
+            tx,
+            rx,
         }
     }
 
     /// Enqueues an event in the batch event processor and starts delivery if needed.
-    pub fn dispatch<T : Serialize>(&self, event: Event<T>) {
+    pub fn dispatch<T: Serialize>(&self, event: Event<T>) {
         // Convert the generic payload into a serde_json::Value
-        let serialized_payload = serde_json::to_value(event.payload).expect("Serialization failed");
+        let serialized_payload = to_value(event.payload).expect("Serialization failed");
         // Create a new Event with the serialized payload
         let event_with_value = Event {
             uuid: event.uuid,
@@ -41,43 +50,74 @@ impl EventDispatcher {
             event_type: event.event_type,
             payload: serialized_payload,
         };
-        self.batch_queue.push(event_with_value);
-
-        // Start the delivery loop if it's not already active
-        if !self.is_delivery_timer_active() {
-            self.start_delivery_loop();
-        }
+        self.tx.send(EventDispatcherCommand::Event(event_with_value))
+            // TODO: handle/log error instead of panicking
+            .expect("receiver should not be closed before all senders are closed")
     }
 
-    fn start_delivery_loop(&self) {
-        let active_flag = Arc::clone(&self.delivery_task_active);
+    async fn event_dispatcher(&self, mut rx: UnboundedReceiver<EventDispatcherCommand>) {
         let config = self.config.clone();
-        let batch_queue = self.batch_queue.clone();
+        loop {
+            let batch_queue = self.batch_queue.clone();
+            let ingestion_url = config.ingestion_url.clone();
 
-        // Mark the delivery loop as active
-        {
-            let mut is_active = active_flag.lock().unwrap();
-            *is_active = true;
-        }
-
-        tokio::spawn(async move {
-            let mut interval = interval_at(
-                Instant::now() + config.delivery_interval,
-                config.delivery_interval,
-            );
-            loop {
-                interval.tick().await;
-                let events_to_process = batch_queue.next_batch();
-                if !events_to_process.is_empty() {
-                    EventDispatcher::deliver(&config.ingestion_url, &events_to_process).await;
-                } else {
-                    // If no more events to deliver, break the loop
-                    let mut is_active = active_flag.lock().unwrap();
-                    *is_active = false;
-                    break;
+            // Wait for the first event in the batch.
+            //
+            // Optimization: Moved outside the loop below, so we're not woken up on regular intervals
+            // unless we have something to send. (This achieves a similar effect as starting/stopping
+            // delivery loop.)
+            match rx.recv().await {
+                None => {
+                    // Channel closed, no more messages. Exit the main loop.
+                    return;
+                }
+                Some(EventDispatcherCommand::Event(event)) => batch_queue.push(event),
+                Some(EventDispatcherCommand::Flush) => {
+                    // No buffered events yet, nothing to flush.
+                    continue;
                 }
             }
-        });
+
+            let delivery_interval = config.delivery_interval;
+            let deadline = Instant::now() + delivery_interval;
+            // Loop until we have enough events to send or reached deadline.
+            loop {
+                tokio::select! {
+                    _ = tokio::time::sleep_until(deadline) => {
+                        // reached deadline -> send everything we have
+                        break;
+                    },
+                    command = rx.recv() => {
+                        match command {
+                            None => {
+                                // channel closed
+                                break;
+                            },
+                            Some(EventDispatcherCommand::Event(event)) => {
+                                batch_queue.push(event);
+                                if batch_queue.is_full() {
+                                    // Reached max batch size -> send events immediately
+                                    break;
+                                } // else loop to get more events
+                            },
+                            Some(EventDispatcherCommand::Flush) => {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Send `batch` events.
+            tokio::spawn(async move {
+                // Spawning a new task, so the main task can continue batching events and respond to
+                // commands.
+                let events_to_process = batch_queue.next_batch();
+                if !events_to_process.is_empty() {
+                    EventDispatcher::deliver(&ingestion_url, &events_to_process).await;
+                }
+            }).await.unwrap();
+        }
     }
 
     async fn deliver(ingestion_url: &str, events: &[GenericEvent]) {
@@ -87,10 +127,6 @@ impl EventDispatcher {
             events.len(),
             ingestion_url
         );
-    }
-
-    fn is_delivery_timer_active(&self) -> bool {
-        *self.delivery_task_active.lock().unwrap()
     }
 }
 

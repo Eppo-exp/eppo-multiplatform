@@ -37,6 +37,11 @@ impl BatchEventQueue {
         batch
     }
 
+    pub fn is_full(&self) -> bool {
+        let queue = self.event_queue.lock().unwrap();
+        queue.len() >= self.batch_size
+    }
+
     pub fn is_empty(&self) -> bool {
         let queue = self.event_queue.lock().unwrap();
         queue.is_empty()
