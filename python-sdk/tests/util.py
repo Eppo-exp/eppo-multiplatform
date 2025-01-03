@@ -40,7 +40,9 @@ def load_test_files(dir):
         # otherwise (at ContextAttributes construction, not
         # evaluation). Therefore, these tests are not applicable.
         if not file_name.endswith(".dynamic-typing.json"):
-            with open("{}/{}".format(TEST_DIR, file_name)) as test_case_json:
+            with open(
+                "{}/{}".format(TEST_DIR, file_name), "r", encoding="utf-8"
+            ) as test_case_json:
                 test_case_dict = json.load(test_case_json)
                 test_case_dict["file_name"] = file_name
                 test_data.append(test_case_dict)
