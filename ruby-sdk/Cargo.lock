@@ -354,7 +354,7 @@ dependencies = [
 
 [[package]]
 name = "eppo_client"
-version = "3.3.1"
+version = "3.3.0"
 dependencies = [
  "env_logger",
  "eppo_core",

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.0.5/schema.json",
+  "changelog": ["@changesets/changelog-github", { "repo": "Eppo-exp/eppo-multiplatform" }],
+  "commit": false,
+  "fixed": [],
+  "linked": [],
+  "access": "restricted",
+  "baseBranch": "origin/main",
+  "updateInternalDependencies": "patch",
+  "ignore": []
+}

@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "name": "eppo_core",
+  "version": "6.0.0",
+  "dependencies": {},
+  "devDependencies": {},
+  "scripts": {
+    "postversion": "./postversion.sh"
+  }
+}

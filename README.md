@@ -26,19 +26,17 @@ Eppo is a modular flagging and experimentation analysis tool. Eppo's SDKs are bu
 
 ### Release process
 
-To release a new version of SDK:
-1. Make sure that version strings have been updated:
-   - Eppo core: [eppo_core/Cargo.toml](eppo_core/Cargo.toml)
-   - Rust: [rust-sdk/Cargo.toml](rust-sdk/Cargo.toml)
-   - Python: [python-sdk/Cargo.toml](python-sdk/Cargo.toml)
-   - Ruby: [ruby-sdk/lib/eppo_client/version.rb](ruby-sdk/lib/eppo_client/version.rb) and [ruby-sdk/ext/eppo_client/Cargo.toml](ruby-sdk/ext/eppo_client/Cargo.toml)
+To release new versions:
+1. Look up for a `chore: bump versions before release` pull request, review and merge it.
+   - You must publish all bumped packages after merging the PR. If you don't want to publish some of the packages, you may add them to `.changeset/config.json`'s `ignore` field temporarily.
 2. If SDK depends on a new version of `eppo_core`, the core should be released first.
-3. [Create a new release](https://github.com/Eppo-exp/rust-sdk/releases/new) in GitHub interface.
+   - After a new version of eppo_core is published, Ruby SDK needs its lock file updated (see "Releasing" section in Ruby SDK readme).
+2. [Create a new releases](https://github.com/Eppo-exp/rust-sdk/releases/new) for all bumped packages.
    - For tag, use one of the following formats (choose "create new tag on publish"):
      - `eppo_core@x.y.z`
      - `rust-sdk@x.y.z`
      - `python-sdk@x.y.z`
      - `ruby-sdk@x.y.z`
-   - For generating release notes, select previous tag from the same SDK (e.g., when releasing `python-sdk@4.0.3`, the previous tag should be `python-sdk@4.0.2`). Auto-generate release notes, prune entries that are not relevant for the SDK (e.g., Python SDK release should not list PRs for Ruby).
+   - Copy release notes from `CHANGELOG.md` file.
    - Publish release.
    - CI will automatically push a new release out to package registries.
