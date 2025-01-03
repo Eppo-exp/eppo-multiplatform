@@ -1,3 +1,7 @@
+mod event_dispatcher;
+mod event;
+mod batch_event_queue;
+
 use std::{collections::HashMap, sync::Arc};
 
 use serde::Serialize;
