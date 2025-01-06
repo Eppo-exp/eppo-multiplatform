@@ -77,8 +77,7 @@ impl EventDispatcher {
                 }
             }
 
-            let delivery_interval = config.delivery_interval;
-            let deadline = Instant::now() + delivery_interval;
+            let deadline = Instant::now() + config.delivery_interval;
             // Loop until we have enough events to send or reached deadline.
             loop {
                 tokio::select! {
