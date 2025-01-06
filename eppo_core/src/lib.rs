@@ -7,7 +7,7 @@
 //! languages have different constraints. Some languages might use all building blocks and others
 //! might reimplement some pieces in the host language.
 //!
-//! [`Configuration`] is the heart of the SDK. It is an immutable structure that encapsulates all
+//! [`Configuration`] is the heart of an SDK. It is an immutable structure that encapsulates all
 //! server-provided configuration ([flag configurations](ufc::UniversalFlagConfig) and [bandit
 //! models](bandits::BanditResponse)) that describes how the SDK should evaluate user requests.
 //!
