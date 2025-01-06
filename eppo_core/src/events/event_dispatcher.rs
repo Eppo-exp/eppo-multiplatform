@@ -115,7 +115,7 @@ impl EventDispatcher {
                 if !events_to_process.is_empty() {
                     EventDispatcher::deliver(&ingestion_url, &events_to_process).await;
                 }
-            }).await.unwrap();
+            });
         }
     }
 
