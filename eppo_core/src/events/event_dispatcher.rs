@@ -1,10 +1,10 @@
 use std::collections::VecDeque;
 use crate::events::event::{Event};
 use log::info;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::{Duration, Instant};
 
-enum EventDispatcherCommand {
+pub enum EventDispatcherCommand {
     Event(Event),
     Flush,
 }
@@ -27,17 +27,18 @@ pub struct EventDispatcher {
     config: EventDispatcherConfig,
     batch_size: usize,
     tx: UnboundedSender<EventDispatcherCommand>,
-    rx: UnboundedReceiver<EventDispatcherCommand>,
 }
 
 impl EventDispatcher {
-    pub fn new(config: EventDispatcherConfig, batch_size: usize) -> Self {
-        let (tx, rx) = unbounded_channel();
+    pub fn new(
+        config: EventDispatcherConfig,
+        tx: UnboundedSender<EventDispatcherCommand>,
+        batch_size: usize
+    ) -> Self {
         EventDispatcher {
             config,
             batch_size: batch_size.clamp(MIN_BATCH_SIZE, MAX_BATCH_SIZE),
             tx,
-            rx,
         }
     }
 
@@ -126,6 +127,8 @@ impl EventDispatcher {
 
 #[cfg(test)]
 mod tests {
+    use serde::Serialize;
+    use tokio::sync::mpsc::unbounded_channel;
     use super::*;
     use crate::timestamp::now;
     use tokio::time::Duration;
@@ -148,7 +151,8 @@ mod tests {
             max_retries: Some(3),
         };
 
-        let dispatcher = EventDispatcher::new(config, 10);
+        let (tx, rx) = unbounded_channel();
+        let dispatcher = EventDispatcher::new(config, tx, 10);
 
         // Add an event
         let payload = LoginPayload {
