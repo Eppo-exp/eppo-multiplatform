@@ -106,7 +106,8 @@ impl EventDispatcher {
                 // Spawning a new task, so the main task can continue batching events and respond to
                 // commands.
                 if !batch_queue.is_empty() {
-                    let events_to_deliver = batch_queue.make_contiguous().iter().as_slice();
+                    batch_queue.make_contiguous();
+                    let (events_to_deliver, _) = batch_queue.as_slices();
                     EventDispatcher::deliver(&ingestion_url, &events_to_deliver).await;
                 }
             });
