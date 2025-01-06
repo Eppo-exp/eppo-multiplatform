@@ -152,7 +152,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_dispatch_starts_delivery() {
-        env_logger::init();
         let config = EventDispatcherConfig {
             sdk_key: "test-sdk-key".to_string(),
             ingestion_url: "http://example.com".to_string(),
