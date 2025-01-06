@@ -8,7 +8,8 @@ pub struct BatchEventQueue {
     event_queue: Arc<Mutex<VecDeque<Event>>>,
 }
 
-const MIN_BATCH_SIZE: usize = 100;
+// batch size of zero means each event will be delivered individually, thus effectively disabling batching.
+const MIN_BATCH_SIZE: usize = 0;
 const MAX_BATCH_SIZE: usize = 10_000;
 
 impl BatchEventQueue {
