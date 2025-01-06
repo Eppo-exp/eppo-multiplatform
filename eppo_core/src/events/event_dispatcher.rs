@@ -1,7 +1,6 @@
-use crate::events::batch_event_queue::BatchEventQueue;
+use std::collections::VecDeque;
 use crate::events::event::{Event};
 use log::info;
-use serde::Serialize;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::time::{Duration, Instant};
 
@@ -9,6 +8,10 @@ enum EventDispatcherCommand {
     Event(Event),
     Flush,
 }
+
+// batch size of zero means each event will be delivered individually, thus effectively disabling batching.
+const MIN_BATCH_SIZE: usize = 0;
+const MAX_BATCH_SIZE: usize = 10_000;
 
 #[derive(Debug, Clone)]
 pub struct EventDispatcherConfig {
@@ -22,17 +25,17 @@ pub struct EventDispatcherConfig {
 
 pub struct EventDispatcher {
     config: EventDispatcherConfig,
-    batch_queue: BatchEventQueue,
+    batch_size: usize,
     tx: UnboundedSender<EventDispatcherCommand>,
     rx: UnboundedReceiver<EventDispatcherCommand>,
 }
 
 impl EventDispatcher {
-    pub fn new(config: EventDispatcherConfig, batch_queue: BatchEventQueue) -> Self {
+    pub fn new(config: EventDispatcherConfig, batch_size: usize) -> Self {
         let (tx, rx) = unbounded_channel();
         EventDispatcher {
             config,
-            batch_queue,
+            batch_size: batch_size.clamp(MIN_BATCH_SIZE, MAX_BATCH_SIZE),
             tx,
             rx,
         }
@@ -46,9 +49,10 @@ impl EventDispatcher {
     }
 
     async fn event_dispatcher(&self, mut rx: UnboundedReceiver<EventDispatcherCommand>) {
+        let batch_size = self.batch_size;
         let config = self.config.clone();
         loop {
-            let batch_queue = self.batch_queue.clone();
+            let mut batch_queue: VecDeque<Event> = VecDeque::with_capacity(batch_size);
             let ingestion_url = config.ingestion_url.clone();
 
             // Wait for the first event in the batch.
@@ -61,7 +65,7 @@ impl EventDispatcher {
                     // Channel closed, no more messages. Exit the main loop.
                     return;
                 }
-                Some(EventDispatcherCommand::Event(event)) => batch_queue.push(event),
+                Some(EventDispatcherCommand::Event(event)) => batch_queue.push_back(event),
                 Some(EventDispatcherCommand::Flush) => {
                     // No buffered events yet, nothing to flush.
                     continue;
@@ -83,8 +87,8 @@ impl EventDispatcher {
                                 break;
                             },
                             Some(EventDispatcherCommand::Event(event)) => {
-                                batch_queue.push(event);
-                                if batch_queue.is_full() {
+                                batch_queue.push_back(event);
+                                if batch_queue.len() > batch_size {
                                     // Reached max batch size -> send events immediately
                                     break;
                                 } // else loop to get more events
@@ -101,9 +105,9 @@ impl EventDispatcher {
             tokio::spawn(async move {
                 // Spawning a new task, so the main task can continue batching events and respond to
                 // commands.
-                let events_to_process = batch_queue.next_batch();
-                if !events_to_process.is_empty() {
-                    EventDispatcher::deliver(&ingestion_url, &events_to_process).await;
+                if !batch_queue.is_empty() {
+                    let events_to_deliver = batch_queue.make_contiguous().iter().as_slice();
+                    EventDispatcher::deliver(&ingestion_url, &events_to_deliver).await;
                 }
             });
         }
@@ -143,8 +147,7 @@ mod tests {
             max_retries: Some(3),
         };
 
-        let batch_queue = BatchEventQueue::new(10);
-        let dispatcher = EventDispatcher::new(config, batch_queue.clone());
+        let dispatcher = EventDispatcher::new(config, 10);
 
         // Add an event
         let payload = LoginPayload {
