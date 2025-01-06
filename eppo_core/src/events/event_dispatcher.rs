@@ -1,13 +1,12 @@
 use crate::events::batch_event_queue::BatchEventQueue;
-use crate::events::event::{Event, GenericEvent};
+use crate::events::event::{Event};
 use log::info;
 use serde::Serialize;
-use serde_json::to_value;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::time::{Duration, Instant};
 
 enum EventDispatcherCommand {
-    Event(GenericEvent),
+    Event(Event),
     Flush,
 }
 
@@ -40,16 +39,8 @@ impl EventDispatcher {
     }
 
     /// Enqueues an event in the batch event processor and starts delivery if needed.
-    pub fn dispatch<T: Serialize>(&self, event: Event<T>) {
-        let serialized_payload = serde_json::to_value(event.payload).expect("Serialization failed");
-        // Create a new Event with the serialized payload
-        let event_with_value = Event {
-            uuid: event.uuid,
-            timestamp: event.timestamp,
-            event_type: event.event_type,
-            payload: serialized_payload,
-        };
-        self.tx.send(EventDispatcherCommand::Event(event_with_value))
+    pub fn dispatch(&self, event: Event) {
+        self.tx.send(EventDispatcherCommand::Event(event))
             // TODO: handle/log error instead of panicking
             .expect("receiver should not be closed before all senders are closed")
     }
@@ -118,7 +109,7 @@ impl EventDispatcher {
         }
     }
 
-    async fn deliver(ingestion_url: &str, events: &[GenericEvent]) {
+    async fn deliver(ingestion_url: &str, events: &[Event]) {
         // Simulated HTTP request or delivery logic
         info!(
             "Pretending to deliver {} events to {}",
@@ -156,14 +147,16 @@ mod tests {
         let dispatcher = EventDispatcher::new(config, batch_queue.clone());
 
         // Add an event
+        let payload = LoginPayload {
+            user_id: "user123".to_string(),
+            session_id: "session456".to_string(),
+        };
+        let serialized_payload = serde_json::to_value(payload).expect("Serialization failed");
         dispatcher.dispatch(Event {
             uuid: Uuid::new_v4(),
             timestamp: now(),
             event_type: "test".to_string(),
-            payload: LoginPayload {
-                user_id: "user123".to_string(),
-                session_id: "session456".to_string(),
-            },
+            payload: serialized_payload,
         });
 
         // TODO: start the dispatcher thread and assert on successful delivery
