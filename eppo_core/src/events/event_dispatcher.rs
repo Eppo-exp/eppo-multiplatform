@@ -4,9 +4,11 @@ use log::info;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::{Duration, Instant};
 
+#[derive(Debug)]
 pub enum EventDispatcherCommand {
     Event(Event),
     Flush,
+    Exit,
 }
 
 // batch size of zero means each event will be delivered individually, thus effectively disabling batching.
@@ -23,16 +25,16 @@ pub struct EventDispatcherConfig {
     pub max_retries: Option<u32>,
 }
 
-pub struct EventDispatcher {
+pub struct EventDispatcher<'a> {
     config: EventDispatcherConfig,
     batch_size: usize,
-    tx: UnboundedSender<EventDispatcherCommand>,
+    tx: &'a UnboundedSender<EventDispatcherCommand>,
 }
 
-impl EventDispatcher {
+impl<'a> EventDispatcher<'a> {
     pub fn new(
         config: EventDispatcherConfig,
-        tx: UnboundedSender<EventDispatcherCommand>,
+        tx: &'a UnboundedSender<EventDispatcherCommand>,
         batch_size: usize
     ) -> Self {
         EventDispatcher {
@@ -71,6 +73,10 @@ impl EventDispatcher {
                     // No buffered events yet, nothing to flush.
                     continue;
                 }
+                Some(EventDispatcherCommand::Exit) => {
+                    // Explicit exit command received, stop loop.
+                    return;
+                }
             }
 
             let deadline = Instant::now() + config.delivery_interval;
@@ -96,6 +102,10 @@ impl EventDispatcher {
                             },
                             Some(EventDispatcherCommand::Flush) => {
                                 break;
+                            }
+                            Some(EventDispatcherCommand::Exit) => {
+                                // Exit the main loop.
+                                return;
                             }
                         }
                     }
@@ -142,6 +152,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_dispatch_starts_delivery() {
+        env_logger::init();
         let config = EventDispatcherConfig {
             sdk_key: "test-sdk-key".to_string(),
             ingestion_url: "http://example.com".to_string(),
@@ -152,7 +163,7 @@ mod tests {
         };
 
         let (tx, rx) = unbounded_channel();
-        let dispatcher = EventDispatcher::new(config, tx, 10);
+        let dispatcher = EventDispatcher::new(config, &tx, 1);
 
         // Add an event
         let payload = LoginPayload {
@@ -166,12 +177,10 @@ mod tests {
             event_type: "test".to_string(),
             payload: serialized_payload,
         });
+        tx.send(EventDispatcherCommand::Flush).expect("send should not fail");
+        tx.send(EventDispatcherCommand::Exit).expect("send should not fail");
 
-        // TODO: start the dispatcher thread and assert on successful delivery
-        // // Wait a short time to allow delivery task to execute
-        // tokio::time::sleep(Duration::from_millis(120)).await;
-        //
-        // // Ensure the batch queue is empty after delivery
-        // assert_eq!(batch_queue.is_empty(), true);
+        dispatcher.event_dispatcher(rx).await;
+        tokio::time::sleep(Duration::from_millis(100)).await;
     }
 }
