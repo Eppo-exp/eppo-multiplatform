@@ -41,8 +41,7 @@ impl EventDispatcher {
 
     /// Enqueues an event in the batch event processor and starts delivery if needed.
     pub fn dispatch<T: Serialize>(&self, event: Event<T>) {
-        // Convert the generic payload into a serde_json::Value
-        let serialized_payload = to_value(event.payload).expect("Serialization failed");
+        let serialized_payload = serde_json::to_value(event.payload).expect("Serialization failed");
         // Create a new Event with the serialized payload
         let event_with_value = Event {
             uuid: event.uuid,
