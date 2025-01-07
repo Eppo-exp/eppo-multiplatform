@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "name": "rust-sdk",
+  "version": "4.0.1",
+  "dependencies": {
+    "eppo_core": "6.0.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "postversion": "./postversion.sh"
+  }
+}
