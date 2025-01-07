@@ -1,7 +1,8 @@
 use crate::events::event::Event;
-use log::info;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+use log::{info, warn};
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::{Duration, Instant};
+use crate::events::event_delivery::EventDelivery;
 
 #[derive(Debug)]
 pub enum EventDispatcherCommand {
@@ -24,12 +25,14 @@ pub struct EventDispatcherConfig {
     pub batch_size: usize,
 }
 
+/// EventDispatcher is responsible for batching events and delivering them to the ingestion service
+/// via [`EventDelivery`].
 pub struct EventDispatcher {
     config: EventDispatcherConfig,
     tx: UnboundedSender<EventDispatcherCommand>,
 }
 
-impl<'a> EventDispatcher {
+impl EventDispatcher {
     pub fn new(config: EventDispatcherConfig, tx: UnboundedSender<EventDispatcherCommand>) -> Self {
         EventDispatcher { config, tx }
     }
@@ -51,7 +54,10 @@ impl<'a> EventDispatcher {
         let batch_size = config.batch_size;
         loop {
             let mut batch_queue: Vec<Event> = Vec::with_capacity(batch_size);
-            let ingestion_url = config.ingestion_url.clone();
+            let event_delivery = EventDelivery::new(
+                config.sdk_key.clone(),
+                config.ingestion_url.clone()
+            );
 
             // Wait for the first event in the batch.
             //
@@ -107,18 +113,21 @@ impl<'a> EventDispatcher {
                 // Spawning a new task, so the main task can continue batching events and respond to
                 // commands. At this point, batch_queue is guaranteed to have at least one event.
                 let events_to_deliver = batch_queue.as_slice();
-                EventDispatcher::deliver(&ingestion_url, &events_to_deliver).await;
+                let result = event_delivery.deliver(&events_to_deliver).await;
+                match result {
+                    Ok(failed_events) => {
+                        if !failed_events.is_empty() {
+                            // TODO: Enqueue events for retry
+                            warn!("Failed to deliver {} events", failed_events.len());
+                        }
+                    }
+                    Err(err) => {
+                        // TODO: Handle failure to deliver events
+                        warn!("Failed to deliver events: {}", err);
+                    }
+                }
             });
         }
-    }
-
-    async fn deliver(ingestion_url: &str, events: &[Event]) {
-        // Simulated HTTP request or delivery logic
-        info!(
-            "Pretending to deliver {} events to {}",
-            events.len(),
-            ingestion_url
-        );
     }
 }
 
@@ -128,10 +137,14 @@ mod tests {
     use super::*;
     use crate::timestamp::now;
     use serde::Serialize;
+    use serde_json::json;
     use tokio::sync::mpsc::unbounded_channel;
     use tokio::sync::Mutex;
     use tokio::time::Duration;
     use uuid::Uuid;
+    use wiremock::{MockServer, Mock, ResponseTemplate};
+    use wiremock::http::Method;
+    use wiremock::matchers::{method, path, body_json};
 
     #[derive(Debug, Clone, Serialize)]
     struct LoginPayload {
@@ -141,18 +154,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_dispatch_starts_delivery() {
-        let config = EventDispatcherConfig {
-            sdk_key: "test-sdk-key".to_string(),
-            ingestion_url: "http://example.com".to_string(),
-            delivery_interval: Duration::from_millis(100),
-            retry_interval: Duration::from_millis(1000),
-            max_retry_delay: Duration::from_millis(5000),
-            max_retries: Some(3),
-            batch_size: 1,
-        };
-        let (tx, rx) = unbounded_channel();
-        let rx = Arc::new(Mutex::new(rx));
-        let dispatcher = EventDispatcher::new(config, tx);
         let payload = LoginPayload {
             user_id: "user123".to_string(),
             session_id: "session456".to_string(),
@@ -164,6 +165,28 @@ mod tests {
             event_type: "test".to_string(),
             payload: serialized_payload,
         };
+        let mock_server = MockServer::start().await;
+        let mut eppo_events = Vec::new();
+        eppo_events.push(serde_json::to_value(event.clone()).unwrap());
+        let expected_body = json!({"eppo_events": eppo_events });
+        Mock::given(method("POST"))
+            .and(path("/"))
+            .and(body_json(&expected_body))
+            .respond_with(ResponseTemplate::new(200))
+            .mount(&mock_server)
+            .await;
+        let config = EventDispatcherConfig {
+            sdk_key: "test-sdk-key".to_string(),
+            ingestion_url: mock_server.uri(),
+            delivery_interval: Duration::from_millis(100),
+            retry_interval: Duration::from_millis(1000),
+            max_retry_delay: Duration::from_millis(5000),
+            max_retries: Some(3),
+            batch_size: 1,
+        };
+        let (tx, rx) = unbounded_channel();
+        let rx = Arc::new(Mutex::new(rx));
+        let dispatcher = EventDispatcher::new(config, tx);
         dispatcher.dispatch(event).unwrap();
         dispatcher
             .send(EventDispatcherCommand::Flush)
@@ -177,6 +200,15 @@ mod tests {
             let mut rx = rx.lock().await; // Acquire the lock for rx
             rx.close();
         }
+        // wait some time for the async task to finish
         tokio::time::sleep(Duration::from_millis(100)).await;
+        let received_requests = mock_server.received_requests().await.unwrap();
+        assert_eq!(received_requests.len(), 1);
+        let received_request = &received_requests[0];
+        assert_eq!(received_request.method, Method::Post);
+        assert_eq!(received_request.url.path(), "/");
+        let received_body: serde_json::Value = serde_json::from_slice(&received_request.body)
+                .expect("Failed to parse request body");
+        assert_eq!(received_body, expected_body);
     }
 }
