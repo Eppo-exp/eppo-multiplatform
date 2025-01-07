@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-set -euxo pipefail
+set -eux
 
 VERSION="$(jq -r .version ./package.json)"
 
