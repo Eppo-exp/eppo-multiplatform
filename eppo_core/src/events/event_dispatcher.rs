@@ -105,7 +105,7 @@ impl<'a> EventDispatcher {
             // Send `batch` events.
             tokio::spawn(async move {
                 // Spawning a new task, so the main task can continue batching events and respond to
-                // commands.
+                // commands. At this point, batch_queue is guaranteed to have at least one event.
                 let events_to_deliver = batch_queue.as_slice();
                 EventDispatcher::deliver(&ingestion_url, &events_to_deliver).await;
             });
