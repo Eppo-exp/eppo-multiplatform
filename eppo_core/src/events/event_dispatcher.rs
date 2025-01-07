@@ -55,7 +55,7 @@ impl<'a> EventDispatcher<'a> {
         let batch_size = self.batch_size;
         let config = self.config.clone();
         loop {
-            let mut batch_queue: VecDeque<Event> = VecDeque::with_capacity(batch_size);
+            let mut batch_queue: Vec<Event> = Vec::with_capacity(batch_size);
             let ingestion_url = config.ingestion_url.clone();
 
             // Wait for the first event in the batch.
@@ -68,7 +68,7 @@ impl<'a> EventDispatcher<'a> {
                     // Channel closed, no more messages. Exit the main loop.
                     return;
                 }
-                Some(EventDispatcherCommand::Event(event)) => batch_queue.push_back(event),
+                Some(EventDispatcherCommand::Event(event)) => batch_queue.push(event),
                 Some(EventDispatcherCommand::Flush) => {
                     // No buffered events yet, nothing to flush.
                     continue;
@@ -94,7 +94,7 @@ impl<'a> EventDispatcher<'a> {
                                 break;
                             },
                             Some(EventDispatcherCommand::Event(event)) => {
-                                batch_queue.push_back(event);
+                                batch_queue.push(event);
                                 if batch_queue.len() >= batch_size {
                                     // Reached max batch size -> send events immediately
                                     break;
@@ -116,11 +116,8 @@ impl<'a> EventDispatcher<'a> {
             tokio::spawn(async move {
                 // Spawning a new task, so the main task can continue batching events and respond to
                 // commands.
-                if !batch_queue.is_empty() {
-                    batch_queue.make_contiguous();
-                    let (events_to_deliver, _) = batch_queue.as_slices();
-                    EventDispatcher::deliver(&ingestion_url, &events_to_deliver).await;
-                }
+                let events_to_deliver = batch_queue.as_slice();
+                EventDispatcher::deliver(&ingestion_url, &events_to_deliver).await;
             });
         }
     }
