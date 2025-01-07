@@ -11,8 +11,8 @@ pub enum EventDispatcherCommand {
     Exit,
 }
 
-// batch size of zero means each event will be delivered individually, thus effectively disabling batching.
-const MIN_BATCH_SIZE: usize = 0;
+// batch size of one means each event will be delivered individually, thus effectively disabling batching.
+const MIN_BATCH_SIZE: usize = 1;
 const MAX_BATCH_SIZE: usize = 10_000;
 
 #[derive(Debug, Clone)]
@@ -79,33 +79,36 @@ impl<'a> EventDispatcher<'a> {
                 }
             }
 
-            let deadline = Instant::now() + config.delivery_interval;
-            // Loop until we have enough events to send or reached deadline.
-            loop {
-                tokio::select! {
-                    _ = tokio::time::sleep_until(deadline) => {
-                        // reached deadline -> send everything we have
-                        break;
-                    },
-                    command = rx.recv() => {
-                        match command {
-                            None => {
-                                // channel closed
-                                break;
-                            },
-                            Some(EventDispatcherCommand::Event(event)) => {
-                                batch_queue.push(event);
-                                if batch_queue.len() >= batch_size {
-                                    // Reached max batch size -> send events immediately
+            // short-circuit for batch size of 1
+            if batch_queue.len() < batch_size {
+                let deadline = Instant::now() + config.delivery_interval;
+                // Loop until we have enough events to send or reached deadline.
+                loop {
+                    tokio::select! {
+                        _ = tokio::time::sleep_until(deadline) => {
+                            // reached deadline -> send everything we have
+                            break;
+                        },
+                        command = rx.recv() => {
+                            match command {
+                                None => {
+                                    // channel closed
                                     break;
-                                } // else loop to get more events
-                            },
-                            Some(EventDispatcherCommand::Flush) => {
-                                break;
-                            }
-                            Some(EventDispatcherCommand::Exit) => {
-                                // Exit the main loop.
-                                return;
+                                },
+                                Some(EventDispatcherCommand::Event(event)) => {
+                                    batch_queue.push(event);
+                                    if batch_queue.len() >= batch_size {
+                                        // Reached max batch size -> send events immediately
+                                        break;
+                                    } // else loop to get more events
+                                },
+                                Some(EventDispatcherCommand::Flush) => {
+                                    break;
+                                }
+                                Some(EventDispatcherCommand::Exit) => {
+                                    // Exit the main loop.
+                                    return;
+                                }
                             }
                         }
                     }
