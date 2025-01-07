@@ -95,7 +95,7 @@ impl<'a> EventDispatcher<'a> {
                             },
                             Some(EventDispatcherCommand::Event(event)) => {
                                 batch_queue.push_back(event);
-                                if batch_queue.len() > batch_size {
+                                if batch_queue.len() >= batch_size {
                                     // Reached max batch size -> send events immediately
                                     break;
                                 } // else loop to get more events
