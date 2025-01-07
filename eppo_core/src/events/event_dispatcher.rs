@@ -1,14 +1,12 @@
-use std::collections::VecDeque;
-use crate::events::event::{Event};
+use crate::events::event::Event;
 use log::info;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::time::{Duration, Instant};
 
 #[derive(Debug)]
 pub enum EventDispatcherCommand {
     Event(Event),
     Flush,
-    Exit,
 }
 
 // batch size of one means each event will be delivered individually, thus effectively disabling batching.
@@ -23,37 +21,34 @@ pub struct EventDispatcherConfig {
     pub retry_interval: Duration,
     pub max_retry_delay: Duration,
     pub max_retries: Option<u32>,
+    pub batch_size: usize,
 }
 
-pub struct EventDispatcher<'a> {
+pub struct EventDispatcher {
     config: EventDispatcherConfig,
-    batch_size: usize,
-    tx: &'a UnboundedSender<EventDispatcherCommand>,
+    tx: UnboundedSender<EventDispatcherCommand>,
 }
 
-impl<'a> EventDispatcher<'a> {
-    pub fn new(
-        config: EventDispatcherConfig,
-        tx: &'a UnboundedSender<EventDispatcherCommand>,
-        batch_size: usize
-    ) -> Self {
-        EventDispatcher {
-            config,
-            batch_size: batch_size.clamp(MIN_BATCH_SIZE, MAX_BATCH_SIZE),
-            tx,
-        }
+impl<'a> EventDispatcher {
+    pub fn new(config: EventDispatcherConfig, tx: UnboundedSender<EventDispatcherCommand>) -> Self {
+        EventDispatcher { config, tx }
     }
 
     /// Enqueues an event in the batch event processor and starts delivery if needed.
-    pub fn dispatch(&self, event: Event) {
-        self.tx.send(EventDispatcherCommand::Event(event))
-            // TODO: handle/log error instead of panicking
-            .expect("receiver should not be closed before all senders are closed")
+    pub fn dispatch(&self, event: Event) -> Result<(), &str> {
+        self.send(EventDispatcherCommand::Event(event))
     }
 
-    async fn event_dispatcher(&self, mut rx: UnboundedReceiver<EventDispatcherCommand>) {
-        let batch_size = self.batch_size;
+    pub fn send(&self, command: EventDispatcherCommand) -> Result<(), &str> {
+        match self.tx.send(command) {
+            Ok(_) => Ok(()),
+            Err(_) => Err("receiver should not be closed before all senders are closed"),
+        }
+    }
+
+    async fn event_dispatcher(&self, rx: &mut UnboundedReceiver<EventDispatcherCommand>) {
         let config = self.config.clone();
+        let batch_size = config.batch_size;
         loop {
             let mut batch_queue: Vec<Event> = Vec::with_capacity(batch_size);
             let ingestion_url = config.ingestion_url.clone();
@@ -72,10 +67,6 @@ impl<'a> EventDispatcher<'a> {
                 Some(EventDispatcherCommand::Flush) => {
                     // No buffered events yet, nothing to flush.
                     continue;
-                }
-                Some(EventDispatcherCommand::Exit) => {
-                    // Explicit exit command received, stop loop.
-                    return;
                 }
             }
 
@@ -105,10 +96,6 @@ impl<'a> EventDispatcher<'a> {
                                 Some(EventDispatcherCommand::Flush) => {
                                     break;
                                 }
-                                Some(EventDispatcherCommand::Exit) => {
-                                    // Exit the main loop.
-                                    return;
-                                }
                             }
                         }
                     }
@@ -137,10 +124,12 @@ impl<'a> EventDispatcher<'a> {
 
 #[cfg(test)]
 mod tests {
-    use serde::Serialize;
-    use tokio::sync::mpsc::unbounded_channel;
+    use std::sync::Arc;
     use super::*;
     use crate::timestamp::now;
+    use serde::Serialize;
+    use tokio::sync::mpsc::unbounded_channel;
+    use tokio::sync::Mutex;
     use tokio::time::Duration;
     use uuid::Uuid;
 
@@ -152,6 +141,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_dispatch_starts_delivery() {
+        env_logger::init();
         let config = EventDispatcherConfig {
             sdk_key: "test-sdk-key".to_string(),
             ingestion_url: "http://example.com".to_string(),
@@ -159,27 +149,35 @@ mod tests {
             retry_interval: Duration::from_millis(1000),
             max_retry_delay: Duration::from_millis(5000),
             max_retries: Some(3),
+            batch_size: 1,
         };
-
         let (tx, rx) = unbounded_channel();
-        let dispatcher = EventDispatcher::new(config, &tx, 1);
-
-        // Add an event
+        let rx = Arc::new(Mutex::new(rx));
+        let dispatcher = EventDispatcher::new(config, tx);
         let payload = LoginPayload {
             user_id: "user123".to_string(),
             session_id: "session456".to_string(),
         };
         let serialized_payload = serde_json::to_value(payload).expect("Serialization failed");
-        dispatcher.dispatch(Event {
+        let event = Event {
             uuid: Uuid::new_v4(),
             timestamp: now(),
             event_type: "test".to_string(),
             payload: serialized_payload,
+        };
+        dispatcher.dispatch(event).unwrap();
+        dispatcher
+            .send(EventDispatcherCommand::Flush)
+            .expect("send should not fail");
+        let rx_clone = Arc::clone(&rx);
+        tokio::spawn(async move {
+            let mut rx = rx_clone.lock().await;
+            dispatcher.event_dispatcher(&mut rx).await;
         });
-        tx.send(EventDispatcherCommand::Flush).expect("send should not fail");
-        tx.send(EventDispatcherCommand::Exit).expect("send should not fail");
-
-        dispatcher.event_dispatcher(rx).await;
+        {
+            let mut rx = rx.lock().await; // Acquire the lock for rx
+            rx.close();
+        }
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
 }
