@@ -1,3 +1,6 @@
+mod event_dispatcher;
+mod event;
+
 use std::{collections::HashMap, sync::Arc};
 
 use serde::Serialize;
