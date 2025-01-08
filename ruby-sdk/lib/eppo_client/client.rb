@@ -22,7 +22,7 @@ module EppoClient
     def init(config)
       config.validate
 
-      if !@core.nil?
+      if @core
         STDERR.puts "Eppo Warning: multiple initialization of the client"
         @core.shutdown
       end
@@ -91,7 +91,10 @@ module EppoClient
       log_assignment(result[:assignment_event])
       log_bandit_action(result[:bandit_event])
 
-      return {:variation => result[:variation], :action => result[:action]}
+      {
+        :variation => result[:variation],
+        :action => result[:action]
+      }
     end
 
     def get_bandit_action_details(flag_key, subject_key, subject_attributes, actions, default_variation)
@@ -102,7 +105,7 @@ module EppoClient
       log_assignment(result[:assignment_event])
       log_bandit_action(result[:bandit_event])
 
-      return {
+      {
         :variation => result[:variation],
         :action => result[:action],
         :evaluationDetails => details
@@ -116,9 +119,7 @@ module EppoClient
       logger = Logger.new($stdout)
       begin
         assignment = @core.get_assignment(flag_key, subject_key, subject_attributes, expected_type)
-        if not assignment then
-          return default_value
-        end
+        return default_value unless assignment
 
         log_assignment(assignment[:event])
 
@@ -137,16 +138,16 @@ module EppoClient
       result, event = @core.get_assignment_details(flag_key, subject_key, subject_attributes, expected_type)
       log_assignment(event)
 
-      if not result[:variation] then
+      if !result[:variation]
         result[:variation] = default_value
       end
 
-      return result
+      result
     end
     # rubocop:enable Metrics/MethodLength
 
     def log_assignment(event)
-      if not event then return end
+      return unless event
 
       # Because rust's AssignmentEvent has a #[flatten] extra_logging
       # field, serde_magnus serializes it as a normal HashMap with
@@ -167,7 +168,7 @@ module EppoClient
     end
 
     def log_bandit_action(event)
-      if not event then return end
+      return unless event
 
       begin
         @assignment_logger.log_bandit_action(event)
