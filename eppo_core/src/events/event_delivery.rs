@@ -35,7 +35,7 @@ impl EventDelivery {
     pub async fn deliver(self, events: &[Event]) -> Result<Vec<String>, Error> {
         let ingestion_url = self.ingestion_url;
         let sdk_key = self.sdk_key;
-        info!("Delivering {} events to {}", events.len(), ingestion_url);
+        debug!("Delivering {} events to {}", events.len(), ingestion_url);
         let body = IngestionRequestBody { eppo_events: events.to_vec() };
         let serialized_body = serde_json::to_string(&body).expect("Failed to serialize body");
         let response = self.client.request(Method::POST, ingestion_url)
