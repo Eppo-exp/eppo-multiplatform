@@ -76,41 +76,40 @@ pub fn get_precomputed_configuration(
                         return None;
                     }
 
-                    if let Some(ValueWire::String(precomputed_variation_value)) = flags
+                    let Some(ValueWire::String(precomputed_variation_value)) = flags
                         .get(flag_key)
                         .map(|assignment| &assignment.variation_value)
-                    {
-                        // If precomputing flag resolved to a value, evaluate the bandit
-                        let bandit_key = &configuration
-                            .flags
-                            .compiled
-                            .flag_to_bandit_associations
-                            .get(flag_key)?
-                            .get(precomputed_variation_value)?
-                            .key;
-                        let bandit_model = bandits.bandits.get(bandit_key)?;
+                    else {
+                        // Precomputed flag did not resolve to a value — no bandit evaluation
+                        return None;
+                    };
 
-                        let bandit_evaluation = bandit_model
-                            .model_data
-                            .evaluate(flag_key, subject_key, subject_attributes, actions)
-                            .ok()?;
+                    let bandit_key = &configuration
+                        .flags
+                        .compiled
+                        .flag_to_bandit_associations
+                        .get(flag_key)?
+                        .get(precomputed_variation_value)?
+                        .key;
+                    let bandit_model = bandits.bandits.get(bandit_key)?;
 
-                        let selected_action = &actions[&bandit_evaluation.action_key];
-                        let precomputed_bandit = PrecomputedBandit {
-                            bandit_key: bandit_key.clone(),
-                            action: bandit_evaluation.action_key,
-                            action_probability: bandit_evaluation.action_weight,
-                            optimality_gap: bandit_evaluation.optimality_gap,
-                            model_version: bandit_model.model_version.clone(),
-                            action_numeric_attributes: selected_action.numeric.clone(),
-                            action_categorical_attributes: selected_action.categorical.clone(),
-                        };
+                    let bandit_evaluation = bandit_model
+                        .model_data
+                        .evaluate(flag_key, subject_key, subject_attributes, actions)
+                        .ok()?;
 
-                        Some((flag_key.clone(), precomputed_bandit))
-                    } else {
-                        // If precomputed flag did not resolve to a value, do not evaluate bandits.
-                        None
-                    }
+                    let selected_action = &actions[&bandit_evaluation.action_key];
+                    let precomputed_bandit = PrecomputedBandit {
+                        bandit_key: bandit_key.clone(),
+                        action: bandit_evaluation.action_key,
+                        action_probability: bandit_evaluation.action_weight,
+                        optimality_gap: bandit_evaluation.optimality_gap,
+                        model_version: bandit_model.model_version.clone(),
+                        action_numeric_attributes: selected_action.numeric.clone(),
+                        action_categorical_attributes: selected_action.categorical.clone(),
+                    };
+
+                    Some((flag_key.clone(), precomputed_bandit))
                 })
                 .collect()
         })
