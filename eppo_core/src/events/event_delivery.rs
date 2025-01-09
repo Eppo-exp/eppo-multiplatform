@@ -3,6 +3,7 @@ use crate::Error;
 use log::{debug, info};
 use reqwest::{StatusCode};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 pub struct EventDelivery {
     sdk_key: String,
@@ -12,7 +13,7 @@ pub struct EventDelivery {
 
 #[derive(serde::Deserialize)]
 pub struct EventDeliveryResponse {
-    pub failed_events: Vec<String>,
+    pub failed_events: Vec<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
