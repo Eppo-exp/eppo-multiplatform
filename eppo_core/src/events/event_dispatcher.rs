@@ -115,10 +115,10 @@ impl EventDispatcher {
                 let events_to_deliver = batch_queue.as_slice();
                 let result = event_delivery.deliver(&events_to_deliver).await;
                 match result {
-                    Ok(failed_events) => {
-                        if !failed_events.is_empty() {
+                    Ok(response) => {
+                        if !response.failed_events.is_empty() {
                             // TODO: Enqueue events for retry
-                            warn!("Failed to deliver {} events", failed_events.len());
+                            warn!("Failed to deliver {} events", response.failed_events.len());
                         }
                     }
                     Err(err) => {

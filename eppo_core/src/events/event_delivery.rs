@@ -1,7 +1,7 @@
 use crate::events::event::Event;
 use crate::Error;
-use log::info;
-use reqwest::{Method, StatusCode};
+use log::{debug, info};
+use reqwest::{StatusCode};
 use serde::{Deserialize, Serialize};
 
 pub struct EventDelivery {
@@ -11,8 +11,8 @@ pub struct EventDelivery {
 }
 
 #[derive(serde::Deserialize)]
-struct EventDeliveryResponse {
-    failed_events: Vec<String>,
+pub struct EventDeliveryResponse {
+    pub failed_events: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -32,7 +32,7 @@ impl EventDelivery {
     }
 
     // Delivers the provided event batch and returns a Vec with the events that failed to be delivered.
-    pub async fn deliver(self, events: &[Event]) -> Result<Vec<String>, Error> {
+    pub async fn deliver(self, events: &[Event]) -> Result<EventDeliveryResponse, Error> {
         let ingestion_url = self.ingestion_url;
         let sdk_key = self.sdk_key;
         debug!("Delivering {} events to {}", events.len(), ingestion_url);
@@ -53,6 +53,6 @@ impl EventDelivery {
         })?;
         let response = response.json::<EventDeliveryResponse>().await?;
         info!("Batch delivered successfully, {} events failed ingestion", response.failed_events.len());
-        Ok(response.failed_events)
+        Ok(response)
     }
 }
