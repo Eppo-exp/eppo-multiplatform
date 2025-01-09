@@ -21,8 +21,7 @@ pub struct PrecomputedConfiguration {
     // Environment might be missing if configuration was absent during evaluation.
     pub(crate) environment: Option<Environment>,
     pub(crate) flags: HashMap</* flag_key: */ Str, PrecomputedAssignment>,
-    pub(crate) bandits:
-        HashMap</* flag_key: */ Str, HashMap</* variation_value: */ Str, PrecomputedBandit>>,
+    pub(crate) bandits: HashMap</* flag_key: */ Str, PrecomputedBandit>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -89,10 +88,7 @@ pub struct ObfuscatedPrecomputedConfiguration {
     // Environment might be missing if configuration was absent during evaluation.
     environment: Option<Environment>,
     flags: HashMap<Md5HashedStr, ObfuscatedPrecomputedAssignment>,
-    bandits: HashMap<
-        /* flag_key: */ Md5HashedStr,
-        HashMap</* variation_value: */ Md5HashedStr, ObfuscatedPrecomputedBandit>,
-    >,
+    bandits: HashMap</* flag_key: */ Md5HashedStr, ObfuscatedPrecomputedBandit>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -154,16 +150,7 @@ impl From<PrecomputedConfiguration> for ObfuscatedPrecomputedConfiguration {
             bandits: config
                 .bandits
                 .into_iter()
-                .map(|(k, v)| {
-                    (
-                        Md5HashedStr::new(salt.as_bytes(), k.as_bytes()),
-                        v.into_iter()
-                            .map(|(k, v)| {
-                                (Md5HashedStr::new(salt.as_bytes(), k.as_bytes()), v.into())
-                            })
-                            .collect(),
-                    )
-                })
+                .map(|(k, v)| (Md5HashedStr::new(salt.as_bytes(), k.as_bytes()), v.into()))
                 .collect(),
             salt,
         }
