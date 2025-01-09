@@ -37,11 +37,9 @@ impl EventDelivery {
         let sdk_key = self.sdk_key;
         debug!("Delivering {} events to {}", events.len(), ingestion_url);
         let body = IngestionRequestBody { eppo_events: events.to_vec() };
-        let serialized_body = serde_json::to_string(&body).expect("Failed to serialize body");
-        let response = self.client.request(Method::POST, ingestion_url)
-            .header("Content-Type", "application/json")
+        let response = self.client.post(ingestion_url)
             .header("X-Eppo-Token", sdk_key)
-            .body(serialized_body)
+            .json(&body)
             .send()
             .await?;
         let response = response.error_for_status().map_err(|err| {
