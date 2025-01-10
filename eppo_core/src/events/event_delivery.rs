@@ -5,6 +5,7 @@ use reqwest::{StatusCode};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+#[derive(Clone)]
 pub struct EventDelivery {
     sdk_key: String,
     ingestion_url: String,
@@ -33,9 +34,9 @@ impl EventDelivery {
     }
 
     // Delivers the provided event batch and returns a Vec with the events that failed to be delivered.
-    pub async fn deliver(self, events: &[Event]) -> Result<EventDeliveryResponse, Error> {
-        let ingestion_url = self.ingestion_url;
-        let sdk_key = self.sdk_key;
+    pub async fn deliver(&self, events: &[Event]) -> Result<EventDeliveryResponse, Error> {
+        let ingestion_url = self.ingestion_url.clone();
+        let sdk_key = self.sdk_key.clone();
         debug!("Delivering {} events to {}", events.len(), ingestion_url);
         let body = IngestionRequestBody { eppo_events: events.to_vec() };
         let response = self.client.post(ingestion_url)

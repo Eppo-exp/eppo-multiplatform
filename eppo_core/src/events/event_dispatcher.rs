@@ -52,12 +52,12 @@ impl EventDispatcher {
     async fn event_dispatcher(&self, rx: &mut UnboundedReceiver<EventDispatcherCommand>) {
         let config = self.config.clone();
         let batch_size = config.batch_size;
+        let event_delivery = EventDelivery::new(
+            config.sdk_key.clone(),
+            config.ingestion_url.clone()
+        );
         loop {
             let mut batch_queue: Vec<Event> = Vec::with_capacity(batch_size);
-            let event_delivery = EventDelivery::new(
-                config.sdk_key.clone(),
-                config.ingestion_url.clone()
-            );
 
             // Wait for the first event in the batch.
             //
@@ -109,21 +109,24 @@ impl EventDispatcher {
             }
 
             // Send `batch` events.
-            tokio::spawn(async move {
-                // Spawning a new task, so the main task can continue batching events and respond to
-                // commands. At this point, batch_queue is guaranteed to have at least one event.
-                let events_to_deliver = batch_queue.as_slice();
-                let result = event_delivery.deliver(&events_to_deliver).await;
-                match result {
-                    Ok(response) => {
-                        if !response.failed_events.is_empty() {
-                            // TODO: Enqueue events for retry
-                            warn!("Failed to deliver {} events", response.failed_events.len());
+            tokio::spawn({
+                let event_delivery = event_delivery.clone();
+                async move {
+                    // Spawning a new task, so the main task can continue batching events and respond to
+                    // commands. At this point, batch_queue is guaranteed to have at least one event.
+                    let events_to_deliver = batch_queue.as_slice();
+                    let result = event_delivery.deliver(&events_to_deliver).await;
+                    match result {
+                        Ok(response) => {
+                            if !response.failed_events.is_empty() {
+                                // TODO: Enqueue events for retry
+                                warn!("Failed to deliver {} events", response.failed_events.len());
+                            }
                         }
-                    }
-                    Err(err) => {
-                        // TODO: Handle failure to deliver events
-                        warn!("Failed to deliver events: {}", err);
+                        Err(err) => {
+                            // TODO: Handle failure to deliver events
+                            warn!("Failed to deliver events: {}", err);
+                        }
                     }
                 }
             });
