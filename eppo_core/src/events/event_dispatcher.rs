@@ -1,5 +1,5 @@
 use crate::events::event::Event;
-use log::{info, warn};
+use log::{warn};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::{Duration, Instant};
 use crate::events::event_delivery::EventDelivery;
