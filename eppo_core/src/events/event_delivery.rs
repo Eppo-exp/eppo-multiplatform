@@ -38,7 +38,7 @@ impl EventDelivery {
         let ingestion_url = self.ingestion_url.clone();
         let sdk_key = self.sdk_key.clone();
         debug!("Delivering {} events to {}", events.len(), ingestion_url);
-        let body = IngestionRequestBody { eppo_events: events.to_vec() };
+        let body = IngestionRequestBody { eppo_events: events };
         let response = self.client.post(ingestion_url)
             .header("X-Eppo-Token", sdk_key)
             .json(&body)
