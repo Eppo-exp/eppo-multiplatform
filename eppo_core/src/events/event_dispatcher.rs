@@ -114,8 +114,7 @@ impl EventDispatcher {
                 async move {
                     // Spawning a new task, so the main task can continue batching events and respond to
                     // commands. At this point, batch_queue is guaranteed to have at least one event.
-                    let events_to_deliver = batch_queue.as_slice();
-                    let result = event_delivery.deliver(&events_to_deliver).await;
+                    let result = event_delivery.deliver(batch_queue).await;
                     match result {
                         Ok(response) => {
                             if !response.failed_events.is_empty() {
