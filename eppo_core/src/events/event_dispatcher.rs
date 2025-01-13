@@ -104,10 +104,11 @@ impl<T: EventQueue + Clone> EventDispatcher<T> {
                                 },
                                 Some(EventDispatcherCommand::Event(event)) => {
                                     if Err(QueueError::QueueFull) == event_queue.push(event) {
+                                        // if queue is ALREADY full, we can't add any new events to it
                                         warn!("Event queue is full, dropping event");
-                                    }
-                                    if event_queue.is_batch_full() {
-                                        // Reached max batch size -> send events immediately
+                                    } else if event_queue.is_batch_full() {
+                                        // Pushing this event caused us to reach max batch size.
+                                        // Thus, send events immediately
                                         break;
                                     } // else loop to get more events
                                 },
