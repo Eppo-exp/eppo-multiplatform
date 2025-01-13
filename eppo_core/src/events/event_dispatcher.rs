@@ -53,9 +53,9 @@ impl EventDispatcher {
         let config = self.config.clone();
         let batch_size = config.batch_size;
         let event_delivery = EventDelivery::new(
-            config.sdk_key.clone(),
-            config.ingestion_url.clone()
-        );
+            config.sdk_key.into(),
+            config.ingestion_url.into()
+        ).expect("Failed to create EventDelivery. invalid ingestion URL");
         loop {
             let mut batch_queue: Vec<Event> = Vec::with_capacity(batch_size);
 
