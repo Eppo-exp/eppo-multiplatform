@@ -1,7 +1,7 @@
 use crate::timestamp::Timestamp;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Event {
     pub uuid: uuid::Uuid,
     pub timestamp: Timestamp,
