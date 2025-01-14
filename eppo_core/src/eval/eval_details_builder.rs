@@ -230,9 +230,10 @@ impl EvalBanditVisitor for EvalDetailsBuilder {
 }
 
 impl<'b> EvalAssignmentVisitor for &'b mut EvalDetailsBuilder {
-    type AllocationVisitor<'a> =
-        <EvalDetailsBuilder as EvalAssignmentVisitor>::AllocationVisitor<'a>
-    where Self: 'a;
+    type AllocationVisitor<'a>
+        = <EvalDetailsBuilder as EvalAssignmentVisitor>::AllocationVisitor<'a>
+    where
+        Self: 'a;
 
     fn visit_allocation<'a>(&'a mut self, allocation: &Allocation) -> Self::AllocationVisitor<'a> {
         EvalAssignmentVisitor::visit_allocation(*self, allocation)
@@ -252,7 +253,8 @@ impl<'b> EvalAssignmentVisitor for &'b mut EvalDetailsBuilder {
 }
 
 impl EvalAssignmentVisitor for EvalDetailsBuilder {
-    type AllocationVisitor<'a> = EvalAllocationDetailsBuilder<'a>
+    type AllocationVisitor<'a>
+        = EvalAllocationDetailsBuilder<'a>
     where
         Self: 'a;
 
@@ -302,11 +304,13 @@ impl EvalAssignmentVisitor for EvalDetailsBuilder {
 }
 
 impl<'b> EvalAllocationVisitor for EvalAllocationDetailsBuilder<'b> {
-    type RuleVisitor<'a> = EvalRuleDetailsBuilder<'a>
+    type RuleVisitor<'a>
+        = EvalRuleDetailsBuilder<'a>
     where
         Self: 'a;
 
-    type SplitVisitor<'a> = EvalSplitDetailsBuilder<'a>
+    type SplitVisitor<'a>
+        = EvalSplitDetailsBuilder<'a>
     where
         Self: 'a;
 

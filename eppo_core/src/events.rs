@@ -1,6 +1,8 @@
-mod event_dispatcher;
 mod event;
 mod event_delivery;
+mod event_dispatcher;
+mod queued_event;
+mod vec_event_queue;
 
 use std::{collections::HashMap, sync::Arc};
 

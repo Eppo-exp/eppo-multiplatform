@@ -1,7 +1,7 @@
 use crate::events::event::Event;
 use crate::{Error, Str};
 use log::{debug, info};
-use reqwest::{StatusCode};
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use url::{ParseError, Url};
 use uuid::Uuid;
@@ -39,8 +39,12 @@ impl EventDelivery {
         let ingestion_url = self.ingestion_url;
         let sdk_key = &self.sdk_key;
         debug!("Delivering {} events to {}", events.len(), ingestion_url);
-        let body = IngestionRequestBody { eppo_events: events };
-        let response = self.client.post(ingestion_url)
+        let body = IngestionRequestBody {
+            eppo_events: events,
+        };
+        let response = self
+            .client
+            .post(ingestion_url)
             .header("X-Eppo-Token", sdk_key.as_str())
             .json(&body)
             .send()
@@ -57,7 +61,10 @@ impl EventDelivery {
             }
         })?;
         let response = response.json::<EventDeliveryResponse>().await?;
-        info!("Batch delivered successfully, {} events failed ingestion", response.failed_events.len());
+        info!(
+            "Batch delivered successfully, {} events failed ingestion",
+            response.failed_events.len()
+        );
         Ok(response)
     }
 }

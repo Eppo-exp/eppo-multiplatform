@@ -1,12 +1,14 @@
 use crate::events::event::Event;
-use log::{warn};
+use crate::events::event_delivery::EventDelivery;
+use crate::events::queued_event::{QueuedEvent, QueuedEventStatus};
+use crate::events::vec_event_queue::{EventQueue, QueueError};
+use log::warn;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::{Duration, Instant};
-use crate::events::event_delivery::EventDelivery;
 
 #[derive(Debug)]
 pub enum EventDispatcherCommand {
-    Event(Event),
+    Event(QueuedEvent),
     Flush,
 }
 
@@ -22,24 +24,32 @@ pub struct EventDispatcherConfig {
     pub retry_interval: Duration,
     pub max_retry_delay: Duration,
     pub max_retries: Option<u32>,
-    pub batch_size: usize,
 }
 
 /// EventDispatcher is responsible for batching events and delivering them to the ingestion service
 /// via [`EventDelivery`].
-pub struct EventDispatcher {
+pub struct EventDispatcher<T> {
     config: EventDispatcherConfig,
+    event_queue: T,
     tx: UnboundedSender<EventDispatcherCommand>,
 }
 
-impl EventDispatcher {
-    pub fn new(config: EventDispatcherConfig, tx: UnboundedSender<EventDispatcherCommand>) -> Self {
-        EventDispatcher { config, tx }
+impl<T: EventQueue + Clone> EventDispatcher<T> {
+    pub fn new(
+        config: EventDispatcherConfig,
+        event_queue: T,
+        tx: UnboundedSender<EventDispatcherCommand>,
+    ) -> Self {
+        EventDispatcher {
+            config,
+            tx,
+            event_queue,
+        }
     }
 
     /// Enqueues an event in the batch event processor and starts delivery if needed.
     pub fn dispatch(&self, event: Event) -> Result<(), &str> {
-        self.send(EventDispatcherCommand::Event(event))
+        self.send(EventDispatcherCommand::Event(QueuedEvent::new(event)))
     }
 
     pub fn send(&self, command: EventDispatcherCommand) -> Result<(), &str> {
@@ -51,14 +61,10 @@ impl EventDispatcher {
 
     async fn event_dispatcher(&self, rx: &mut UnboundedReceiver<EventDispatcherCommand>) {
         let config = self.config.clone();
-        let batch_size = config.batch_size;
-        let event_delivery = EventDelivery::new(
-            config.sdk_key.into(),
-            config.ingestion_url.into()
-        ).expect("Failed to create EventDelivery. invalid ingestion URL");
+        let event_queue = self.event_queue.clone();
+        let event_delivery = EventDelivery::new(config.sdk_key.into(), config.ingestion_url.into())
+            .expect("Failed to create EventDelivery. invalid ingestion URL");
         loop {
-            let mut batch_queue: Vec<Event> = Vec::with_capacity(batch_size);
-
             // Wait for the first event in the batch.
             //
             // Optimization: Moved outside the loop below, so we're not woken up on regular intervals
@@ -69,7 +75,11 @@ impl EventDispatcher {
                     // Channel closed, no more messages. Exit the main loop.
                     return;
                 }
-                Some(EventDispatcherCommand::Event(event)) => batch_queue.push(event),
+                Some(EventDispatcherCommand::Event(event)) => {
+                    if Err(QueueError::QueueFull) == event_queue.push(event) {
+                        warn!("Event queue is full, dropping event");
+                    }
+                }
                 Some(EventDispatcherCommand::Flush) => {
                     // No buffered events yet, nothing to flush.
                     continue;
@@ -77,7 +87,7 @@ impl EventDispatcher {
             }
 
             // short-circuit for batch size of 1
-            if batch_queue.len() < batch_size {
+            if !event_queue.is_batch_full() {
                 let deadline = Instant::now() + config.delivery_interval;
                 // Loop until we have enough events to send or reached deadline.
                 loop {
@@ -89,13 +99,17 @@ impl EventDispatcher {
                         command = rx.recv() => {
                             match command {
                                 None => {
-                                    // channel closed
-                                    break;
+                                    break; // channel closed
                                 },
                                 Some(EventDispatcherCommand::Event(event)) => {
-                                    batch_queue.push(event);
-                                    if batch_queue.len() >= batch_size {
-                                        // Reached max batch size -> send events immediately
+                                    if Err(QueueError::QueueFull) == event_queue.push(event) {
+                                        // if queue is already full, then we can't add any new
+                                        // events to it
+                                        break;
+                                    }
+                                    if event_queue.is_batch_full() {
+                                        // Pushing this event caused us to reach max batch size.
+                                        // Thus, send events immediately
                                         break;
                                     } // else loop to get more events
                                 },
@@ -108,17 +122,22 @@ impl EventDispatcher {
                 }
             }
 
-            // Send `batch` events.
+            // Send events.
             tokio::spawn({
                 let event_delivery = event_delivery.clone();
+                let batch = event_queue.next_batch(QueuedEventStatus::Pending);
                 async move {
                     // Spawning a new task, so the main task can continue batching events and respond to
                     // commands. At this point, batch_queue is guaranteed to have at least one event.
-                    let result = event_delivery.deliver(batch_queue).await;
+                    let events = batch
+                        .into_iter()
+                        .map(|queued_event| queued_event.event)
+                        .collect();
+                    let result = event_delivery.deliver(events).await;
                     match result {
                         Ok(response) => {
                             if !response.failed_events.is_empty() {
-                                // TODO: Enqueue events for retry
+                                // TODO: Update status, increment attempts and re-enqueue events for retry
                                 warn!("Failed to deliver {} events", response.failed_events.len());
                             }
                         }
@@ -135,18 +154,19 @@ impl EventDispatcher {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
     use super::*;
+    use crate::events::vec_event_queue::VecEventQueue;
     use crate::timestamp::now;
     use serde::Serialize;
     use serde_json::json;
+    use std::sync::Arc;
     use tokio::sync::mpsc::unbounded_channel;
     use tokio::sync::Mutex;
     use tokio::time::Duration;
     use uuid::Uuid;
-    use wiremock::{MockServer, Mock, ResponseTemplate};
     use wiremock::http::Method;
-    use wiremock::matchers::{method, path, body_json};
+    use wiremock::matchers::{body_json, method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[derive(Debug, Clone, Serialize)]
     struct LoginPayload {
@@ -184,11 +204,10 @@ mod tests {
             retry_interval: Duration::from_millis(1000),
             max_retry_delay: Duration::from_millis(5000),
             max_retries: Some(3),
-            batch_size: 1,
         };
         let (tx, rx) = unbounded_channel();
         let rx = Arc::new(Mutex::new(rx));
-        let dispatcher = EventDispatcher::new(config, tx);
+        let dispatcher = EventDispatcher::new(config, VecEventQueue::new(1, 10), tx);
         dispatcher.dispatch(event).unwrap();
         dispatcher
             .send(EventDispatcherCommand::Flush)
@@ -207,10 +226,10 @@ mod tests {
         let received_requests = mock_server.received_requests().await.unwrap();
         assert_eq!(received_requests.len(), 1);
         let received_request = &received_requests[0];
-        assert_eq!(received_request.method, Method::Post);
+        assert_eq!(received_request.method, Method::POST);
         assert_eq!(received_request.url.path(), "/");
-        let received_body: serde_json::Value = serde_json::from_slice(&received_request.body)
-                .expect("Failed to parse request body");
+        let received_body: serde_json::Value =
+            serde_json::from_slice(&received_request.body).expect("Failed to parse request body");
         assert_eq!(received_body, expected_body);
     }
 }
