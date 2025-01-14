@@ -1,13 +1,13 @@
 use crate::events::event::Event;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum QueuedEventStatus {
-    PENDING,
-    RETRY,
-    FAILED,
+    Pending,
+    Retry,
+    Failed,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct QueuedEvent {
     pub event: Event,
     pub attempts: u8,
@@ -19,7 +19,7 @@ impl QueuedEvent {
         QueuedEvent {
             event,
             attempts: 0,
-            status: QueuedEventStatus::PENDING,
+            status: QueuedEventStatus::Pending,
         }
     }
 }
@@ -42,6 +42,6 @@ mod tests {
         assert_eq!(queued_event.event, event);
         assert_eq!(queued_event.attempts, 0);
         assert_eq!(queued_event.event.event_type, "test");
-        assert_eq!(queued_event.status, QueuedEventStatus::PENDING);
+        assert_eq!(queued_event.status, QueuedEventStatus::Pending);
     }
 }

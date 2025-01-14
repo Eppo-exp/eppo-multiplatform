@@ -99,14 +99,15 @@ impl<T: EventQueue + Clone> EventDispatcher<T> {
                         command = rx.recv() => {
                             match command {
                                 None => {
-                                    // channel closed
-                                    break;
+                                    break; // channel closed
                                 },
                                 Some(EventDispatcherCommand::Event(event)) => {
                                     if Err(QueueError::QueueFull) == event_queue.push(event) {
-                                        // if queue is ALREADY full, we can't add any new events to it
-                                        warn!("Event queue is full, dropping event");
-                                    } else if event_queue.is_batch_full() {
+                                        // if queue is already full, then we can't add any new
+                                        // events to it
+                                        break;
+                                    }
+                                    if event_queue.is_batch_full() {
                                         // Pushing this event caused us to reach max batch size.
                                         // Thus, send events immediately
                                         break;
@@ -121,10 +122,10 @@ impl<T: EventQueue + Clone> EventDispatcher<T> {
                 }
             }
 
-            // Send `batch` events.
+            // Send events.
             tokio::spawn({
                 let event_delivery = event_delivery.clone();
-                let batch = event_queue.next_batch(QueuedEventStatus::PENDING);
+                let batch = event_queue.next_batch(QueuedEventStatus::Pending);
                 async move {
                     // Spawning a new task, so the main task can continue batching events and respond to
                     // commands. At this point, batch_queue is guaranteed to have at least one event.
@@ -136,7 +137,7 @@ impl<T: EventQueue + Clone> EventDispatcher<T> {
                     match result {
                         Ok(response) => {
                             if !response.failed_events.is_empty() {
-                                // TODO: Enqueue events for retry
+                                // TODO: Update status, increment attempts and re-enqueue events for retry
                                 warn!("Failed to deliver {} events", response.failed_events.len());
                             }
                         }

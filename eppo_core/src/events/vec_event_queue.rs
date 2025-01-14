@@ -1,16 +1,17 @@
 use crate::events::queued_event::{QueuedEvent, QueuedEventStatus};
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 
 pub trait EventQueue {
-    /// Pushes an event to the end of the queue.
+    /// Pushes an event to the end of the queue. Returns an error if the queue is full or the event
+    /// is duplicated (an identical event already exists).
     fn push(&self, event: QueuedEvent) -> Result<(), QueueError>;
 
     /// Returns the next batch of events with the provided status.
-    /// and with status PENDING. Events are returned in FIFO order.
+    /// and with status Pending. Events are returned in FIFO order.
     fn next_batch(&self, status: QueuedEventStatus) -> Vec<QueuedEvent>;
 
-    /// Returns whether the queue contains enough events for delivering *at least* one batch.
+    /// Returns whether the queue contains enough Pending events for delivering *at least* one batch.
     fn is_batch_full(&self) -> bool;
 }
 
@@ -19,12 +20,13 @@ pub trait EventQueue {
 pub struct VecEventQueue {
     batch_size: usize,
     max_queue_size: usize,
-    event_queue: Arc<Mutex<VecDeque<QueuedEvent>>>,
+    event_queue: Arc<Mutex<HashMap<QueuedEventStatus, VecDeque<QueuedEvent>>>>,
 }
 
 #[derive(Debug, PartialEq)]
 pub enum QueueError {
     QueueFull,
+    QueueLocked,
 }
 
 // batch size of zero means each event will be delivered individually, thus effectively disabling batching.
@@ -38,12 +40,17 @@ impl VecEventQueue {
         VecEventQueue {
             batch_size: clamped_batch_size,
             max_queue_size,
-            event_queue: Arc::new(Mutex::new(VecDeque::with_capacity(clamped_batch_size))),
+            event_queue: Arc::new(Mutex::new(HashMap::with_capacity(clamped_batch_size))),
         }
     }
 
     fn len(&self) -> usize {
-        self.event_queue.lock().unwrap().len()
+        self.event_queue
+            .lock()
+            .unwrap()
+            .values()
+            .map(|events| events.len())
+            .sum()
     }
 }
 
@@ -53,30 +60,42 @@ impl EventQueue for VecEventQueue {
         if self.len() + 1 > self.max_queue_size {
             return Err(QueueError::QueueFull);
         }
-        let mut queue = self.event_queue.lock().unwrap();
-        queue.push_back(event);
+        let mut queue = self
+            .event_queue
+            .lock()
+            .map_err(|_| QueueError::QueueLocked)?;
+        let status_set = queue
+            .entry(event.status.clone())
+            .or_insert_with(VecDeque::new);
+        status_set.push_back(event);
         Ok(())
     }
 
     /// Returns up to `batch_size` pending events for delivery from the queue.
     fn next_batch(&self, status: QueuedEventStatus) -> Vec<QueuedEvent> {
-        let mut batch = Vec::with_capacity(self.batch_size);
         let mut queue = self.event_queue.lock().unwrap();
-        let mut i = 0;
-        while i < queue.len() && batch.len() < self.batch_size {
-            if queue[i].status == status {
-                batch.push(queue.remove(i).unwrap());
-            } else {
-                i += 1;
+        if let Some(events) = queue.get_mut(&status) {
+            let mut batch = Vec::new();
+            for _ in 0..self.batch_size {
+                if let Some(event) = events.pop_front() {
+                    batch.push(event);
+                } else {
+                    break;
+                }
             }
+            batch
+        } else {
+            Vec::new()
         }
-
-        batch
     }
 
     fn is_batch_full(&self) -> bool {
-        let queue = self.event_queue.lock().unwrap();
-        queue.len() >= self.batch_size
+        self.event_queue
+            .lock()
+            .unwrap()
+            .entry(QueuedEventStatus::Pending)
+            .or_insert_with(VecDeque::new)
+            .len() >= self.batch_size
     }
 }
 
@@ -86,7 +105,7 @@ mod tests {
     use crate::events::queued_event::{QueuedEvent, QueuedEventStatus};
     use crate::events::vec_event_queue::{EventQueue, QueueError, VecEventQueue, MAX_BATCH_SIZE};
     use crate::timestamp::now;
-    use std::collections::VecDeque;
+    use std::collections::{HashMap, VecDeque};
     use std::sync::{Arc, Mutex};
 
     #[test]
@@ -116,12 +135,12 @@ mod tests {
         }
         assert_eq!(queue.is_batch_full(), true);
         assert_eq!(
-            queue.next_batch(QueuedEventStatus::PENDING),
+            queue.next_batch(QueuedEventStatus::Pending),
             events.into_iter().take(10).collect::<Vec<QueuedEvent>>()
         );
         assert_eq!(queue.is_batch_full(), false);
-        assert_eq!(queue.next_batch(QueuedEventStatus::PENDING).len(), 1);
-        assert_eq!(queue.next_batch(QueuedEventStatus::PENDING).len(), 0);
+        assert_eq!(queue.next_batch(QueuedEventStatus::Pending).len(), 1);
+        assert_eq!(queue.next_batch(QueuedEventStatus::Pending).len(), 0);
     }
 
     #[test]
@@ -147,33 +166,38 @@ mod tests {
         let queued_event_a = QueuedEvent {
             event: event_a.clone(),
             attempts: 0,
-            status: QueuedEventStatus::PENDING,
+            status: QueuedEventStatus::Pending,
         };
         let queued_event_b = QueuedEvent {
             event: event_b.clone(),
             attempts: 1,
-            status: QueuedEventStatus::FAILED,
+            status: QueuedEventStatus::Failed,
         };
         let queued_event_c = QueuedEvent {
             event: event_c.clone(),
             attempts: 0,
-            status: QueuedEventStatus::PENDING,
+            status: QueuedEventStatus::Pending,
         };
         let queue = VecEventQueue {
             batch_size: 10,
             max_queue_size: 10,
-            event_queue: Arc::new(Mutex::new(VecDeque::from(vec![
-                queued_event_a.clone(),
-                queued_event_b.clone(),
-                queued_event_c.clone(),
+            event_queue: Arc::new(Mutex::new(HashMap::from([
+                (
+                    QueuedEventStatus::Pending,
+                    VecDeque::from(vec![queued_event_a.clone(), queued_event_c.clone()]),
+                ),
+                (
+                    QueuedEventStatus::Failed,
+                    VecDeque::from(vec![queued_event_b.clone()]),
+                ),
             ]))),
         };
         assert_eq!(
-            queue.next_batch(QueuedEventStatus::PENDING),
+            queue.next_batch(QueuedEventStatus::Pending),
             vec![queued_event_a, queued_event_c]
         );
         assert_eq!(
-            queue.next_batch(QueuedEventStatus::FAILED),
+            queue.next_batch(QueuedEventStatus::Failed),
             vec![queued_event_b.clone()]
         );
     }
