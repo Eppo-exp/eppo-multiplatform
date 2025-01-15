@@ -69,6 +69,8 @@ mod precomputed;
 mod sdk_metadata;
 mod str;
 
+mod event_ingestion;
+
 pub use crate::str::Str;
 pub use attributes::{
     AttributeValue, Attributes, CategoricalAttribute, ContextAttributes, NumericAttribute,
