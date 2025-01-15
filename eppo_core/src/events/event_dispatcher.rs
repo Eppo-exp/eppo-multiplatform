@@ -10,7 +10,6 @@ use url::Url;
 #[derive(Debug)]
 pub enum EventDispatcherCommand {
     Event,
-    Flush,
 }
 
 // batch size of one means each event will be delivered individually, thus effectively disabling batching.
@@ -78,72 +77,90 @@ impl<T: EventQueue + Clone + Send + 'static> EventDispatcher<T> {
             .expect("Failed to create EventDelivery. invalid ingestion URL");
         let event_delivery = EventDelivery::new(config.sdk_key.into(), ingestion_url);
         loop {
-            // short-circuit for batch size of 1
-            if !event_queue.is_batch_full() {
-                let deadline = Instant::now() + config.delivery_interval;
-                // Loop until we have enough events to send or reached deadline.
-                loop {
-                    tokio::select! {
-                        _ = tokio::time::sleep_until(deadline) => {
-                            // reached deadline -> send everything we have
-                            break;
+            let delivery_deadline = Instant::now() + config.delivery_interval;
+            let retry_deadline = Instant::now() + config.retry_interval;
+            // Loop until we have enough events to send or reached a delivery/retry deadline.
+            tokio::select! {
+                _ = tokio::time::sleep_until(delivery_deadline) => {
+                    // delivery deadline reached -> send whatever we have queued up
+                    spawn_event_delivery(
+                        event_queue.next_batch(QueuedEventStatus::Pending),
+                        event_delivery.clone(),
+                        event_queue.clone()
+                    );
+                },
+                _ = tokio::time::sleep_until(retry_deadline) => {
+                    // retry deadline reached -> retry failed events
+                    // TODO: retry with exponential backoff + jitter
+                    spawn_event_delivery(
+                        event_queue.next_batch(QueuedEventStatus::Retry),
+                        event_delivery.clone(),
+                        event_queue.clone()
+                    );
+                },
+                command = rx.recv() => {
+                    match command {
+                        None => {
+                            return; // channel closed
                         },
-                        command = rx.recv() => {
-                            match command {
-                                None => {
-                                    return; // channel closed
-                                },
-                                Some(EventDispatcherCommand::Event) => {
-                                    if event_queue.is_batch_full() {
-                                        // Event queue batch is full, break loop and deliver it
-                                        break;
-                                    } // else loop to get more events
-                                },
-                                Some(EventDispatcherCommand::Flush) => {
-                                    break;
-                                }
-                            }
-                        }
+                        Some(EventDispatcherCommand::Event) => {
+                            if event_queue.is_batch_full() {
+                                // Event queue batch is full, deliver it
+                                spawn_event_delivery(
+                                    event_queue.next_batch(QueuedEventStatus::Pending),
+                                    event_delivery.clone(),
+                                    event_queue.clone()
+                                );
+                            } // else loop to get more events
+                        },
                     }
                 }
             }
-
-            let event_delivery = event_delivery.clone();
-            let batch = event_queue.next_batch(QueuedEventStatus::Pending);
-            let queue = event_queue.clone();
-            // Send events
-            tokio::spawn({
-                async move {
-                    // Spawning a new task, so the main task can continue batching events and respond to
-                    // commands. At this point, batch_queue is guaranteed to have at least one event.
-                    let events = batch
-                        .iter()
-                        .map(|queued_event| queued_event.clone().event)
-                        .collect();
-                    let result = event_delivery.deliver(events).await;
-                    match result {
-                        Ok(response) => {
-                            let failed_event_uuids = response.failed_events;
-                            if !failed_event_uuids.is_empty() {
-                                warn!("Failed to deliver {} events", failed_event_uuids.len());
-                                let failed_events = batch
-                                    .into_iter()
-                                    .filter(|queued_event| {
-                                        failed_event_uuids.contains(&queued_event.event.uuid)
-                                    })
-                                    .collect();
-                                queue.mark_events_as_failed(failed_events);
-                            }
-                        }
-                        Err(err) => {
-                            warn!("Failed to deliver events: {}", err);
-                            queue.mark_events_as_failed(batch);
-                        }
-                    }
-                }
-            });
         }
     }
+}
+
+fn spawn_event_delivery<T: EventQueue + Clone + Send + 'static>(
+    batch: Vec<QueuedEvent>,
+    event_delivery: EventDelivery,
+    queue: T,
+) {
+    if batch.is_empty() {
+        // nothing to deliver
+        return;
+    }
+    // Send events
+    tokio::spawn({
+        async move {
+            // Spawning a new task, so the main task can continue batching events and respond to
+            // commands. At this point, batch is guaranteed to have at least one event.
+            let events = batch
+                .iter()
+                .map(|queued_event| queued_event.clone().event)
+                .collect();
+            let result = event_delivery.deliver(events).await;
+            match result {
+                Ok(response) => {
+                    let failed_event_uuids = response.failed_events;
+                    if !failed_event_uuids.is_empty() {
+                        warn!("Failed to deliver {} events", failed_event_uuids.len());
+                        let failed_events = batch
+                            .into_iter()
+                            .filter(|queued_event| {
+                                failed_event_uuids.contains(&queued_event.event.uuid)
+                            })
+                            .collect();
+                        queue.mark_events_as_failed(failed_events);
+                    }
+                }
+                Err(err) => {
+                    warn!("Failed to deliver events: {}", err);
+                    // In this case there is no point in retrying delivery since the error is
+                    // non-retriable.
+                }
+            }
+        }
+    });
 }
 
 #[cfg(test)]
@@ -191,14 +208,7 @@ mod tests {
             .respond_with(ResponseTemplate::new(200))
             .mount(&mock_server)
             .await;
-        let config = EventDispatcherConfig {
-            sdk_key: "test-sdk-key".to_string(),
-            ingestion_url: mock_server.uri(),
-            delivery_interval: Duration::from_millis(100),
-            retry_interval: Duration::from_millis(1000),
-            max_retry_delay: Duration::from_millis(5000),
-            max_retries: Some(3),
-        };
+        let config = new_test_event_config(mock_server.uri());
         let (tx, rx) = unbounded_channel();
         let rx = Arc::new(Mutex::new(rx));
         let dispatcher = EventDispatcher::new(config, VecEventQueue::new(1, 10), tx);
@@ -209,7 +219,7 @@ mod tests {
             dispatcher.event_dispatcher(&mut rx).await;
         });
         {
-            let mut rx = rx.lock().await; // Acquire the lock for rx
+            let mut rx = rx.lock().await;
             rx.close();
         }
         // wait some time for the async task to finish
@@ -222,5 +232,75 @@ mod tests {
         let received_body: serde_json::Value =
             serde_json::from_slice(&received_request.body).expect("Failed to parse request body");
         assert_eq!(received_body, expected_body);
+    }
+
+    #[tokio::test]
+    async fn test_dispatch_failed() {
+        let payload = LoginPayload {
+            user_id: "user123".to_string(),
+            session_id: "session456".to_string(),
+        };
+        let serialized_payload = serde_json::to_value(payload).expect("Serialization failed");
+        let event = Event {
+            uuid: Uuid::new_v4(),
+            timestamp: now(),
+            event_type: "test".to_string(),
+            payload: serialized_payload,
+        };
+        let mock_server = MockServer::start().await;
+        let mut eppo_events = Vec::new();
+        eppo_events.push(serde_json::to_value(event.clone()).unwrap());
+        let expected_body = json!({"eppo_events": eppo_events });
+        let response_body =
+            ResponseTemplate::new(200).set_body_json(json!({"failed_events": [event.uuid]}));
+        Mock::given(method("POST"))
+            .and(path("/"))
+            .and(body_json(&expected_body))
+            .respond_with(response_body)
+            .mount(&mock_server)
+            .await;
+        let config = new_test_event_config(mock_server.uri());
+        let (tx, rx) = unbounded_channel();
+        let rx = Arc::new(Mutex::new(rx));
+        let dispatcher = EventDispatcher::new(config, VecEventQueue::new(1, 10), tx);
+        let queue = dispatcher.event_queue.clone();
+        dispatcher.dispatch(event.clone()).unwrap();
+        let rx_clone = Arc::clone(&rx);
+        tokio::spawn(async move {
+            let mut rx = rx_clone.lock().await;
+            dispatcher.event_dispatcher(&mut rx).await;
+        });
+        {
+            let mut rx = rx.lock().await;
+            rx.close();
+        }
+        // wait some time for the async task to finish
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        let received_requests = mock_server.received_requests().await.unwrap();
+        assert_eq!(received_requests.len(), 1);
+        let failed_events = queue.next_batch(QueuedEventStatus::Failed);
+        // assert failed event was moved to failed queue
+        assert_eq!(
+            failed_events,
+            vec![QueuedEvent {
+                event,
+                attempts: 1,
+                status: QueuedEventStatus::Failed
+            }]
+        );
+        let pending_events = queue.next_batch(QueuedEventStatus::Pending);
+        // assert no more pending events
+        assert_eq!(pending_events, vec![]);
+    }
+
+    fn new_test_event_config(ingestion_url: String) -> EventDispatcherConfig {
+        EventDispatcherConfig {
+            sdk_key: "test-sdk-key".to_string(),
+            ingestion_url,
+            delivery_interval: Duration::from_millis(100),
+            retry_interval: Duration::from_millis(1000),
+            max_retry_delay: Duration::from_millis(5000),
+            max_retries: Some(3),
+        }
     }
 }

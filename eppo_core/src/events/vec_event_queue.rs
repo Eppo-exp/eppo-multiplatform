@@ -75,7 +75,7 @@ impl EventQueue for VecEventQueue {
         Ok(())
     }
 
-    /// Returns up to `batch_size` pending events for delivery from the queue.
+    /// Returns up to `batch_size` events from the queue with the provided `status`.
     fn next_batch(&self, status: QueuedEventStatus) -> Vec<QueuedEvent> {
         let mut queue = self.event_queue.lock().unwrap();
         if let Some(events) = queue.get_mut(&status) {
@@ -110,6 +110,7 @@ impl EventQueue for VecEventQueue {
             .or_insert_with(VecDeque::new);
         for mut failed_event in failed_event_uuids {
             failed_event.status = QueuedEventStatus::Failed;
+            // TODO: If attempts > MAX_ATTEMPTS, mark as Failed and don't requeue
             failed_event.attempts += 1;
             failed_events.push_back(failed_event);
         }
