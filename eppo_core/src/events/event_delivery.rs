@@ -3,7 +3,7 @@ use crate::{Error, Str};
 use log::{debug, info};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use url::{ParseError, Url};
+use url::Url;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -25,16 +25,16 @@ struct IngestionRequestBody {
 
 /// Responsible for delivering event batches to the Eppo ingestion service.
 impl EventDelivery {
-    pub fn new(sdk_key: String, ingestion_url: String) -> Result<Self, ParseError> {
+    pub fn new(sdk_key: Str, ingestion_url: Url) -> Self {
         let client = reqwest::Client::new();
-        Ok(EventDelivery {
-            sdk_key: sdk_key.into(),
-            ingestion_url: Url::parse(ingestion_url.as_str())?,
+        EventDelivery {
+            sdk_key,
+            ingestion_url,
             client,
-        })
+        }
     }
 
-    // Delivers the provided event batch and returns a Vec with the events that failed to be delivered.
+    /// Delivers the provided event batch and returns a Vec with the events that failed to be delivered.
     pub async fn deliver(self, events: Vec<Event>) -> Result<EventDeliveryResponse, Error> {
         let ingestion_url = self.ingestion_url;
         let sdk_key = &self.sdk_key;
