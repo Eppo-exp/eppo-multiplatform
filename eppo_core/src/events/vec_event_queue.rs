@@ -25,9 +25,11 @@ pub struct VecEventQueue {
     event_queue: Arc<Mutex<HashMap<QueuedEventStatus, VecDeque<QueuedEvent>>>>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(thiserror::Error, Debug, PartialEq)]
 pub enum QueueError {
+    #[error("Event queue is full")]
     QueueFull,
+    #[error("Event queue is locked")]
     QueueLocked,
 }
 

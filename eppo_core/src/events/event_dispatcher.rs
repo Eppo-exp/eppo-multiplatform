@@ -27,10 +27,12 @@ pub struct EventDispatcherConfig {
     pub max_retries: Option<u32>,
 }
 
-#[derive(Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum DispatcherError {
+    #[error("Queue error: {0}")]
     QueueError(QueueError),
-    EventDeliveryError(&'static str),
+    #[error("Receiver should not be closed before all senders are closed")]
+    EventDeliveryError,
 }
 
 /// EventDispatcher is responsible for batching events and delivering them to the ingestion service
@@ -65,9 +67,7 @@ impl<T: EventQueue + Clone + Send + 'static> EventDispatcher<T> {
     pub fn send(&self, command: EventDispatcherCommand) -> Result<(), DispatcherError> {
         match self.tx.send(command) {
             Ok(_) => Ok(()),
-            Err(_) => Err(DispatcherError::EventDeliveryError(
-                "receiver should not be closed before all senders are closed",
-            )),
+            Err(_) => Err(DispatcherError::EventDeliveryError),
         }
     }
 
