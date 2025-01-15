@@ -13,6 +13,8 @@ pub trait EventQueue {
 
     /// Returns whether the queue contains enough Pending events for delivering *at least* one batch.
     fn is_batch_full(&self) -> bool;
+
+    fn mark_events_as_failed(&self, failed_events: Vec<QueuedEvent>);
 }
 
 /// A simple event queue that stores events in a vector
@@ -23,9 +25,11 @@ pub struct VecEventQueue {
     event_queue: Arc<Mutex<HashMap<QueuedEventStatus, VecDeque<QueuedEvent>>>>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(thiserror::Error, Debug, PartialEq)]
 pub enum QueueError {
+    #[error("Event queue is full")]
     QueueFull,
+    #[error("Event queue is locked")]
     QueueLocked,
 }
 
@@ -95,7 +99,20 @@ impl EventQueue for VecEventQueue {
             .unwrap()
             .entry(QueuedEventStatus::Pending)
             .or_insert_with(VecDeque::new)
-            .len() >= self.batch_size
+            .len()
+            >= self.batch_size
+    }
+
+    fn mark_events_as_failed(&self, failed_event_uuids: Vec<QueuedEvent>) {
+        let mut queue = self.event_queue.lock().unwrap();
+        let failed_events = queue
+            .entry(QueuedEventStatus::Failed)
+            .or_insert_with(VecDeque::new);
+        for mut failed_event in failed_event_uuids {
+            failed_event.status = QueuedEventStatus::Failed;
+            failed_event.attempts += 1;
+            failed_events.push_back(failed_event);
+        }
     }
 }
 
@@ -217,5 +234,36 @@ mod tests {
             queue.push(event.clone()).expect_err("should fail"),
             QueueError::QueueFull
         );
+    }
+
+    #[test]
+    fn mark_events_as_failed() {
+        let queue = VecEventQueue::new(10, 20);
+        let event_a = Event {
+            uuid: uuid::Uuid::new_v4(),
+            timestamp: now(),
+            event_type: "a".to_string(),
+            payload: serde_json::json!({"key": "value"}),
+        };
+        let event_b = Event {
+            uuid: uuid::Uuid::new_v4(),
+            timestamp: now(),
+            event_type: "b".to_string(),
+            payload: serde_json::json!({"key": "value"}),
+        };
+        let queued_event_a = QueuedEvent::new(event_a.clone());
+        let queued_event_b = QueuedEvent::new(event_b.clone());
+        queue.push(queued_event_a.clone()).expect("should not fail");
+        let batch = queue.next_batch(QueuedEventStatus::Pending);
+        queue.push(queued_event_b.clone()).expect("should not fail");
+        queue.mark_events_as_failed(batch);
+        let event_queue = queue.event_queue.lock().unwrap();
+        let failed_events = event_queue.get(&QueuedEventStatus::Failed).unwrap();
+        assert_eq!(failed_events.len(), 1);
+        assert_eq!(failed_events[0].event.uuid, queued_event_a.event.uuid);
+        assert_eq!(failed_events[0].status, QueuedEventStatus::Failed);
+        assert_eq!(failed_events[0].attempts, 1);
+        let pending_events = event_queue.get(&QueuedEventStatus::Pending).unwrap();
+        assert_eq!(pending_events.len(), 1);
     }
 }
