@@ -1,5 +1,5 @@
 use crate::events::event::Event;
-use crate::{Error, Str};
+use crate::Str;
 use log::{debug, info};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -16,6 +16,14 @@ pub struct EventDelivery {
 #[derive(serde::Deserialize)]
 pub struct EventDeliveryResponse {
     pub failed_events: Vec<Uuid>,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum EventDeliveryError {
+    #[error("Transient error delivering events")]
+    RetriableError(reqwest::Error),
+    #[error("Non-retriable error")]
+    NonRetriableError(reqwest::Error),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -35,7 +43,10 @@ impl EventDelivery {
     }
 
     /// Delivers the provided event batch and returns a Vec with the events that failed to be delivered.
-    pub async fn deliver(self, events: Vec<Event>) -> Result<EventDeliveryResponse, Error> {
+    pub async fn deliver(
+        self,
+        events: Vec<Event>,
+    ) -> Result<EventDeliveryResponse, EventDeliveryError> {
         let ingestion_url = self.ingestion_url;
         let sdk_key = &self.sdk_key;
         debug!("Delivering {} events to {}", events.len(), ingestion_url);
@@ -48,19 +59,27 @@ impl EventDelivery {
             .header("X-Eppo-Token", sdk_key.as_str())
             .json(&body)
             .send()
-            .await?;
+            .await
+            .map_err(EventDeliveryError::RetriableError)?;
         let response = response.error_for_status().map_err(|err| {
             return if err.status() == Some(StatusCode::UNAUTHORIZED) {
                 // This error is not-retriable
                 log::warn!(target: "eppo", "client is not authorized. Check your API key");
-                Error::Unauthorized
-            } else {
+                EventDeliveryError::NonRetriableError(err)
+            } else if err.status() == Some(StatusCode::BAD_REQUEST) {
                 // This error is not-retriable
+                log::warn!(target: "eppo", "received 400 response delivering events: {:?}", err);
+                EventDeliveryError::NonRetriableError(err)
+            } else {
+                // Other errors **might be** retriable
                 log::warn!(target: "eppo", "received non-200 response delivering events: {:?}", err);
-                Error::from(err)
+                EventDeliveryError::RetriableError(err)
             }
         })?;
-        let response = response.json::<EventDeliveryResponse>().await?;
+        let response = response
+            .json::<EventDeliveryResponse>()
+            .await
+            .map_err(EventDeliveryError::NonRetriableError)?;
         info!(
             "Batch delivered successfully, {} events failed ingestion",
             response.failed_events.len()

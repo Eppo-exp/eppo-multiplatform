@@ -1,5 +1,5 @@
 use crate::events::event::Event;
-use crate::events::event_delivery::EventDelivery;
+use crate::events::event_delivery::{EventDelivery, EventDeliveryError};
 use crate::events::queued_event::{QueuedEvent, QueuedEventStatus};
 use crate::events::vec_event_queue::{EventQueue, QueueError};
 use log::warn;
@@ -149,13 +149,21 @@ fn spawn_event_delivery<T: EventQueue + Clone + Send + 'static>(
                                 failed_event_uuids.contains(&queued_event.event.uuid)
                             })
                             .collect();
-                        queue.mark_events_as_failed(failed_events);
+                        queue.enqueue_failed_events_for_retry(failed_events);
                     }
                 }
                 Err(err) => {
-                    warn!("Failed to deliver events: {}", err);
-                    // In this case there is no point in retrying delivery since the error is
-                    // non-retriable.
+                    match err {
+                        EventDeliveryError::RetriableError(_) => {
+                            // Retry later
+                            queue.enqueue_failed_events_for_retry(batch);
+                        }
+                        EventDeliveryError::NonRetriableError(_) => {
+                            warn!("Failed to deliver events: {}", err);
+                            // In this case there is no point in retrying delivery since the error is
+                            // non-retriable.
+                        }
+                    }
                 }
             }
         }

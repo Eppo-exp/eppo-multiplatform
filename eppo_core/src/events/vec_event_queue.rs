@@ -17,7 +17,7 @@ pub trait EventQueue {
     fn is_batch_full(&self) -> bool;
 
     /// Marks the provided events as failed and increments their attempts and adds it to the failed queue.
-    fn mark_events_as_failed(&self, failed_events: Vec<QueuedEvent>);
+    fn enqueue_failed_events_for_retry(&self, failed_events: Vec<QueuedEvent>);
 }
 
 #[derive(Debug, Clone)]
@@ -116,7 +116,7 @@ impl EventQueue for VecEventQueue {
             >= self.config.batch_size
     }
 
-    fn mark_events_as_failed(&self, failed_event_uuids: Vec<QueuedEvent>) {
+    fn enqueue_failed_events_for_retry(&self, failed_event_uuids: Vec<QueuedEvent>) {
         let mut queue = self.event_queue.lock().unwrap();
         let failed_event_queue = queue
             .entry(QueuedEventStatus::Failed)
@@ -208,16 +208,16 @@ mod tests {
         queue.push(event.clone()).expect("should not fail");
         let batch = queue.next_batch(QueuedEventStatus::Pending);
         queue.push(event.clone()).expect("should not fail");
-        queue.mark_events_as_failed(batch.clone());
+        queue.enqueue_failed_events_for_retry(batch.clone());
         let failed_events = queue.next_batch(QueuedEventStatus::Failed);
-        queue.mark_events_as_failed(failed_events);
+        queue.enqueue_failed_events_for_retry(failed_events);
         let failed_events = queue.next_batch(QueuedEventStatus::Failed);
         assert_eq!(failed_events.len(), 1);
         assert_eq!(failed_events[0].event.uuid, event.event.uuid);
         assert_eq!(failed_events[0].status, QueuedEventStatus::Failed);
         assert_eq!(failed_events[0].attempts, 2);
         // failing a third time should not requeue since that exceeds max_retries == 2
-        queue.mark_events_as_failed(failed_events);
+        queue.enqueue_failed_events_for_retry(failed_events);
         // event is removed from failed queue
         let failed_events = queue.next_batch(QueuedEventStatus::Failed);
         assert_eq!(failed_events.len(), 0);
@@ -326,7 +326,7 @@ mod tests {
     }
 
     #[test]
-    fn mark_events_as_failed() {
+    fn test_enqueue_failed_events_for_retry() {
         let queue = VecEventQueue::new(VecEventQueueConfig {
             batch_size: 10,
             max_queue_size: 20,
@@ -349,7 +349,7 @@ mod tests {
         queue.push(queued_event_a.clone()).expect("should not fail");
         let batch = queue.next_batch(QueuedEventStatus::Pending);
         queue.push(queued_event_b.clone()).expect("should not fail");
-        queue.mark_events_as_failed(batch);
+        queue.enqueue_failed_events_for_retry(batch);
         let event_queue = queue.event_queue.lock().unwrap();
         let failed_events = event_queue.get(&QueuedEventStatus::Failed).unwrap();
         assert_eq!(failed_events.len(), 1);
