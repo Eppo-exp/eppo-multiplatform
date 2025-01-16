@@ -23,7 +23,6 @@ pub struct EventDispatcherConfig {
     pub delivery_interval: Duration,
     pub retry_interval: Duration,
     pub max_retry_delay: Duration,
-    pub max_retries: Option<u32>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -166,7 +165,7 @@ fn spawn_event_delivery<T: EventQueue + Clone + Send + 'static>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::events::vec_event_queue::VecEventQueue;
+    use crate::events::vec_event_queue::{VecEventQueue, VecEventQueueConfig};
     use crate::timestamp::now;
     use serde::Serialize;
     use serde_json::json;
@@ -263,7 +262,6 @@ mod tests {
             delivery_interval: Duration::from_millis(100),
             retry_interval: Duration::from_millis(1000),
             max_retry_delay: Duration::from_millis(5000),
-            max_retries: Some(3),
         }
     }
 
@@ -271,7 +269,12 @@ mod tests {
         let config = new_test_event_config(mock_server_uri);
         let (tx, rx) = unbounded_channel();
         let rx = Arc::new(Mutex::new(rx));
-        let dispatcher = EventDispatcher::new(config, VecEventQueue::new(1, 10), tx);
+        let vec_event_queue_config = VecEventQueueConfig {
+            max_retries: 3,
+            max_queue_size: 10,
+            batch_size: 1,
+        };
+        let dispatcher = EventDispatcher::new(config, VecEventQueue::new(vec_event_queue_config), tx);
         let queue = dispatcher.event_queue.clone();
         dispatcher.dispatch(event.clone()).unwrap();
         let rx_clone = Arc::clone(&rx);
