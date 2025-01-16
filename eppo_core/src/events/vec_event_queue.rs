@@ -55,7 +55,9 @@ impl VecEventQueue {
                 max_queue_size: config.max_queue_size,
                 max_retries: config.max_retries,
             },
-            event_queue: Arc::new(Mutex::new(HashMap::with_capacity(config.batch_size.clamp(MIN_BATCH_SIZE, MAX_BATCH_SIZE)))),
+            event_queue: Arc::new(Mutex::new(HashMap::with_capacity(
+                config.batch_size.clamp(MIN_BATCH_SIZE, MAX_BATCH_SIZE),
+            ))),
         }
     }
 
@@ -139,7 +141,9 @@ impl EventQueue for VecEventQueue {
 mod tests {
     use crate::events::event::Event;
     use crate::events::queued_event::{QueuedEvent, QueuedEventStatus};
-    use crate::events::vec_event_queue::{EventQueue, QueueError, VecEventQueue, VecEventQueueConfig, MAX_BATCH_SIZE};
+    use crate::events::vec_event_queue::{
+        EventQueue, QueueError, VecEventQueue, VecEventQueueConfig, MAX_BATCH_SIZE,
+    };
     use crate::timestamp::now;
     use linked_hash_set::LinkedHashSet;
     use std::collections::HashMap;
@@ -147,13 +151,21 @@ mod tests {
 
     #[test]
     fn new_should_clamp_batch_size() {
-        let queue = VecEventQueue::new(VecEventQueueConfig { batch_size: 300_001, max_queue_size: 20, max_retries: 3 });
+        let queue = VecEventQueue::new(VecEventQueueConfig {
+            batch_size: 300_001,
+            max_queue_size: 20,
+            max_retries: 3,
+        });
         assert_eq!(queue.config.batch_size, MAX_BATCH_SIZE);
     }
 
     #[test]
     fn test_next_pending_batch() {
-        let queue = VecEventQueue::new(VecEventQueueConfig { batch_size: 10, max_queue_size: 20, max_retries: 3 });
+        let queue = VecEventQueue::new(VecEventQueueConfig {
+            batch_size: 10,
+            max_queue_size: 20,
+            max_retries: 3,
+        });
         assert_eq!(queue.config.batch_size, 10);
         assert_eq!(queue.is_batch_full(), false);
         let events = (0..11)
@@ -182,7 +194,11 @@ mod tests {
 
     #[test]
     fn test_updated_attempts_count() {
-        let queue = VecEventQueue::new(VecEventQueueConfig { batch_size: 10, max_queue_size: 20, max_retries: 2 });
+        let queue = VecEventQueue::new(VecEventQueueConfig {
+            batch_size: 10,
+            max_queue_size: 20,
+            max_retries: 2,
+        });
         let event = QueuedEvent::new(Event {
             uuid: uuid::Uuid::new_v4(),
             timestamp: now(),
@@ -243,15 +259,23 @@ mod tests {
             status: QueuedEventStatus::Pending,
         };
         let queue = VecEventQueue {
-            config: VecEventQueueConfig { batch_size: 10, max_queue_size: 10, max_retries: 3 },
+            config: VecEventQueueConfig {
+                batch_size: 10,
+                max_queue_size: 10,
+                max_retries: 3,
+            },
             event_queue: Arc::new(Mutex::new(HashMap::from([
                 (
                     QueuedEventStatus::Pending,
-                    vec![queued_event_a.clone(), queued_event_c.clone()].into_iter().collect::<LinkedHashSet<QueuedEvent>>(),
+                    vec![queued_event_a.clone(), queued_event_c.clone()]
+                        .into_iter()
+                        .collect::<LinkedHashSet<QueuedEvent>>(),
                 ),
                 (
                     QueuedEventStatus::Failed,
-                    vec![queued_event_b.clone()].into_iter().collect::<LinkedHashSet<QueuedEvent>>(),
+                    vec![queued_event_b.clone()]
+                        .into_iter()
+                        .collect::<LinkedHashSet<QueuedEvent>>(),
                 ),
             ]))),
         };
@@ -267,33 +291,47 @@ mod tests {
 
     #[test]
     fn test_max_queue_size_push() {
-        let queue = VecEventQueue::new(VecEventQueueConfig { batch_size: 10, max_queue_size: 2, max_retries: 3 });
-        queue.push(QueuedEvent::new(Event {
-            uuid: uuid::Uuid::new_v4(),
-            timestamp: now(),
-            event_type: "test".to_string(),
-            payload: serde_json::json!({"key": "value"}),
-        })).expect("should not fail");
-        queue.push(QueuedEvent::new(Event {
-            uuid: uuid::Uuid::new_v4(),
-            timestamp: now(),
-            event_type: "test".to_string(),
-            payload: serde_json::json!({"key": "value"}),
-        })).expect("should not fail");
-        assert_eq!(
-            queue.push(QueuedEvent::new(Event {
+        let queue = VecEventQueue::new(VecEventQueueConfig {
+            batch_size: 10,
+            max_queue_size: 2,
+            max_retries: 3,
+        });
+        queue
+            .push(QueuedEvent::new(Event {
                 uuid: uuid::Uuid::new_v4(),
                 timestamp: now(),
                 event_type: "test".to_string(),
                 payload: serde_json::json!({"key": "value"}),
-            })).expect_err("should fail"),
+            }))
+            .expect("should not fail");
+        queue
+            .push(QueuedEvent::new(Event {
+                uuid: uuid::Uuid::new_v4(),
+                timestamp: now(),
+                event_type: "test".to_string(),
+                payload: serde_json::json!({"key": "value"}),
+            }))
+            .expect("should not fail");
+        assert_eq!(
+            queue
+                .push(QueuedEvent::new(Event {
+                    uuid: uuid::Uuid::new_v4(),
+                    timestamp: now(),
+                    event_type: "test".to_string(),
+                    payload: serde_json::json!({"key": "value"}),
+                }))
+                .expect_err("should fail"),
             QueueError::QueueFull
         );
     }
 
     #[test]
     fn mark_events_as_failed() {
-        let queue = VecEventQueue::new(VecEventQueueConfig { batch_size: 10, max_queue_size: 20, max_retries: 3 });
+        let queue = VecEventQueue::new(VecEventQueueConfig {
+            batch_size: 10,
+            max_queue_size: 20,
+            max_retries: 3,
+        });
         let event_a = Event {
             uuid: uuid::Uuid::new_v4(),
             timestamp: now(),
@@ -315,8 +353,14 @@ mod tests {
         let event_queue = queue.event_queue.lock().unwrap();
         let failed_events = event_queue.get(&QueuedEventStatus::Failed).unwrap();
         assert_eq!(failed_events.len(), 1);
-        assert_eq!(failed_events.front().unwrap().event.uuid, queued_event_a.event.uuid);
-        assert_eq!(failed_events.front().unwrap().status, QueuedEventStatus::Failed);
+        assert_eq!(
+            failed_events.front().unwrap().event.uuid,
+            queued_event_a.event.uuid
+        );
+        assert_eq!(
+            failed_events.front().unwrap().status,
+            QueuedEventStatus::Failed
+        );
         assert_eq!(failed_events.front().unwrap().attempts, 1);
         let pending_events = event_queue.get(&QueuedEventStatus::Pending).unwrap();
         assert_eq!(pending_events.len(), 1);

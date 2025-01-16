@@ -274,7 +274,8 @@ mod tests {
             max_queue_size: 10,
             batch_size: 1,
         };
-        let dispatcher = EventDispatcher::new(config, VecEventQueue::new(vec_event_queue_config), tx);
+        let dispatcher =
+            EventDispatcher::new(config, VecEventQueue::new(vec_event_queue_config), tx);
         let queue = dispatcher.event_queue.clone();
         dispatcher.dispatch(event.clone()).unwrap();
         let rx_clone = Arc::clone(&rx);
