@@ -187,17 +187,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_dispatch_starts_delivery() {
-        let payload = LoginPayload {
-            user_id: "user123".to_string(),
-            session_id: "session456".to_string(),
-        };
-        let serialized_payload = serde_json::to_value(payload).expect("Serialization failed");
-        let event = Event {
-            uuid: Uuid::new_v4(),
-            timestamp: now(),
-            event_type: "test".to_string(),
-            payload: serialized_payload,
-        };
+        let event = new_test_event();
         let mock_server = MockServer::start().await;
         let mut eppo_events = Vec::new();
         eppo_events.push(serde_json::to_value(event.clone()).unwrap());
@@ -208,22 +198,7 @@ mod tests {
             .respond_with(ResponseTemplate::new(200))
             .mount(&mock_server)
             .await;
-        let config = new_test_event_config(mock_server.uri());
-        let (tx, rx) = unbounded_channel();
-        let rx = Arc::new(Mutex::new(rx));
-        let dispatcher = EventDispatcher::new(config, VecEventQueue::new(1, 10), tx);
-        dispatcher.dispatch(event).unwrap();
-        let rx_clone = Arc::clone(&rx);
-        tokio::spawn(async move {
-            let mut rx = rx_clone.lock().await;
-            dispatcher.event_dispatcher(&mut rx).await;
-        });
-        {
-            let mut rx = rx.lock().await;
-            rx.close();
-        }
-        // wait some time for the async task to finish
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        run_dispatcher_task(event, mock_server.uri()).await;
         let received_requests = mock_server.received_requests().await.unwrap();
         assert_eq!(received_requests.len(), 1);
         let received_request = &received_requests[0];
@@ -236,17 +211,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_dispatch_failed() {
-        let payload = LoginPayload {
-            user_id: "user123".to_string(),
-            session_id: "session456".to_string(),
-        };
-        let serialized_payload = serde_json::to_value(payload).expect("Serialization failed");
-        let event = Event {
-            uuid: Uuid::new_v4(),
-            timestamp: now(),
-            event_type: "test".to_string(),
-            payload: serialized_payload,
-        };
+        let event = new_test_event();
         let mock_server = MockServer::start().await;
         let mut eppo_events = Vec::new();
         eppo_events.push(serde_json::to_value(event.clone()).unwrap());
@@ -259,23 +224,7 @@ mod tests {
             .respond_with(response_body)
             .mount(&mock_server)
             .await;
-        let config = new_test_event_config(mock_server.uri());
-        let (tx, rx) = unbounded_channel();
-        let rx = Arc::new(Mutex::new(rx));
-        let dispatcher = EventDispatcher::new(config, VecEventQueue::new(1, 10), tx);
-        let queue = dispatcher.event_queue.clone();
-        dispatcher.dispatch(event.clone()).unwrap();
-        let rx_clone = Arc::clone(&rx);
-        tokio::spawn(async move {
-            let mut rx = rx_clone.lock().await;
-            dispatcher.event_dispatcher(&mut rx).await;
-        });
-        {
-            let mut rx = rx.lock().await;
-            rx.close();
-        }
-        // wait some time for the async task to finish
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        let queue = run_dispatcher_task(event.clone(), mock_server.uri()).await;
         let received_requests = mock_server.received_requests().await.unwrap();
         assert_eq!(received_requests.len(), 1);
         let failed_events = queue.next_batch(QueuedEventStatus::Failed);
@@ -293,6 +242,20 @@ mod tests {
         assert_eq!(pending_events, vec![]);
     }
 
+    fn new_test_event() -> Event {
+        let payload = LoginPayload {
+            user_id: "user123".to_string(),
+            session_id: "session456".to_string(),
+        };
+        let serialized_payload = serde_json::to_value(payload).expect("Serialization failed");
+        Event {
+            uuid: Uuid::new_v4(),
+            timestamp: now(),
+            event_type: "test".to_string(),
+            payload: serialized_payload,
+        }
+    }
+
     fn new_test_event_config(ingestion_url: String) -> EventDispatcherConfig {
         EventDispatcherConfig {
             sdk_key: "test-sdk-key".to_string(),
@@ -302,5 +265,26 @@ mod tests {
             max_retry_delay: Duration::from_millis(5000),
             max_retries: Some(3),
         }
+    }
+
+    async fn run_dispatcher_task(event: Event, mock_server_uri: String) -> VecEventQueue {
+        let config = new_test_event_config(mock_server_uri);
+        let (tx, rx) = unbounded_channel();
+        let rx = Arc::new(Mutex::new(rx));
+        let dispatcher = EventDispatcher::new(config, VecEventQueue::new(1, 10), tx);
+        let queue = dispatcher.event_queue.clone();
+        dispatcher.dispatch(event.clone()).unwrap();
+        let rx_clone = Arc::clone(&rx);
+        tokio::spawn(async move {
+            let mut rx = rx_clone.lock().await;
+            dispatcher.event_dispatcher(&mut rx).await;
+        });
+        {
+            let mut rx = rx.lock().await;
+            rx.close();
+        }
+        // wait some time for the async task to finish
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        queue
     }
 }
