@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use crate::events::event::Event;
 use crate::Str;
 use log::{debug, info};
@@ -15,7 +16,7 @@ pub struct EventDelivery {
 
 #[derive(serde::Deserialize)]
 pub struct EventDeliveryResponse {
-    pub failed_events: Vec<Uuid>,
+    pub failed_events: HashSet<Uuid>,
 }
 
 #[derive(thiserror::Error, Debug)]
