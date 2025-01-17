@@ -28,6 +28,7 @@ impl DeliveryStatus {
 pub(super) async fn delivery(
     mut uplink: mpsc::Receiver<BatchedMessage<QueuedEvent>>,
     delivery_status: mpsc::Sender<DeliveryStatus>,
+    max_retries: u8,
     event_delivery: EventDelivery,
 ) -> Option<()> {
     loop {
