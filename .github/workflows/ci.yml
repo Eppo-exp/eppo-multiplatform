@@ -67,8 +67,8 @@ jobs:
 
       - name: Check WASM compatibility
         run: |
-          cargo check -p eppo_core --target wasm32-wasip1 --no-default-features --features "fastly" || {
-            echo "Error: Fastly compatibility check failed!"
+          cargo check -p eppo_core --target wasm32-wasip1 --no-default-features || {
+            echo "Error: WASM compatibility check failed!"
             echo "If you added a dependency that's incompatible with wasm32-wasip1,"
             echo "please make it part of a cargo feature flag that is disabled by default."
             exit 1
