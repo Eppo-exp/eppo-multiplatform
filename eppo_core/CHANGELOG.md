@@ -1,5 +1,11 @@
 # eppo_core
 
+## 7.0.2
+
+### Patch Changes
+
+- [#164](https://github.com/Eppo-exp/eppo-multiplatform/pull/164) [`aa0ca89`](https://github.com/Eppo-exp/eppo-multiplatform/commit/aa0ca8912bab269613d3da25c06f81b1f19ffb36) Thanks [@rasendubi](https://github.com/rasendubi)! - Hide event ingestion under a feature flag.
+
 ## 7.0.1
 
 ### Patch Changes
