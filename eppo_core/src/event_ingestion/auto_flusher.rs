@@ -51,7 +51,7 @@ mod tests {
     use tokio::sync::mpsc;
     use tokio::time::{self, Duration};
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_auto_flusher() {
         let (uplink_tx, uplink_rx) = mpsc::channel(10);
         let (downlink_tx, mut downlink_rx) = mpsc::channel(10);
@@ -94,7 +94,7 @@ mod tests {
         );
 
         // Wait for the flush period to trigger an auto-flush
-        time::sleep(flush_period * 2).await;
+        tokio::time::advance(flush_period * 2).await;
 
         // Verify the auto-flush behavior
         assert_eq!(
