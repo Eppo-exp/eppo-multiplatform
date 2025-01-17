@@ -49,3 +49,27 @@ jobs:
 
       - run: cargo test --verbose --workspace
       - run: cargo doc --verbose
+
+  wasm_compatibility_check:
+    # Check if the crate is compatible with the 
+    # Precompute Assignments Server.
+    name: WASM Compatibility Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: ${{ !inputs.test_data_branch }}
+          repository: Eppo-exp/eppo-multiplatform
+          ref: ${{ env.SDK_BRANCH }}
+
+      - name: Add wasm32-wasip1 target
+        run: rustup target add wasm32-wasip1
+
+      - name: Check WASM compatibility
+        run: |
+          cargo check -p eppo_core --target wasm32-wasip1 --no-default-features --features "fastly" || {
+            echo "Error: Fastly compatibility check failed!"
+            echo "If you added a dependency that's incompatible with wasm32-wasip1,"
+            echo "please make it part of a cargo feature flag that is disabled by default."
+            exit 1
+          }
