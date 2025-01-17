@@ -1,5 +1,12 @@
 # ruby-sdk
 
+## 3.4.2
+
+### Patch Changes
+
+- Updated dependencies [[`aa0ca89`](https://github.com/Eppo-exp/eppo-multiplatform/commit/aa0ca8912bab269613d3da25c06f81b1f19ffb36)]:
+  - eppo_core@7.0.2
+
 ## 3.4.1
 
 ### Patch Changes
