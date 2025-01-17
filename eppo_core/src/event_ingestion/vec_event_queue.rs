@@ -1,4 +1,4 @@
-use crate::events::queued_event::{QueuedEvent, QueuedEventStatus};
+use crate::event_ingestion::queued_event::{QueuedEvent, QueuedEventStatus};
 use linked_hash_set::LinkedHashSet;
 use log::warn;
 use std::sync::{Arc, Mutex};
@@ -110,7 +110,6 @@ impl EventQueue for VecEventQueue {
     fn enqueue_failed_events_for_retry(&self, failed_event_uuids: Vec<QueuedEvent>) {
         let mut failed_event_queue = self.failed_event_queue.lock().unwrap();
         for mut failed_event in failed_event_uuids {
-            failed_event.status = QueuedEventStatus::Failed;
             if failed_event.attempts >= self.config.max_retries {
                 // do not re-add to the queue if max retries is reached and simply drop the event
                 warn!(
@@ -127,9 +126,9 @@ impl EventQueue for VecEventQueue {
 
 #[cfg(test)]
 mod tests {
-    use crate::events::event::Event;
-    use crate::events::queued_event::{QueuedEvent, QueuedEventStatus};
-    use crate::events::vec_event_queue::{
+    use crate::event_ingestion::event::Event;
+    use crate::event_ingestion::queued_event::{QueuedEvent, QueuedEventStatus};
+    use crate::event_ingestion::vec_event_queue::{
         EventQueue, QueueError, VecEventQueue, VecEventQueueConfig, MAX_BATCH_SIZE,
     };
     use crate::timestamp::now;
@@ -201,7 +200,6 @@ mod tests {
         let failed_events = queue.next_batch(QueuedEventStatus::Failed);
         assert_eq!(failed_events.len(), 1);
         assert_eq!(failed_events[0].event.uuid, event.event.uuid);
-        assert_eq!(failed_events[0].status, QueuedEventStatus::Failed);
         assert_eq!(failed_events[0].attempts, 2);
         // failing a third time should not requeue since that exceeds max_retries == 2
         queue.enqueue_failed_events_for_retry(failed_events);
@@ -230,21 +228,9 @@ mod tests {
             event_type: "C".to_string(),
             payload: serde_json::json!({"key": "value"}),
         };
-        let queued_event_a = QueuedEvent {
-            event: event_a.clone(),
-            attempts: 0,
-            status: QueuedEventStatus::Pending,
-        };
-        let queued_event_b = QueuedEvent {
-            event: event_b.clone(),
-            attempts: 1,
-            status: QueuedEventStatus::Failed,
-        };
-        let queued_event_c = QueuedEvent {
-            event: event_c.clone(),
-            attempts: 0,
-            status: QueuedEventStatus::Pending,
-        };
+        let queued_event_a = QueuedEvent::new(event_a.clone());
+        let queued_event_b = QueuedEvent::new(event_b.clone());
+        let queued_event_c = QueuedEvent::new(event_c.clone());
         let queue = VecEventQueue {
             config: VecEventQueueConfig {
                 batch_size: 10,
@@ -338,10 +324,6 @@ mod tests {
         assert_eq!(
             failed_events.front().unwrap().event.uuid,
             queued_event_a.event.uuid
-        );
-        assert_eq!(
-            failed_events.front().unwrap().status,
-            QueuedEventStatus::Failed
         );
         assert_eq!(failed_events.front().unwrap().attempts, 1);
         let pending_events = queue.pending_event_queue.lock().unwrap();

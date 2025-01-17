@@ -1,5 +1,17 @@
 # eppo_core
 
+## 7.0.2
+
+### Patch Changes
+
+- [#164](https://github.com/Eppo-exp/eppo-multiplatform/pull/164) [`aa0ca89`](https://github.com/Eppo-exp/eppo-multiplatform/commit/aa0ca8912bab269613d3da25c06f81b1f19ffb36) Thanks [@rasendubi](https://github.com/rasendubi)! - Hide event ingestion under a feature flag.
+
+## 7.0.1
+
+### Patch Changes
+
+- [#160](https://github.com/Eppo-exp/eppo-multiplatform/pull/160) [`82d05ae`](https://github.com/Eppo-exp/eppo-multiplatform/commit/82d05aea0263639be56ba5667500f6940b4832ab) Thanks [@leoromanovsky](https://github.com/leoromanovsky)! - add sync feature to tokio crate
+
 ## 7.0.0
 
 ### Major Changes

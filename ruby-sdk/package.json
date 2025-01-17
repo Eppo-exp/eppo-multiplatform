@@ -1,9 +1,9 @@
 {
   "private": true,
   "name": "ruby-sdk",
-  "version": "3.4.0",
+  "version": "3.4.2",
   "dependencies": {
-    "eppo_core": "7.0.0"
+    "eppo_core": "7.0.2"
   },
   "devDependencies": {},
   "scripts": {
