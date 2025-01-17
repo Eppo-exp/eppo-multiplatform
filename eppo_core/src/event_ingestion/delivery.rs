@@ -65,25 +65,16 @@ pub(super) async fn delivery(
                             success.push(queued_event);
                         }
                     }
-                    delivery_status
-                        .send(DeliveryStatus { success, failure })
-                        .await
-                        .ok()?;
+                    deliver_status(&delivery_status, DeliveryStatus { success, failure }).await;
                 } else {
-                    delivery_status
-                        .send(DeliveryStatus::with_success(batch))
-                        .await
-                        .ok()?;
+                    deliver_status(&delivery_status, DeliveryStatus::with_success(batch)).await;
                 }
             }
             Err(err) => {
                 match err {
                     EventDeliveryError::RetriableError(_) => {
                         // Retry later
-                        delivery_status
-                            .send(DeliveryStatus::with_failure(batch))
-                            .await
-                            .ok()?;
+                        deliver_status(&delivery_status, DeliveryStatus::with_failure(batch)).await;
                     }
                     EventDeliveryError::NonRetriableError(_) => {
                         warn!("Failed to deliver events: {}", err);
@@ -94,4 +85,13 @@ pub(super) async fn delivery(
             }
         }
     }
+}
+
+async fn deliver_status(receiver: &mpsc::Sender<DeliveryStatus>, status: DeliveryStatus) {
+    receiver
+        .send(status)
+        .await
+        .unwrap_or_else(|err| {
+            warn!("Failed to send delivery status: {}", err);
+        });
 }

@@ -10,6 +10,8 @@ categories = ["config"]
 rust-version = "1.75.0"
 
 [features]
+# TODO: Remove this line before merging
+default = ["event_ingestion"]
 # Unstable feature flag for an upcoming feature.
 event_ingestion = ["dep:uuid", "dep:linked_hash_set"]
 # Add implementation of `FromPyObject`/`ToPyObject` for some types.
