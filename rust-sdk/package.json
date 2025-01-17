@@ -1,9 +1,9 @@
 {
   "private": true,
   "name": "rust-sdk",
-  "version": "5.0.0",
+  "version": "5.0.2",
   "dependencies": {
-    "eppo_core": "7.0.0"
+    "eppo_core": "7.0.2"
   },
   "devDependencies": {},
   "scripts": {

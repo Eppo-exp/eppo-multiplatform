@@ -1,5 +1,19 @@
 # rust-sdk
 
+## 5.0.2
+
+### Patch Changes
+
+- Updated dependencies [[`aa0ca89`](https://github.com/Eppo-exp/eppo-multiplatform/commit/aa0ca8912bab269613d3da25c06f81b1f19ffb36)]:
+  - eppo_core@7.0.2
+
+## 5.0.1
+
+### Patch Changes
+
+- Updated dependencies [[`82d05ae`](https://github.com/Eppo-exp/eppo-multiplatform/commit/82d05aea0263639be56ba5667500f6940b4832ab)]:
+  - eppo_core@7.0.1
+
 ## 5.0.0
 
 ### Major Changes

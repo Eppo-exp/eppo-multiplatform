@@ -64,6 +64,7 @@ pub mod ufc;
 
 mod configuration;
 mod error;
+#[cfg(feature = "event_ingestion")]
 mod event_ingestion;
 mod obfuscation;
 mod precomputed;
