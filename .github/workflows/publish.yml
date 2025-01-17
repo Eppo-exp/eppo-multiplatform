@@ -57,7 +57,7 @@ jobs:
 
   update_ruby_lockfile:
     name: Update Ruby SDK lockfile
-    run-on: ubuntu-latest
+    runs-on: ubuntu-latest
     if: ${{ startsWith(github.ref_name, 'eppo_core@') }}
     needs: publish
     steps:
