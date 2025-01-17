@@ -8,19 +8,19 @@ use url::Url;
 use uuid::Uuid;
 
 #[derive(Clone)]
-pub struct EventDelivery {
+pub(super) struct EventDelivery {
     sdk_key: Str,
     ingestion_url: Url,
     client: reqwest::Client,
 }
 
 #[derive(serde::Deserialize)]
-pub struct EventDeliveryResponse {
+pub(super) struct EventDeliveryResponse {
     pub failed_events: HashSet<Uuid>,
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum EventDeliveryError {
+pub(super) enum EventDeliveryError {
     #[error("Transient error delivering events")]
     RetriableError(reqwest::Error),
     #[error("Non-retriable error")]
@@ -44,7 +44,7 @@ impl EventDelivery {
     }
 
     /// Delivers the provided event batch and returns a Vec with the events that failed to be delivered.
-    pub async fn deliver(
+    pub(super) async fn deliver(
         self,
         events: Vec<Event>,
     ) -> Result<EventDeliveryResponse, EventDeliveryError> {

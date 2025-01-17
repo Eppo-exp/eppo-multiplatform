@@ -14,7 +14,7 @@ const MIN_BATCH_SIZE: usize = 1;
 const MAX_BATCH_SIZE: usize = 10_000;
 
 #[derive(Debug, Clone)]
-pub struct EventDispatcherConfig {
+pub(super) struct EventDispatcherConfig {
     pub sdk_key: String,
     pub ingestion_url: String,
     pub delivery_interval: Duration,
@@ -28,7 +28,7 @@ pub struct EventDispatcherConfig {
 
 /// EventDispatcher is responsible for batching events and delivering them to the ingestion service
 /// via [`EventDelivery`].
-pub struct EventDispatcher {
+pub(super) struct EventDispatcher {
     config: EventDispatcherConfig,
 }
 
