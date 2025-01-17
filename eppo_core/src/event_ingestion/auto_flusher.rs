@@ -49,7 +49,7 @@ mod tests {
     use crate::event_ingestion::auto_flusher;
     use crate::event_ingestion::batched_message::BatchedMessage;
     use tokio::sync::mpsc;
-    use tokio::time::{self, Duration};
+    use tokio::time::{Duration};
 
     #[tokio::test(start_paused = true)]
     async fn test_auto_flusher() {

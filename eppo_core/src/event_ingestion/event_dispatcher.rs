@@ -2,18 +2,13 @@ use crate::event_ingestion::batched_message::BatchedMessage;
 use crate::event_ingestion::delivery::DeliveryStatus;
 use crate::event_ingestion::event::Event;
 use crate::event_ingestion::event_delivery::EventDelivery;
-use crate::event_ingestion::queued_event::{QueuedEvent, QueuedEventStatus};
+use crate::event_ingestion::queued_event::QueuedEvent;
 use crate::event_ingestion::vec_event_queue::{EventQueue, QueueError};
 use crate::event_ingestion::{auto_flusher, batcher, delivery};
 use tokio::sync::mpsc;
-use tokio::sync::mpsc::{Receiver, Sender, UnboundedSender};
+use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::Duration;
 use url::Url;
-
-#[derive(Debug)]
-pub enum EventDispatcherCommand {
-    Event,
-}
 
 // batch size of one means each event will be delivered individually, thus effectively disabling batching.
 const MIN_BATCH_SIZE: usize = 1;
@@ -60,7 +55,7 @@ impl<T: EventQueue + Clone + Send + 'static> EventDispatcher<T> {
             .err()
     }
 
-    fn spawn_event_dispatcher(&self) -> (Sender<BatchedMessage<Event>>, Receiver<DeliveryStatus>) {
+    fn spawn_event_dispatcher(&self) -> (Sender<BatchedMessage<QueuedEvent>>, Receiver<DeliveryStatus>) {
         let config = self.config.clone();
         let ingestion_url = Url::parse(config.ingestion_url.as_str())
             .expect("Failed to create EventDelivery. invalid ingestion URL");
@@ -113,20 +108,31 @@ mod tests {
         pub session_id: String,
     }
 
+    fn init() {
+        let _ = env_logger::try_init();
+    }
+
     #[tokio::test]
     async fn test_dispatch_starts_delivery() {
+        init();
         let event = new_test_event();
         let mock_server = MockServer::start().await;
         let mut eppo_events = Vec::new();
         eppo_events.push(serde_json::to_value(event.clone()).unwrap());
         let expected_body = json!({"eppo_events": eppo_events });
+        let response_body =
+            ResponseTemplate::new(200).set_body_json(json!({"failed_events": []}));
         Mock::given(method("POST"))
             .and(path("/"))
             .and(body_json(&expected_body))
-            .respond_with(ResponseTemplate::new(200))
+            .respond_with(response_body)
             .mount(&mock_server)
             .await;
-        run_dispatcher_task(event, mock_server.uri()).await;
+        let mut rx = run_dispatcher_task(event.clone(), mock_server.uri()).await;
+        let delivery_status = rx.recv().await.unwrap();
+        let successful_events = delivery_status.success.clone();
+        let failed_events = delivery_status.failure.clone();
+        drop(delivery_status);
         let received_requests = mock_server.received_requests().await.unwrap();
         assert_eq!(received_requests.len(), 1);
         let received_request = &received_requests[0];
@@ -135,10 +141,13 @@ mod tests {
         let received_body: serde_json::Value =
             serde_json::from_slice(&received_request.body).expect("Failed to parse request body");
         assert_eq!(received_body, expected_body);
+        assert_eq!(successful_events, vec![QueuedEvent { event, attempts: 0 }]);
+        assert_eq!(failed_events.len(), 0);
     }
 
     #[tokio::test]
     async fn test_dispatch_failed() {
+        init();
         let event = new_test_event();
         let mock_server = MockServer::start().await;
         let mut eppo_events = Vec::new();
@@ -152,22 +161,16 @@ mod tests {
             .respond_with(response_body)
             .mount(&mock_server)
             .await;
-        let queue = run_dispatcher_task(event.clone(), mock_server.uri()).await;
+        let mut rx = run_dispatcher_task(event.clone(), mock_server.uri()).await;
+        let delivery_status = rx.recv().await.unwrap();
+        let successful_events = delivery_status.success.clone();
+        let failed_events = delivery_status.failure.clone();
+        drop(delivery_status);
         let received_requests = mock_server.received_requests().await.unwrap();
         assert_eq!(received_requests.len(), 1);
-        let failed_events = queue.next_batch(QueuedEventStatus::Failed);
         // assert failed event was moved to failed queue
-        assert_eq!(
-            failed_events,
-            vec![QueuedEvent {
-                event,
-                attempts: 1,
-                status: QueuedEventStatus::Failed
-            }]
-        );
-        let pending_events = queue.next_batch(QueuedEventStatus::Pending);
-        // assert no more pending events
-        assert_eq!(pending_events, vec![]);
+        assert_eq!(failed_events, vec![QueuedEvent { event, attempts: 1 }]);
+        assert_eq!(successful_events.len(), 0);
     }
 
     fn new_test_event() -> Event {
@@ -195,7 +198,7 @@ mod tests {
         }
     }
 
-    async fn run_dispatcher_task(event: Event, mock_server_uri: String) -> VecEventQueue {
+    async fn run_dispatcher_task(event: Event, mock_server_uri: String) -> Receiver<DeliveryStatus> {
         let batch_size = 1;
         let config = new_test_event_config(mock_server_uri, batch_size);
         let vec_event_queue_config = VecEventQueueConfig {
@@ -204,16 +207,11 @@ mod tests {
             batch_size,
         };
         let dispatcher = EventDispatcher::new(config, VecEventQueue::new(vec_event_queue_config));
-        let queue = dispatcher.event_queue.clone();
         dispatcher.dispatch(event.clone());
         let (tx, rx) = dispatcher.spawn_event_dispatcher();
-        tx.send(BatchedMessage {
-            batch: vec![event],
-            flush: None,
-        }).await.unwrap();
-        drop(rx);
+        tx.send(BatchedMessage::new(vec![QueuedEvent::new(event)], None)).await.unwrap();
         // wait some time for the async task to finish
         tokio::time::sleep(Duration::from_millis(100)).await;
-        queue
+        rx
     }
 }
