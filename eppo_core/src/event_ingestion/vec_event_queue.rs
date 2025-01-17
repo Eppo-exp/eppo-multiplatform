@@ -1,4 +1,4 @@
-use crate::events::queued_event::{QueuedEvent, QueuedEventStatus};
+use crate::event_ingestion::queued_event::{QueuedEvent, QueuedEventStatus};
 use linked_hash_set::LinkedHashSet;
 use log::warn;
 use std::sync::{Arc, Mutex};
@@ -127,9 +127,9 @@ impl EventQueue for VecEventQueue {
 
 #[cfg(test)]
 mod tests {
-    use crate::events::event::Event;
-    use crate::events::queued_event::{QueuedEvent, QueuedEventStatus};
-    use crate::events::vec_event_queue::{
+    use crate::event_ingestion::event::Event;
+    use crate::event_ingestion::queued_event::{QueuedEvent, QueuedEventStatus};
+    use crate::event_ingestion::vec_event_queue::{
         EventQueue, QueueError, VecEventQueue, VecEventQueueConfig, MAX_BATCH_SIZE,
     };
     use crate::timestamp::now;

@@ -64,6 +64,7 @@ pub mod ufc;
 
 mod configuration;
 mod error;
+mod event_ingestion;
 mod obfuscation;
 mod precomputed;
 mod sdk_metadata;

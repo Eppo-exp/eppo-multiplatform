@@ -1,9 +1,9 @@
-use std::collections::HashSet;
-use crate::events::event::Event;
+use crate::event_ingestion::event::Event;
 use crate::Str;
 use log::{debug, info};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use url::Url;
 use uuid::Uuid;
 
