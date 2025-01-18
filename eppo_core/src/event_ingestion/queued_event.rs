@@ -1,13 +1,6 @@
 use crate::event_ingestion::event::Event;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(super) enum QueuedEventStatus {
-    Pending,
-    Retry,
-    Failed,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(super) struct QueuedEvent {
     pub event: Event,
     pub attempts: u8,
@@ -18,6 +11,14 @@ impl QueuedEvent {
         QueuedEvent {
             event,
             attempts: 0,
+        }
+    }
+
+    /// Creates a new QueuedEvent from a failed QueuedEvent, incrementing the attempts counter.
+    pub fn new_from_failed(queued_event: QueuedEvent) -> Self {
+        QueuedEvent {
+            event: queued_event.event,
+            attempts: queued_event.attempts + 1,
         }
     }
 }

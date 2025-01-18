@@ -16,7 +16,6 @@ pub(super) async fn batcher<T>(
     let mut uplink_alive = true;
     while uplink_alive {
         let mut batch = BatchedMessage::empty();
-
         while uplink_alive && batch.batch.len() < min_batch_size && batch.flush.is_none() {
             match uplink.recv().await {
                 None => {

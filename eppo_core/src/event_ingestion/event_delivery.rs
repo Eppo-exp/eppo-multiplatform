@@ -45,10 +45,10 @@ impl EventDelivery {
 
     /// Delivers the provided event batch and returns a Vec with the events that failed to be delivered.
     pub(super) async fn deliver(
-        self,
+        &self,
         events: Vec<Event>,
     ) -> Result<EventDeliveryResponse, EventDeliveryError> {
-        let ingestion_url = self.ingestion_url;
+        let ingestion_url = self.ingestion_url.clone();
         let sdk_key = &self.sdk_key;
         debug!("Delivering {} events to {}", events.len(), ingestion_url);
         let body = IngestionRequestBody {

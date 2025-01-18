@@ -1,13 +1,13 @@
 use crate::event_ingestion::batched_message::BatchedMessage;
-use crate::event_ingestion::delivery::DeliveryStatus;
 use crate::event_ingestion::event::Event;
 use crate::event_ingestion::event_delivery::EventDelivery;
 use crate::event_ingestion::queued_event::QueuedEvent;
-use crate::event_ingestion::{auto_flusher, batcher, delivery};
+use crate::event_ingestion::{auto_flusher, batcher, delivery, retry};
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::Duration;
 use url::Url;
+use crate::event_ingestion::retry::FinishedBatch;
 
 // batch size of one means each event will be delivered individually, thus effectively disabling batching.
 const MIN_BATCH_SIZE: usize = 1;
@@ -41,7 +41,7 @@ impl EventDispatcher {
 
     /// Starts the event dispatcher related tasks and returns a sender and receiver pair.
     /// Use the sender to dispatch events and the receiver to receive delivery statuses.
-    fn spawn_event_dispatcher(&self) -> (Sender<BatchedMessage<QueuedEvent>>, Receiver<DeliveryStatus>) {
+    fn spawn_event_dispatcher(&self) -> (Sender<BatchedMessage<QueuedEvent>>, Receiver<FinishedBatch>) {
         let config = self.config.clone();
         let ingestion_url = Url::parse(config.ingestion_url.as_str())
             .expect("Failed to create EventDelivery. invalid ingestion URL");
@@ -52,7 +52,8 @@ impl EventDispatcher {
         let (sender, flusher_uplink_rx) = mpsc::channel(channel_size);
         let (flusher_downlink_tx, flusher_downlink_rx) = mpsc::channel(channel_size);
         let (batcher_downlink_tx, batcher_downlink_rx) = mpsc::channel(channel_size);
-        let (delivery_downlink_tx, receiver) = mpsc::channel(channel_size);
+        let (delivery_downlink_tx, delivery_downlink_rx) = mpsc::channel(channel_size);
+        let (retry_downlink_tx, receiver) = mpsc::channel(channel_size);
 
         // Spawn the auto_flusher, batcher and delivery
         tokio::spawn(auto_flusher::auto_flusher(
@@ -62,7 +63,7 @@ impl EventDispatcher {
         ));
         tokio::spawn(batcher::batcher(
             flusher_downlink_rx,
-            batcher_downlink_tx,
+            batcher_downlink_tx.clone(),
             config.batch_size,
         ));
         tokio::spawn(delivery::delivery(
@@ -70,6 +71,11 @@ impl EventDispatcher {
             delivery_downlink_tx,
             config.max_retries,
             event_delivery,
+        ));
+        tokio::spawn(retry::retry(
+            delivery_downlink_rx,
+            batcher_downlink_tx,
+            retry_downlink_tx,
         ));
 
         (sender, receiver)
@@ -181,12 +187,12 @@ mod tests {
             delivery_interval: Duration::from_millis(100),
             retry_interval: Duration::from_millis(1000),
             max_retry_delay: Duration::from_millis(5000),
-            max_retries: 3,
+            max_retries: 2,
             max_queue_size: 10,
         }
     }
 
-    async fn run_dispatcher_task(event: Event, mock_server_uri: String) -> Receiver<DeliveryStatus> {
+    async fn run_dispatcher_task(event: Event, mock_server_uri: String) -> Receiver<FinishedBatch> {
         let batch_size = 1;
         let config = new_test_event_config(mock_server_uri, batch_size);
         let dispatcher = EventDispatcher::new(config);
