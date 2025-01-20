@@ -10,7 +10,11 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 /// When `BackgroundRuntime` is dropped, all background activities are commanded to stop.
 pub struct BackgroundRuntime {
     tokio_runtime: tokio::runtime::Handle,
+    /// A cancellation token that gets cancelled when runtime needs to exit.
     cancellation_token: CancellationToken,
+    /// A set of tasks that are required to exit before the tokio runtime can be safely
+    /// stopped. Rust futures are usually safe to drop, so this is normally not needed. But we may
+    /// need this occasionally (e.g., finish writes to disk, etc.)
     watched_tasks: TaskTracker,
 }
 
@@ -41,6 +45,8 @@ impl BackgroundRuntime {
 
     /// Spawn a task that needs to perform some cleanup on shutdown.
     ///
+    /// Most tasks shouldn't need that as Rust futures are usually safe to drop.
+    ///
     /// The task must monitor [`BackgroundRuntime::cancellation_token()`] and exit when the token is
     /// cancelled.
     pub(crate) fn spawn_tracked<F>(&self, future: F) -> JoinHandle<F::Output>
@@ -55,6 +61,8 @@ impl BackgroundRuntime {
     /// Spawn a task that doesn't have any special shutdown requirements.
     ///
     /// When runtime is going to shutdown, this task will not be awaited and will be abandoned.
+    ///
+    /// If it's not OK to abandon the task, consider using `spawn_tracked()` instead.
     pub(crate) fn spawn_untracked<F>(&self, future: F) -> JoinHandle<F::Output>
     where
         F: Future + Send + 'static,
@@ -70,7 +78,7 @@ impl BackgroundRuntime {
     }
 
     /// Wait for all background activities to stop.
-    pub(crate) fn wait(&self) -> impl Future {
+    pub(super) fn wait(&self) -> impl Future {
         let tracker = self.watched_tasks.clone();
         async move { tracker.wait().await }
     }
