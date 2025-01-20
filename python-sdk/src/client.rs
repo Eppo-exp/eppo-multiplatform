@@ -17,14 +17,17 @@ use pyo3::{
 };
 
 use eppo_core::{
+    background::BackgroundThread,
     configuration_fetcher::ConfigurationFetcher,
+    configuration_poller::{
+        start_configuration_poller, ConfigurationPoller, ConfigurationPollerConfig,
+    },
     configuration_store::ConfigurationStore,
     eval::{
         eval_details::{EvaluationDetails, EvaluationResultWithDetails},
         BanditResult, Evaluator, EvaluatorConfig,
     },
     events::{AssignmentEvent, BanditEvent},
-    poller_thread::{PollerThread, PollerThreadConfig},
     pyo3::TryToPyObject,
     ufc::VariationType,
     Attributes, ContextAttributes, Str,
@@ -142,7 +145,8 @@ impl EvaluationResult {
 pub struct EppoClient {
     configuration_store: Arc<ConfigurationStore>,
     evaluator: Evaluator,
-    poller_thread: Option<PollerThread>,
+    background_thread: Option<BackgroundThread>,
+    poller: Option<ConfigurationPoller>,
     assignment_logger: Py<AssignmentLogger>,
     is_graceful_mode: AtomicBool,
 }
@@ -452,8 +456,8 @@ impl EppoClient {
     ///
     /// This method releases GIL, so other Python thread can make progress.
     fn wait_for_initialization(&self, py: Python) -> PyResult<()> {
-        if let Some(poller) = &self.poller_thread {
-            py.allow_threads(|| poller.wait_for_configuration())
+        if let (Some(thread), Some(poller)) = (&self.background_thread, &self.poller) {
+            py.allow_threads(|| thread.runtime().block_on(poller.wait_for_configuration()))
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))
         } else {
             Err(PyRuntimeError::new_err("poller is disabled"))
@@ -569,7 +573,9 @@ impl EppoClient {
         let poller_thread = config
             .poll_interval_seconds
             .map(|poll_interval_seconds| {
-                PollerThread::start_with_config(
+                let thread = BackgroundThread::start()?;
+                let poller = start_configuration_poller(
+                    thread.runtime(),
                     ConfigurationFetcher::new(
                         eppo_core::configuration_fetcher::ConfigurationFetcherConfig {
                             base_url: config.base_url.clone(),
@@ -578,22 +584,26 @@ impl EppoClient {
                         },
                     ),
                     configuration_store.clone(),
-                    PollerThreadConfig {
+                    ConfigurationPollerConfig {
                         interval: Duration::from_secs(poll_interval_seconds.into()),
                         jitter: Duration::from_secs(config.poll_jitter_seconds),
                     },
-                )
+                );
+                Ok((thread, poller))
             })
             .transpose()
-            .map_err(|err| {
+            .map_err(|err: std::io::Error| {
                 // This should normally never happen.
-                PyRuntimeError::new_err(format!("unable to start poller thread: {err}"))
+                PyRuntimeError::new_err(format!("unable to start background thread: {err}"))
             })?;
+
+        let (background_thread, poller) = poller_thread.unzip();
 
         Ok(EppoClient {
             configuration_store,
             evaluator,
-            poller_thread,
+            background_thread,
+            poller,
             assignment_logger: config
                 .assignment_logger
                 .as_ref()
@@ -688,10 +698,10 @@ impl EppoClient {
     }
 
     pub fn shutdown(&self) {
-        if let Some(poller) = &self.poller_thread {
-            // Using `.stop()` instead of `.shutdown()` here because we don't need to wait for the
+        if let Some(thread) = &self.background_thread {
+            // Using `.kill()` instead of `.shutdown()` here because we don't need to wait for the
             // poller thread to exit.
-            poller.stop();
+            thread.kill();
         }
     }
 }

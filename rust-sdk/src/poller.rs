@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use crate::{Result, SDK_METADATA};
+use eppo_core::background::BackgroundThread;
 use eppo_core::configuration_fetcher::{ConfigurationFetcher, ConfigurationFetcherConfig};
+use eppo_core::configuration_poller::start_configuration_poller;
 use eppo_core::configuration_store::ConfigurationStore;
-use eppo_core::poller_thread::PollerThread as PollerThreadImpl;
 #[cfg(doc)]
 use eppo_core::Error;
 
@@ -21,7 +22,10 @@ pub(crate) struct PollerThreadConfig {
 ///
 /// The Client returns `None` for assignments before the first configuration is fetched. So it is
 /// recommended to call [`PollerThread::wait_for_configuration`] before requesting assignments.
-pub struct PollerThread(PollerThreadImpl);
+pub struct PollerThread {
+    thread: BackgroundThread,
+    poller: eppo_core::configuration_poller::ConfigurationPoller,
+}
 
 impl PollerThread {
     /// Starts the configuration poller thread.
@@ -48,8 +52,14 @@ impl PollerThread {
             api_key: config.api_key,
             sdk_metadata: SDK_METADATA.clone(),
         });
-        let inner = PollerThreadImpl::start(fetcher, config.store)?;
-        Ok(PollerThread(inner))
+        let thread = BackgroundThread::start()?;
+        let poller = start_configuration_poller(
+            thread.runtime(),
+            fetcher,
+            config.store,
+            eppo_core::configuration_poller::ConfigurationPollerConfig::default(),
+        );
+        Ok(PollerThread { thread, poller })
     }
 
     /// Waits for the configuration to be fetched.
@@ -80,14 +90,16 @@ impl PollerThread {
     /// # }
     /// ```
     pub fn wait_for_configuration(&self) -> Result<()> {
-        self.0.wait_for_configuration()
+        self.thread
+            .runtime()
+            .block_on(self.poller.wait_for_configuration())
     }
 
     /// Stop the poller thread.
     ///
     /// This function does not wait for the thread to actually stop.
     pub fn stop(&self) {
-        self.0.stop()
+        self.thread.kill();
     }
 
     /// Stop the poller thread and block waiting for it to exit.
@@ -109,6 +121,7 @@ impl PollerThread {
     /// # }
     /// ```
     pub fn shutdown(self) -> Result<()> {
-        self.0.shutdown()
+        self.thread.graceful_shutdown();
+        Ok(())
     }
 }
