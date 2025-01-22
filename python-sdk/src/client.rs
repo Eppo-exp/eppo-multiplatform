@@ -467,7 +467,7 @@ impl EppoClient {
     fn get_flag_keys<'py>(&'py self, py: Python<'py>) -> PyResult<Bound<PySet>> {
         let config = self.configuration_store.get_configuration();
         match config {
-            Some(config) => PySet::new_bound(py, &config.flag_keys()),
+            Some(config) => PySet::new_bound(py, config.flag_keys()),
             None => PySet::empty_bound(py),
         }
     }
@@ -479,9 +479,7 @@ impl EppoClient {
     fn get_bandit_keys<'py>(&'py self, py: Python<'py>) -> PyResult<Bound<PySet>> {
         let config = self.configuration_store.get_configuration();
         match config {
-            Some(config) => {
-                PySet::new_bound(py, config.bandits.iter().flat_map(|it| it.bandits.keys()))
-            }
+            Some(config) => PySet::new_bound(py, config.bandit_keys()),
             None => PySet::empty_bound(py),
         }
     }

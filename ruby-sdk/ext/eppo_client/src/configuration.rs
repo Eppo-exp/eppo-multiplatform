@@ -81,22 +81,20 @@ impl Configuration {
         Ok(Configuration { inner })
     }
 
-    fn flags_configuration(ruby: &Ruby, rb_self: &Self) -> Result<RString, Error> {
-        Ok(ruby.str_from_slice(rb_self.inner.flags.to_json()))
+    fn flags_configuration(ruby: &Ruby, rb_self: &Self) -> Result<Option<RString>, Error> {
+        let result = rb_self
+            .inner
+            .get_flags_configuration()
+            .map(|s| ruby.str_from_slice(s.as_ref()));
+        Ok(result)
     }
 
     fn bandits_configuration(ruby: &Ruby, rb_self: &Self) -> Result<Option<RString>, Error> {
-        let Some(bandits) = &rb_self.inner.bandits else {
-            return Ok(None);
-        };
-        let vec = serde_json::to_vec(bandits).map_err(|err| {
-            // this should never happen
-            Error::new(
-                ruby.exception_runtime_error(),
-                format!("failed to serialize bandits configuration: {err:?}"),
-            )
-        })?;
-        Ok(Some(ruby.str_from_slice(&vec)))
+        let result = rb_self
+            .inner
+            .get_bandits_configuration()
+            .map(|s| ruby.str_from_slice(s.as_ref()));
+        Ok(result)
     }
 }
 
