@@ -1,14 +1,3 @@
-#[cfg(feature = "event_ingestion")]
-mod event;
-#[cfg(feature = "event_ingestion")]
-mod event_delivery;
-#[cfg(feature = "event_ingestion")]
-mod event_dispatcher;
-#[cfg(feature = "event_ingestion")]
-mod queued_event;
-#[cfg(feature = "event_ingestion")]
-mod vec_event_queue;
-
 use std::{collections::HashMap, sync::Arc};
 
 use serde::Serialize;
