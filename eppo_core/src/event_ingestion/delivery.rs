@@ -6,6 +6,7 @@ use crate::event_ingestion::queued_event::QueuedEvent;
 use log::warn;
 use tokio::sync::mpsc;
 
+#[derive(Debug, PartialEq)]
 pub(super) struct QueuedBatch {
     pub success: Vec<QueuedEvent>,
     pub failure: Vec<QueuedEvent>,
@@ -13,7 +14,19 @@ pub(super) struct QueuedBatch {
 }
 
 impl QueuedBatch {
-    fn with_success(success: Vec<QueuedEvent>) -> Self {
+    pub fn new(
+        success: Vec<QueuedEvent>,
+        failure: Vec<QueuedEvent>,
+        retry: Vec<QueuedEvent>,
+    ) -> Self {
+        QueuedBatch {
+            success,
+            failure,
+            retry,
+        }
+    }
+
+    pub fn success(success: Vec<QueuedEvent>) -> Self {
         QueuedBatch {
             success,
             failure: Vec::new(),
@@ -21,11 +34,19 @@ impl QueuedBatch {
         }
     }
 
-    fn with_failure(failure: Vec<QueuedEvent>) -> Self {
+    pub fn failure(failure: Vec<QueuedEvent>) -> Self {
         QueuedBatch {
             success: Vec::new(),
             retry: Vec::new(),
             failure,
+        }
+    }
+
+    pub fn retry(retry: Vec<QueuedEvent>) -> Self {
+        QueuedBatch {
+            success: Vec::new(),
+            retry,
+            failure: Vec::new(),
         }
     }
 }
@@ -33,7 +54,7 @@ impl QueuedBatch {
 pub(super) async fn delivery(
     mut uplink: mpsc::Receiver<BatchedMessage<QueuedEvent>>,
     delivery_status: mpsc::Sender<QueuedBatch>,
-    max_retries: u8,
+    max_retries: u32,
     event_delivery: EventDelivery,
 ) -> Option<()> {
     loop {
@@ -59,7 +80,7 @@ pub(super) async fn delivery(
                 match err {
                     EventDeliveryError::RetriableError(_) => {
                         // Retry later
-                        deliver_status(&delivery_status, QueuedBatch::with_failure(batch)).await;
+                        deliver_status(&delivery_status, QueuedBatch::failure(batch)).await;
                     }
                     EventDeliveryError::NonRetriableError(_) => {
                         warn!("Failed to deliver events: {}", err);
@@ -75,11 +96,11 @@ pub(super) async fn delivery(
 fn collect_delivery_response(
     batch: Vec<QueuedEvent>,
     response: EventDeliveryResponse,
-    max_retries: u8,
+    max_retries: u32,
 ) -> QueuedBatch {
     let failed_event_uuids = response.failed_events;
     if failed_event_uuids.is_empty() {
-        return QueuedBatch::with_success(batch);
+        return QueuedBatch::success(batch);
     }
     warn!("Failed to deliver {} events", failed_event_uuids.len());
     let mut success = Vec::new();
@@ -98,7 +119,11 @@ fn collect_delivery_response(
             success.push(queued_event);
         }
     }
-    QueuedBatch { success, failure, retry }
+    QueuedBatch {
+        success,
+        failure,
+        retry,
+    }
 }
 
 async fn deliver_status(receiver: &mpsc::Sender<QueuedBatch>, status: QueuedBatch) {

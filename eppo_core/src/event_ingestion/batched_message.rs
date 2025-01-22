@@ -18,10 +18,7 @@ impl<T> BatchedMessage<T> {
 
     /// Create a new message with a batch of data and optionally a list of watchers.
     pub fn new(batch: Vec<T>, flush: Option<()>) -> BatchedMessage<T> {
-        BatchedMessage {
-            batch,
-            flush,
-        }
+        BatchedMessage { batch, flush }
     }
 
     pub fn requires_flush(&self) -> bool {

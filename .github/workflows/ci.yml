@@ -45,7 +45,7 @@ jobs:
 
       - run: npm ci
       - run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
-      - run: cargo build --verbose --all-targets --workspace --features "event_ingestion"
+      - run: cargo build --verbose --all-targets --workspace --all-features
 
-      - run: cargo test --verbose --workspace --features "event_ingestion"
+      - run: cargo test --verbose --workspace --all-features
       - run: cargo doc --verbose

@@ -1,8 +1,7 @@
 use crate::event_ingestion::batched_message::BatchedMessage;
-use crate::event_ingestion::event::Event;
+use crate::event_ingestion::delivery::QueuedBatch;
 use crate::event_ingestion::event_delivery::EventDelivery;
 use crate::event_ingestion::queued_event::QueuedEvent;
-use crate::event_ingestion::retry::FinishedBatch;
 use crate::event_ingestion::{auto_flusher, batcher, delivery, retry};
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -20,7 +19,7 @@ pub(super) struct EventDispatcherConfig {
     pub delivery_interval: Duration,
     pub retry_interval: Duration,
     pub max_retry_delay: Duration,
-    pub max_retries: u8,
+    pub max_retries: u32,
     pub batch_size: usize,
     pub max_queue_size: usize,
 }
@@ -40,7 +39,7 @@ impl EventDispatcher {
     /// Use the sender to dispatch events and the receiver to receive delivery statuses.
     fn spawn_event_dispatcher(
         &self,
-    ) -> (Sender<BatchedMessage<QueuedEvent>>, Receiver<FinishedBatch>) {
+    ) -> (Sender<BatchedMessage<QueuedEvent>>, Receiver<QueuedBatch>) {
         let config = self.config.clone();
         let ingestion_url = Url::parse(config.ingestion_url.as_str())
             .expect("Failed to create EventDelivery. invalid ingestion URL");
@@ -75,6 +74,9 @@ impl EventDispatcher {
             delivery_downlink_rx,
             batcher_downlink_tx,
             retry_downlink_tx,
+            config.max_retries as u32,
+            config.retry_interval,
+            config.max_retry_delay,
         ));
 
         (sender, receiver)
@@ -84,6 +86,7 @@ impl EventDispatcher {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::event_ingestion::delivery::QueuedBatch;
     use crate::timestamp::now;
     use serde::Serialize;
     use serde_json::json;
@@ -92,6 +95,7 @@ mod tests {
     use wiremock::http::Method;
     use wiremock::matchers::{body_json, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
+    use crate::event_ingestion::event::Event;
 
     #[derive(Debug, Clone, Serialize)]
     struct LoginPayload {
@@ -155,7 +159,7 @@ mod tests {
         let delivery_status = rx.recv().await.unwrap();
         assert_eq!(
             delivery_status,
-            FinishedBatch::with_retry(vec![QueuedEvent {
+            QueuedBatch::retry(vec![QueuedEvent {
                 event: event.clone(),
                 attempts: 1
             }])
@@ -163,7 +167,7 @@ mod tests {
         let delivery_status = rx.recv().await.unwrap();
         assert_eq!(
             delivery_status,
-            FinishedBatch::with_retry(vec![QueuedEvent {
+            QueuedBatch::retry(vec![QueuedEvent {
                 event: event.clone(),
                 attempts: 2
             }])
@@ -171,9 +175,9 @@ mod tests {
         let delivery_status = rx.recv().await.unwrap();
         assert_eq!(
             delivery_status,
-            FinishedBatch::with_failure(vec![QueuedEvent {
+            QueuedBatch::failure(vec![QueuedEvent {
                 event: event.clone(),
-                attempts: 3
+                attempts: 3 // 1 regular attempt + 2 retries
             }]),
         );
         let received_requests = mock_server.received_requests().await.unwrap();
@@ -207,7 +211,7 @@ mod tests {
         }
     }
 
-    async fn run_dispatcher_task(event: Event, mock_server_uri: String) -> Receiver<FinishedBatch> {
+    async fn run_dispatcher_task(event: Event, mock_server_uri: String) -> Receiver<QueuedBatch> {
         let batch_size = 1;
         let config = new_test_event_config(mock_server_uri, batch_size);
         let dispatcher = EventDispatcher::new(config);

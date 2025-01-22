@@ -3,15 +3,12 @@ use crate::event_ingestion::event::Event;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(super) struct QueuedEvent {
     pub event: Event,
-    pub attempts: u8,
+    pub attempts: u32,
 }
 
 impl QueuedEvent {
     pub fn new(event: Event) -> Self {
-        QueuedEvent {
-            event,
-            attempts: 0,
-        }
+        QueuedEvent { event, attempts: 0 }
     }
 
     /// Creates a new QueuedEvent from a failed QueuedEvent, incrementing the attempts counter.
