@@ -99,16 +99,17 @@ fn collect_delivery_response(
     response: EventDeliveryResponse,
     max_retries: u32,
 ) -> QueuedBatch {
-    let failed_event_uuids = response.failed_events;
-    if failed_event_uuids.is_empty() {
+    if response.is_empty() {
         return QueuedBatch::success(batch);
     }
-    warn!("Failed to deliver {} events", failed_event_uuids.len());
+    let failed_retriable_event_uuids = response.retriable_failed_events;
+    let failed_non_retriable_event_uuids = response.non_retriable_failed_events;
+    warn!("Failed to deliver {} events (retriable)", failed_retriable_event_uuids.len());
     let mut success = Vec::new();
     let mut failure = Vec::new();
     let mut retry = Vec::new();
     for queued_event in batch {
-        if failed_event_uuids.contains(&queued_event.event.uuid) {
+        if failed_retriable_event_uuids.contains(&queued_event.event.uuid) {
             if queued_event.attempts < max_retries {
                 // increment failed attempts count and retry
                 retry.push(QueuedEvent::new_from_failed(queued_event));
@@ -116,6 +117,9 @@ fn collect_delivery_response(
                 // max retries reached, mark as failed
                 failure.push(QueuedEvent::new_from_failed(queued_event));
             }
+        } else if failed_non_retriable_event_uuids.contains(&queued_event.event.uuid) {
+            // event may not be retried
+            failure.push(QueuedEvent::new_from_failed(queued_event));
         } else {
             success.push(queued_event);
         }

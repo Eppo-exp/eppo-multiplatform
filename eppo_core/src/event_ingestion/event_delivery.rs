@@ -1,5 +1,7 @@
 use crate::event_ingestion::event::Event;
-use crate::event_ingestion::event_delivery::EventDeliveryError::{EventPayloadTooLargeError, JsonSerializationError};
+use crate::event_ingestion::event_delivery::EventDeliveryError::{
+    EventPayloadTooLargeError, JsonDeserializationError, JsonSerializationError,
+};
 use crate::Str;
 use log::{debug, info};
 use reqwest::StatusCode;
@@ -17,8 +19,28 @@ pub(super) struct EventDelivery {
     client: reqwest::Client,
 }
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(Debug, PartialEq)]
 pub(super) struct EventDeliveryResponse {
+    // Events that failed delivery but that may be retried at a later time
+    pub retriable_failed_events: HashSet<Uuid>,
+    // Events that failed delivery and should not be retried (the failure is final)
+    pub non_retriable_failed_events: HashSet<Uuid>,
+}
+
+impl EventDeliveryResponse {
+    pub fn empty() -> Self {
+        EventDeliveryResponse {
+            retriable_failed_events: HashSet::new(),
+            non_retriable_failed_events: HashSet::new(),
+        }
+    }
+    pub fn is_empty(&self) -> bool {
+        self.retriable_failed_events.is_empty() && self.non_retriable_failed_events.is_empty()
+    }
+}
+
+#[derive(serde::Deserialize, Debug)]
+pub(super) struct RawEventDeliveryResponse {
     pub failed_events: HashSet<Uuid>,
 }
 
@@ -28,6 +50,8 @@ pub(super) enum EventDeliveryError {
     EventPayloadTooLargeError(usize),
     #[error("Failed to serialize events to JSON")]
     JsonSerializationError(serde_json::Error),
+    #[error("Failed to parse JSON response")]
+    JsonDeserializationError(reqwest::Error),
     #[error("Transient error delivering events")]
     RetriableError(reqwest::Error),
     #[error("Non-retriable error")]
@@ -58,12 +82,26 @@ impl EventDelivery {
         let ingestion_url = self.ingestion_url.clone();
         let sdk_key = &self.sdk_key;
         debug!("Delivering {} events to {}", events.len(), ingestion_url);
-        for event in &events {
-            ensure_max_event_size(&event)?;
+        let mut failed_validation_events = HashSet::new();
+        let mut events_to_deliver = Vec::new();
+        for event in events {
+            if !ensure_max_event_size(&event)? {
+                failed_validation_events.insert(event.uuid);
+            } else {
+                events_to_deliver.push(event);
+            }
         }
-        let body = IngestionRequestBody { eppo_events: events };
-        let serialized_body = serde_json::to_vec(&body)
-            .map_err(|e| JsonSerializationError(e))?;
+        if events_to_deliver.is_empty() {
+            // Short circuit if nothing left to deliver after filtering for event validation
+            return Ok(EventDeliveryResponse {
+                retriable_failed_events: HashSet::new(),
+                non_retriable_failed_events: failed_validation_events,
+            });
+        }
+        let body = IngestionRequestBody {
+            eppo_events: events_to_deliver,
+        };
+        let serialized_body = serde_json::to_vec(&body).map_err(|e| JsonSerializationError(e))?;
         let response = self
             .client
             .post(ingestion_url)
@@ -88,36 +126,36 @@ impl EventDelivery {
             }
         })?;
         let response = response
-            .json::<EventDeliveryResponse>()
+            .json::<RawEventDeliveryResponse>()
             .await
-            .map_err(EventDeliveryError::NonRetriableError)?;
+            .map_err(|e| JsonDeserializationError(e))?;
         info!(
             "Batch delivered successfully, {} events failed ingestion",
             response.failed_events.len()
         );
-        Ok(response)
+        Ok(EventDeliveryResponse {
+            retriable_failed_events: response.failed_events,
+            non_retriable_failed_events: failed_validation_events,
+        })
     }
 }
 
-fn ensure_max_event_size(event: &Event) -> Result<(), EventDeliveryError> {
-    let serialized_event = serde_json::to_vec(event)
-        .map_err(|e| JsonSerializationError(e))?;
-    if serialized_event.len() > MAX_EVENT_SERIALIZED_LENGTH {
-        Err(EventPayloadTooLargeError(serialized_event.len()))
-    } else {
-        Ok(())
-    }
+/// Returns whether the provided event's serialized JSON string is over the length limit
+fn ensure_max_event_size(event: &Event) -> Result<bool, EventDeliveryError> {
+    let serialized_event = serde_json::to_vec(event).map_err(|e| JsonSerializationError(e))?;
+    Ok(serialized_event.len() < MAX_EVENT_SERIALIZED_LENGTH)
 }
 
 #[cfg(test)]
 mod tests {
     use crate::event_ingestion::event::Event;
-    use crate::event_ingestion::event_delivery::EventDeliveryError::EventPayloadTooLargeError;
-    use crate::event_ingestion::event_delivery::{EventDelivery, MAX_EVENT_SERIALIZED_LENGTH};
+    use crate::event_ingestion::event_delivery::{
+        EventDelivery, EventDeliveryResponse, MAX_EVENT_SERIALIZED_LENGTH,
+    };
     use crate::timestamp::now;
     use crate::Str;
     use serde_json::json;
-    use std::collections::HashMap;
+    use std::collections::{HashMap, HashSet};
     use url::Url;
     use uuid::Uuid;
     use wiremock::matchers::{method, path};
@@ -126,15 +164,24 @@ mod tests {
     /// Test that an event over-4096-byte serialized length triggers a EventPayloadTooLargeError.
     #[tokio::test]
     async fn test_deliver_fails_on_large_payload() {
-        let client = EventDelivery::new(Str::from("foobar"), Url::parse("https://example.com").unwrap());
+        let client = EventDelivery::new(
+            Str::from("foobar"),
+            Url::parse("https://example.com").unwrap(),
+        );
         // Create an event that will produce a large JSON string.
         // Just repeat "A" enough times that JSON definitely exceeds 4096 bytes.
         let huge_string = "A".repeat(MAX_EVENT_SERIALIZED_LENGTH + 1);
         let large_event = new_test_event(huge_string);
-        let events = vec![large_event];
+        let events = vec![large_event.clone()];
         let result = client.deliver(events).await;
-        // We expect a NonRetriableError because the payload is too large
-        assert!(matches!(result, Err(EventPayloadTooLargeError(_))));
+        assert!(result.is_ok(), "Expected Ok, got {:?}", result);
+        assert_eq!(
+            result.unwrap(),
+            EventDeliveryResponse {
+                non_retriable_failed_events: HashSet::from([large_event.uuid]),
+                retriable_failed_events: HashSet::new()
+            }
+        )
     }
 
     /// Test that an event serialized size **just** under 4096 bytes succeeds.
@@ -147,12 +194,19 @@ mod tests {
             .respond_with(response_body)
             .mount(&mock_server)
             .await;
-        let client = EventDelivery::new(Str::from("foobar"), Url::parse(mock_server.uri().as_str()).unwrap());
+        let client = EventDelivery::new(
+            Str::from("foobar"),
+            Url::parse(mock_server.uri().as_str()).unwrap(),
+        );
         let small_event = new_test_event("A".repeat(3500));
         let events = vec![small_event];
         let result = client.deliver(events).await;
         // Should be ok because payload is not over MAX_EVENT_PAYLOAD_SIZE
         assert!(result.is_ok(), "Expected Ok, got {:?}", result);
+        assert_eq!(
+            result.unwrap(),
+            EventDeliveryResponse::empty()
+        )
     }
 
     fn new_test_event(user_id: String) -> Event {
