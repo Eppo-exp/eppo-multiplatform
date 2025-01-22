@@ -45,13 +45,12 @@ impl EventDispatcher {
             .expect("Failed to create EventDelivery. invalid ingestion URL");
         let event_delivery = EventDelivery::new(config.sdk_key.into(), ingestion_url);
 
-        // TODO: Does this make sense for channel size?
-        let channel_size = MAX_BATCH_SIZE;
-        let (sender, flusher_uplink_rx) = mpsc::channel(channel_size);
-        let (flusher_downlink_tx, flusher_downlink_rx) = mpsc::channel(channel_size);
-        let (batcher_downlink_tx, batcher_downlink_rx) = mpsc::channel(channel_size);
-        let (delivery_downlink_tx, delivery_downlink_rx) = mpsc::channel(channel_size);
-        let (retry_downlink_tx, receiver) = mpsc::channel(channel_size);
+        let channel_size = config.max_queue_size;
+        let (sender, flusher_uplink_rx) = mpsc::channel(config.max_queue_size);
+        let (flusher_downlink_tx, flusher_downlink_rx) = mpsc::channel(1);
+        let (batcher_downlink_tx, batcher_downlink_rx) = mpsc::channel(1);
+        let (delivery_downlink_tx, delivery_downlink_rx) = mpsc::channel(1);
+        let (retry_downlink_tx, receiver) = mpsc::channel(1);
 
         // Spawn the auto_flusher, batcher and delivery
         tokio::spawn(auto_flusher::auto_flusher(
