@@ -67,7 +67,7 @@ pub(super) async fn delivery(
         }
         let events_to_deliver = batch
             .iter()
-            .map(|queued_event| queued_event.event)
+            .map(|queued_event| &queued_event.event)
             .collect();
         let result = event_delivery.deliver(events_to_deliver).await;
         match result {
