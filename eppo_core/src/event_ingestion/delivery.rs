@@ -80,12 +80,13 @@ pub(super) async fn delivery(
                 match err {
                     EventDeliveryError::RetriableError(_) => {
                         // Retry later
-                        deliver_status(&delivery_status, QueuedBatch::failure(batch)).await;
+                        deliver_status(&delivery_status, QueuedBatch::retry(batch)).await;
                     }
-                    EventDeliveryError::NonRetriableError(_) => {
+                    _ => {
                         warn!("Failed to deliver events: {}", err);
                         // In this case there is no point in retrying delivery since the error is
                         // non-retriable.
+                        deliver_status(&delivery_status, QueuedBatch::failure(batch)).await;
                     }
                 }
             }
