@@ -5,6 +5,7 @@ use crate::event_ingestion::event_delivery::{
 use crate::event_ingestion::queued_event::QueuedEvent;
 use log::warn;
 use tokio::sync::mpsc;
+use crate::event_ingestion::event::Event;
 
 #[derive(Debug, PartialEq)]
 pub(super) struct QueuedBatch {
@@ -68,8 +69,8 @@ pub(super) async fn delivery(
         let events_to_deliver = batch
             .iter()
             .map(|queued_event| &queued_event.event)
-            .collect();
-        let result = event_delivery.deliver(events_to_deliver).await;
+            .collect::<Vec<&Event>>();
+        let result = event_delivery.deliver(events_to_deliver.as_slice()).await;
         match result {
             Ok(response) => {
                 let delivery_status_data = collect_delivery_response(batch, response, max_retries);

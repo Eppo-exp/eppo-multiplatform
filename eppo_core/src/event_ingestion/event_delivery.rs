@@ -29,7 +29,7 @@ pub(super) enum EventDeliveryError {
 
 #[derive(Debug, Serialize)]
 struct IngestionRequestBody<'a> {
-    eppo_events: Vec<&'a Event>,
+    eppo_events: &'a [&'a Event],
 }
 
 /// Responsible for delivering event batches to the Eppo ingestion service.
@@ -46,7 +46,7 @@ impl EventDelivery {
     /// Delivers the provided event batch and returns a Vec with the events that failed to be delivered.
     pub(super) async fn deliver(
         &self,
-        events: Vec<&Event>,
+        events: &[&Event],
     ) -> Result<EventDeliveryResponse, EventDeliveryError> {
         let ingestion_url = self.ingestion_url.clone();
         let sdk_key = &self.sdk_key;
