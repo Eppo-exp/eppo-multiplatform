@@ -44,8 +44,6 @@ impl EventDispatcher {
         let ingestion_url = Url::parse(config.ingestion_url.as_str())
             .expect("Failed to create EventDelivery. invalid ingestion URL");
         let event_delivery = EventDelivery::new(config.sdk_key.into(), ingestion_url);
-
-        let channel_size = config.max_queue_size;
         let (sender, flusher_uplink_rx) = mpsc::channel(config.max_queue_size);
         let (flusher_downlink_tx, flusher_downlink_rx) = mpsc::channel(1);
         let (batcher_downlink_tx, batcher_downlink_rx) = mpsc::channel(1);

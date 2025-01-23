@@ -1,6 +1,6 @@
 use super::BatchedMessage;
 use crate::event_ingestion::event_delivery::{
-    EventDelivery, EventDeliveryError, EventDeliveryResponse,
+    EventDelivery, EventDeliveryError, DeliveryResult,
 };
 use crate::event_ingestion::queued_event::QueuedEvent;
 use log::warn;
@@ -80,12 +80,13 @@ pub(super) async fn delivery(
                 match err {
                     EventDeliveryError::RetriableError(_) => {
                         // Retry later
-                        deliver_status(&delivery_status, QueuedBatch::failure(batch)).await;
+                        deliver_status(&delivery_status, QueuedBatch::retry(batch)).await;
                     }
-                    EventDeliveryError::NonRetriableError(_) => {
+                    _ => {
                         warn!("Failed to deliver events: {}", err);
                         // In this case there is no point in retrying delivery since the error is
                         // non-retriable.
+                        deliver_status(&delivery_status, QueuedBatch::failure(batch)).await;
                     }
                 }
             }
@@ -95,19 +96,20 @@ pub(super) async fn delivery(
 
 fn collect_delivery_response(
     batch: Vec<QueuedEvent>,
-    response: EventDeliveryResponse,
+    result: DeliveryResult,
     max_retries: u32,
 ) -> QueuedBatch {
-    let failed_event_uuids = response.failed_events;
-    if failed_event_uuids.is_empty() {
+    if result.is_empty() {
         return QueuedBatch::success(batch);
     }
-    warn!("Failed to deliver {} events", failed_event_uuids.len());
+    let failed_retriable_event_uuids = result.retriable_failed_events;
+    let failed_non_retriable_event_uuids = result.non_retriable_failed_events;
+    warn!("Failed to deliver {} events (retriable)", failed_retriable_event_uuids.len());
     let mut success = Vec::new();
     let mut failure = Vec::new();
     let mut retry = Vec::new();
     for queued_event in batch {
-        if failed_event_uuids.contains(&queued_event.event.uuid) {
+        if failed_retriable_event_uuids.contains(&queued_event.event.uuid) {
             if queued_event.attempts < max_retries {
                 // increment failed attempts count and retry
                 retry.push(QueuedEvent::new_from_failed(queued_event));
@@ -115,6 +117,9 @@ fn collect_delivery_response(
                 // max retries reached, mark as failed
                 failure.push(QueuedEvent::new_from_failed(queued_event));
             }
+        } else if failed_non_retriable_event_uuids.contains(&queued_event.event.uuid) {
+            // event may not be retried
+            failure.push(QueuedEvent::new_from_failed(queued_event));
         } else {
             success.push(queued_event);
         }
