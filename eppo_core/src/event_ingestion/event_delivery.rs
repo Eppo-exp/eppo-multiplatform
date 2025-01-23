@@ -84,7 +84,7 @@ impl EventDelivery {
         debug!("Delivering {} events to {}", events.len(), ingestion_url);
         let mut failed_validation_events = HashSet::new();
         let mut events_to_deliver = Vec::new();
-        for event in events {
+        for &event in events {
             if !ensure_max_event_size(&event)? {
                 failed_validation_events.insert(event.uuid);
             } else {
@@ -99,7 +99,7 @@ impl EventDelivery {
             });
         }
         let body = IngestionRequestBody {
-            eppo_events: events_to_deliver,
+            eppo_events: events_to_deliver.as_slice(),
         };
         let serialized_body = serde_json::to_vec(&body).map_err(|e| JsonSerializationError(e))?;
         let response = self
@@ -172,8 +172,7 @@ mod tests {
         // Just repeat "A" enough times that JSON definitely exceeds 4096 bytes.
         let huge_string = "A".repeat(MAX_EVENT_SERIALIZED_LENGTH + 1);
         let large_event = new_test_event(huge_string);
-        let events = vec![large_event.clone()];
-        let result = client.deliver(events).await;
+        let result = client.deliver(&[&large_event]).await;
         assert!(result.is_ok(), "Expected Ok, got {:?}", result);
         assert_eq!(
             result.unwrap(),
@@ -199,8 +198,7 @@ mod tests {
             Url::parse(mock_server.uri().as_str()).unwrap(),
         );
         let small_event = new_test_event("A".repeat(3500));
-        let events = vec![small_event];
-        let result = client.deliver(events).await;
+        let result = client.deliver(&[&small_event]).await;
         // Should be ok because payload is not over MAX_EVENT_PAYLOAD_SIZE
         assert!(result.is_ok(), "Expected Ok, got {:?}", result);
         assert_eq!(
