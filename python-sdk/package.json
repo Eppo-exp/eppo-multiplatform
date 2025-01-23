@@ -1,9 +1,8 @@
 {
   "private": true,
   "name": "python-sdk",
-  "version": "4.2.2",
-  "dependencies": {
-  },
+  "version": "4.2.3",
+  "dependencies": {},
   "devDependencies": {},
   "scripts": {
     "postversion": "./postversion.sh"
