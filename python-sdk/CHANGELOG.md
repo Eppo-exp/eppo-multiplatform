@@ -1,5 +1,11 @@
 # python-sdk
 
+## 4.2.3
+
+### Patch Changes
+
+- [#171](https://github.com/Eppo-exp/eppo-multiplatform/pull/171) [`d4ac73f`](https://github.com/Eppo-exp/eppo-multiplatform/commit/d4ac73fa44627f78c0a325689e8263e120131443) Thanks [@rasendubi](https://github.com/rasendubi)! - Update pyo3 dependencies, enable support cpython-3.13.
+
 ## 4.2.2
 
 ### Patch Changes
