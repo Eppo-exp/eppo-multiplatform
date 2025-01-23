@@ -20,16 +20,16 @@ pub(super) struct EventDelivery {
 }
 
 #[derive(Debug, PartialEq)]
-pub(super) struct EventDeliveryResponse {
+pub(super) struct DeliveryResult {
     // Events that failed delivery but that may be retried at a later time
     pub retriable_failed_events: HashSet<Uuid>,
     // Events that failed delivery and should not be retried (the failure is final)
     pub non_retriable_failed_events: HashSet<Uuid>,
 }
 
-impl EventDeliveryResponse {
+impl DeliveryResult {
     pub fn empty() -> Self {
-        EventDeliveryResponse {
+        DeliveryResult {
             retriable_failed_events: HashSet::new(),
             non_retriable_failed_events: HashSet::new(),
         }
@@ -78,7 +78,7 @@ impl EventDelivery {
     pub(super) async fn deliver(
         &self,
         events: &[&Event],
-    ) -> Result<EventDeliveryResponse, EventDeliveryError> {
+    ) -> Result<DeliveryResult, EventDeliveryError> {
         let ingestion_url = self.ingestion_url.clone();
         let sdk_key = &self.sdk_key;
         debug!("Delivering {} events to {}", events.len(), ingestion_url);
@@ -93,7 +93,7 @@ impl EventDelivery {
         }
         if events_to_deliver.is_empty() {
             // Short circuit if nothing left to deliver after filtering for event validation
-            return Ok(EventDeliveryResponse {
+            return Ok(DeliveryResult {
                 retriable_failed_events: HashSet::new(),
                 non_retriable_failed_events: failed_validation_events,
             });
@@ -133,7 +133,7 @@ impl EventDelivery {
             "Batch delivered successfully, {} events failed ingestion",
             response.failed_events.len()
         );
-        Ok(EventDeliveryResponse {
+        Ok(DeliveryResult {
             retriable_failed_events: response.failed_events,
             non_retriable_failed_events: failed_validation_events,
         })
@@ -150,7 +150,7 @@ fn ensure_max_event_size(event: &Event) -> Result<bool, EventDeliveryError> {
 mod tests {
     use crate::event_ingestion::event::Event;
     use crate::event_ingestion::event_delivery::{
-        EventDelivery, EventDeliveryResponse, MAX_EVENT_SERIALIZED_LENGTH,
+        EventDelivery, DeliveryResult, MAX_EVENT_SERIALIZED_LENGTH,
     };
     use crate::timestamp::now;
     use crate::Str;
@@ -177,7 +177,7 @@ mod tests {
         assert!(result.is_ok(), "Expected Ok, got {:?}", result);
         assert_eq!(
             result.unwrap(),
-            EventDeliveryResponse {
+            DeliveryResult {
                 non_retriable_failed_events: HashSet::from([large_event.uuid]),
                 retriable_failed_events: HashSet::new()
             }
@@ -205,7 +205,7 @@ mod tests {
         assert!(result.is_ok(), "Expected Ok, got {:?}", result);
         assert_eq!(
             result.unwrap(),
-            EventDeliveryResponse::empty()
+            DeliveryResult::empty()
         )
     }
 

@@ -1,6 +1,6 @@
 use super::BatchedMessage;
 use crate::event_ingestion::event_delivery::{
-    EventDelivery, EventDeliveryError, EventDeliveryResponse,
+    EventDelivery, EventDeliveryError, DeliveryResult,
 };
 use crate::event_ingestion::queued_event::QueuedEvent;
 use log::warn;
@@ -96,14 +96,14 @@ pub(super) async fn delivery(
 
 fn collect_delivery_response(
     batch: Vec<QueuedEvent>,
-    response: EventDeliveryResponse,
+    result: DeliveryResult,
     max_retries: u32,
 ) -> QueuedBatch {
-    if response.is_empty() {
+    if result.is_empty() {
         return QueuedBatch::success(batch);
     }
-    let failed_retriable_event_uuids = response.retriable_failed_events;
-    let failed_non_retriable_event_uuids = response.non_retriable_failed_events;
+    let failed_retriable_event_uuids = result.retriable_failed_events;
+    let failed_non_retriable_event_uuids = result.non_retriable_failed_events;
     warn!("Failed to deliver {} events (retriable)", failed_retriable_event_uuids.len());
     let mut success = Vec::new();
     let mut failure = Vec::new();

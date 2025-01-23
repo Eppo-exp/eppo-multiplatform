@@ -10,7 +10,6 @@ categories = ["config"]
 rust-version = "1.75.0"
 
 [features]
-default = ["event_ingestion"]
 # Unstable feature flag for an upcoming feature.
 event_ingestion = ["dep:uuid", "dep:exponential-backoff"]
 # Add implementation of `FromPyObject`/`ToPyObject` for some types.
