@@ -1,10 +1,8 @@
 {
   "private": true,
   "name": "python-sdk",
-  "version": "4.2.2",
-  "dependencies": {
-    "eppo_core": "7.0.2"
-  },
+  "version": "4.2.3",
+  "dependencies": {},
   "devDependencies": {},
   "scripts": {
     "postversion": "./postversion.sh"

@@ -3,7 +3,6 @@
   "name": "ruby-sdk",
   "version": "3.4.2",
   "dependencies": {
-    "eppo_core": "7.0.2"
   },
   "devDependencies": {},
   "scripts": {
