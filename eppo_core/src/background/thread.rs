@@ -50,3 +50,25 @@ impl BackgroundThread {
         let _ = self.join_handle.join();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_example_usage() {
+        let background_thread = BackgroundThread::start().unwrap();
+
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+
+        background_thread.runtime().spawn_untracked(async move {
+            tx.send(true).unwrap();
+        });
+
+        let received = rx.blocking_recv().unwrap();
+
+        assert_eq!(received, true);
+
+        background_thread.graceful_shutdown();
+    }
+}

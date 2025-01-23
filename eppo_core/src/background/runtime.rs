@@ -19,6 +19,9 @@ pub struct BackgroundRuntime {
 }
 
 impl BackgroundRuntime {
+    /// Creates a new `BackgroundRuntime` that runs on the given tokio `runtime`.
+    ///
+    /// The background runtime is active until `stop()` is called.
     #[must_use]
     pub fn new(runtime: tokio::runtime::Handle) -> BackgroundRuntime {
         let cancellation_token = CancellationToken::new();
@@ -30,13 +33,22 @@ impl BackgroundRuntime {
         }
     }
 
+    #[must_use]
     pub(crate) fn tokio_handle(&self) -> &tokio::runtime::Handle {
         &self.tokio_runtime
     }
 
+    /// Returns a cancellation token that get cancelled when background runtime is going to
+    /// shutdown.
+    ///
+    /// If you want your task to react to shutdown and perform some cleanup, spawn your task with
+    /// [`BackgroundThread::spawn_tracked()`] and watch this cancellation token.
+    ///
+    /// Note: this is a child token of the main cancellation token, so canceling it does not cancel
+    /// the whole runtime.
     #[must_use]
-    pub(crate) fn cancellation_token(&self) -> &CancellationToken {
-        &self.cancellation_token
+    pub(crate) fn cancellation_token(&self) -> CancellationToken {
+        self.cancellation_token.child_token()
     }
 
     pub fn block_on<F: Future>(&self, future: F) -> F::Output {
@@ -87,5 +99,120 @@ impl BackgroundRuntime {
 impl Drop for BackgroundRuntime {
     fn drop(&mut self) {
         self.stop();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        sync::{
+            atomic::{AtomicBool, Ordering},
+            Arc,
+        },
+        time::Duration,
+    };
+
+    use super::*;
+
+    #[test]
+    fn test_start_stop() {
+        let tokio_runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        let background_runtime = BackgroundRuntime::new(tokio_runtime.handle().clone());
+
+        // Without us calling .stop(), .block_on() below would block indefinitely.
+        background_runtime.stop();
+
+        tokio_runtime.block_on(background_runtime.wait());
+
+        // Checking that the above works and stops as expected.
+    }
+
+    #[test]
+    fn test_stops_with_uncooperative_task() {
+        let tokio_runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        let background_runtime = BackgroundRuntime::new(tokio_runtime.handle().clone());
+
+        // This task is not cooperative and never finishes. It's spawned as "untracked" though, so
+        // background runtime doesn't wait for it to finish.
+        background_runtime.spawn_untracked(async {
+            loop {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
+        });
+
+        background_runtime.stop();
+
+        tokio_runtime.block_on(background_runtime.wait());
+
+        // Checking that the above works and stops as expected.
+    }
+
+    #[test]
+    fn test_waits_for_tracked_task_to_finish() {
+        let tokio_runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        let background_runtime = BackgroundRuntime::new(tokio_runtime.handle().clone());
+
+        let finished_cleanly = Arc::new(AtomicBool::new(false));
+
+        let cancellation_token = background_runtime.cancellation_token();
+        background_runtime.spawn_tracked({
+            let finished_cleanly = finished_cleanly.clone();
+            async move {
+                loop {
+                    tokio::select! {
+                        _ = cancellation_token.cancelled() => {
+                            finished_cleanly.store(true, Ordering::Relaxed);
+                            return;
+                        },
+                        _ = tokio::time::sleep(Duration::from_secs(1)) => {
+                            // Continue looping.
+                        },
+
+
+                    }
+                }
+            }
+        });
+
+        background_runtime.stop();
+
+        tokio_runtime.block_on(background_runtime.wait());
+
+        // Asserting that background runtime waited for tracked task to exit cleanly.
+        assert!(finished_cleanly.load(Ordering::Relaxed));
+    }
+
+    #[test]
+    fn test_stops_by_dropping() {
+        let tokio_runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let background_runtime = BackgroundRuntime::new(tokio_runtime.handle().clone());
+
+        let thread = std::thread::spawn({
+            let wait = background_runtime.wait();
+            move || {
+                tokio_runtime.block_on(wait);
+            }
+        });
+
+        drop(background_runtime);
+
+        thread.join().unwrap();
+
+        // Checking that everything stopped and the thread joined.
     }
 }

@@ -126,15 +126,13 @@ async fn configuration_poller(
     };
 
     loop {
-        log::debug!(target: "eppo", "fetching new configuration");
-
         match fetcher.fetch_configuration().await {
             Ok(configuration) => {
                 store.set_configuration(Arc::new(configuration));
                 update_status(Ok(()));
             }
             Err(err @ (Error::Unauthorized | Error::InvalidBaseUrl(_))) => {
-                // There errors are not recoverable. Update result and exit the poller.
+                // These errors are not recoverable. Update result and exit the poller.
                 update_status(Err(Error::from(err)));
                 return;
             }
