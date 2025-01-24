@@ -1,5 +1,8 @@
 use std::{cell::RefCell, str::FromStr, sync::Arc, time::Duration};
 
+use crate::{configuration::Configuration, SDK_METADATA};
+use eppo_core::event_ingestion::event_dispatcher::EventDispatcher;
+use eppo_core::event_ingestion::sdk_key_decoder::decode_event_ingestion_url;
 use eppo_core::{
     background::BackgroundThread,
     configuration_fetcher::{ConfigurationFetcher, ConfigurationFetcherConfig},
@@ -8,12 +11,11 @@ use eppo_core::{
     },
     configuration_store::ConfigurationStore,
     eval::{Evaluator, EvaluatorConfig},
+    event_ingestion::event_dispatcher::EventDispatcherConfig,
     ufc::VariationType,
     Attributes, ContextAttributes,
 };
 use magnus::{error::Result, exception, prelude::*, Error, IntoValue, Ruby, TryConvert, Value};
-
-use crate::{configuration::Configuration, SDK_METADATA};
 
 #[derive(Debug)]
 #[magnus::wrap(class = "EppoClient::Core::Config", size, free_immediately)]
@@ -23,17 +25,17 @@ pub struct Config {
     poll_interval: Option<Duration>,
     poll_jitter: Duration,
     log_level: Option<log::LevelFilter>,
+    event_ingestion_config: Option<EventDispatcherConfig>,
 }
 
 impl TryConvert for Config {
     // `val` is expected to be of type EppoClient::Config.
-    fn try_convert(val: magnus::Value) -> Result<Self> {
-        let api_key = String::try_convert(val.funcall("api_key", ())?)?;
+    fn try_convert(val: Value) -> Result<Self> {
+        let sdk_key = String::try_convert(val.funcall("api_key", ())?)?;
         let base_url = String::try_convert(val.funcall("base_url", ())?)?;
         let poll_interval_seconds =
             Option::<u64>::try_convert(val.funcall("poll_interval_seconds", ())?)?;
         let poll_jitter_seconds = u64::try_convert(val.funcall("poll_jitter_seconds", ())?)?;
-
         let log_level = {
             let s = Option::<String>::try_convert(val.funcall("log_level", ())?)?;
             s.map(|s| {
@@ -43,12 +45,15 @@ impl TryConvert for Config {
             .transpose()?
         };
 
+        let event_ingestion_config = decode_event_ingestion_url(&sdk_key)
+            .map(|url| EventDispatcherConfig::default(sdk_key.clone(), url));
         Ok(Config {
-            api_key,
+            api_key: sdk_key,
             base_url,
             poll_interval: poll_interval_seconds.map(Duration::from_secs),
             poll_jitter: Duration::from_secs(poll_jitter_seconds),
             log_level,
+            event_ingestion_config,
         })
     }
 }
@@ -63,6 +68,7 @@ pub struct Client {
     // This should be safe as Ruby only uses a single OS thread, and `Client` lives in the Ruby
     // world.
     poller_thread: RefCell<Option<(BackgroundThread, ConfigurationPoller)>>,
+    event_dispatcher: Option<EventDispatcher>,
 }
 
 impl Client {
@@ -111,10 +117,12 @@ impl Client {
             sdk_metadata: SDK_METADATA,
         });
 
+        let event_dispatcher = config.event_ingestion_config.map(EventDispatcher::new);
         Client {
             configuration_store,
             evaluator,
             poller_thread: RefCell::new(poller_thread),
+            event_dispatcher,
         }
     }
 
@@ -209,7 +217,7 @@ impl Client {
         .map_err(|err| {
             Error::new(
                 exception::runtime_error(),
-                format!("enexpected value for subject_attributes: {err}"),
+                format!("Unexpected value for subject_attributes: {err}"),
             )
         })?;
         let actions = serde_magnus::deserialize(actions)?;
@@ -240,5 +248,16 @@ impl Client {
         if let Some((thread, _poller)) = self.poller_thread.take() {
             let _ = thread.graceful_shutdown();
         }
+    }
+
+    pub fn track(&self, event_type: String, payload: Value) -> Result<()> {
+        let payload: serde_json::Value = serde_magnus::deserialize(payload).map_err(|err| {
+            Error::new(
+                exception::runtime_error(),
+                format!("Unexpected value for payload: {err}"),
+            )
+        })?;
+        // TODO: Spawn event dispatcher task (if not running) and send event to channel.
+        Ok(())
     }
 }

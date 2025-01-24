@@ -43,6 +43,10 @@ module EppoClient
       @core.shutdown
     end
 
+    def track(event_type, payload)
+      @core.track(event_type, payload)
+    end
+
     def get_string_assignment(flag_key, subject_key, subject_attributes, default_value)
       get_assignment_inner(flag_key, subject_key, subject_attributes, "STRING", default_value)
     end

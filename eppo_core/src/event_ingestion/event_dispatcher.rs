@@ -13,7 +13,7 @@ const MIN_BATCH_SIZE: usize = 1;
 const MAX_BATCH_SIZE: usize = 10_000;
 
 #[derive(Debug, Clone)]
-pub(super) struct EventDispatcherConfig {
+pub struct EventDispatcherConfig {
     pub sdk_key: String,
     pub ingestion_url: String,
     pub delivery_interval: Duration,
@@ -24,9 +24,31 @@ pub(super) struct EventDispatcherConfig {
     pub max_queue_size: usize,
 }
 
+impl EventDispatcherConfig {
+    pub fn default(sdk_key: String, ingestion_url: String) -> Self {
+        EventDispatcherConfig {
+            sdk_key,
+            ingestion_url,
+            delivery_interval: DEFAULT_DELIVERY_INTERVAL,
+            retry_interval: DEFAULT_RETRY_INTERVAL,
+            max_retry_delay: DEFAULT_MAX_RETRY_DELAY,
+            max_retries: DEFAULT_MAX_RETRIES,
+            batch_size: DEFAULT_BATCH_SIZE,
+            max_queue_size: DEFAULT_MAX_QUEUE_SIZE,
+        }
+    }
+}
+
+const DEFAULT_BATCH_SIZE: usize = 1_000;
+const DEFAULT_DELIVERY_INTERVAL: Duration = Duration::from_millis(10_000);
+const DEFAULT_RETRY_INTERVAL: Duration = Duration::from_millis(5_000);
+const DEFAULT_MAX_RETRY_DELAY: Duration = Duration::from_millis(30_000);
+const DEFAULT_MAX_RETRIES: u32 = 3;
+const DEFAULT_MAX_QUEUE_SIZE: usize = 10_000;
+
 /// EventDispatcher is responsible for batching events and delivering them to the ingestion service
 /// via [`EventDelivery`].
-pub(super) struct EventDispatcher {
+pub struct EventDispatcher {
     config: EventDispatcherConfig,
 }
 
@@ -85,6 +107,7 @@ impl EventDispatcher {
 mod tests {
     use super::*;
     use crate::event_ingestion::delivery::QueuedBatch;
+    use crate::event_ingestion::event::Event;
     use crate::timestamp::now;
     use serde::Serialize;
     use serde_json::json;
@@ -93,7 +116,6 @@ mod tests {
     use wiremock::http::Method;
     use wiremock::matchers::{body_json, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
-    use crate::event_ingestion::event::Event;
 
     #[derive(Debug, Clone, Serialize)]
     struct LoginPayload {

@@ -62,11 +62,11 @@ pub mod pyo3;
 pub mod sharder;
 pub mod timestamp;
 pub mod ufc;
+#[cfg(feature = "event_ingestion")]
+pub mod event_ingestion;
 
 mod configuration;
 mod error;
-#[cfg(feature = "event_ingestion")]
-mod event_ingestion;
 mod obfuscation;
 mod precomputed;
 mod sdk_metadata;
