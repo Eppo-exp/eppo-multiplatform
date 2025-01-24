@@ -54,6 +54,7 @@ impl QueuedBatch {
 
 pub(super) async fn delivery(
     mut uplink: mpsc::Receiver<BatchedMessage<QueuedEvent>>,
+    retry_downlink: mpsc::Sender<BatchedMessage<QueuedEvent>>,
     delivery_status: mpsc::Sender<QueuedBatch>,
     max_retries: u32,
     event_delivery: EventDelivery,
@@ -73,20 +74,27 @@ pub(super) async fn delivery(
         let result = event_delivery.deliver(events_to_deliver.as_slice()).await;
         match result {
             Ok(response) => {
-                let delivery_status_data = collect_delivery_response(batch, response, max_retries);
-                deliver_status(&delivery_status, delivery_status_data).await;
+                let QueuedBatch { success, failure, retry } = collect_delivery_response(batch, response, max_retries);
+                // forward successful and failed events to the delivery status channel
+                if !success.is_empty() || !failure.is_empty() {
+                    delivery_status.send(QueuedBatch::new(success, failure, Vec::new())).await.ok()?;
+                }
+                // forward retryable events to the retry channel
+                if !retry.is_empty() {
+                    retry_downlink.send(BatchedMessage::new(retry, None)).await.ok()?;
+                }
             }
             Err(err) => {
                 match err {
                     EventDeliveryError::RetriableError(_) => {
                         // Retry later
-                        deliver_status(&delivery_status, QueuedBatch::retry(batch)).await;
+                        retry_downlink.send(BatchedMessage::new(batch, None)).await.ok()?;
                     }
                     _ => {
                         warn!("Failed to deliver events: {}", err);
                         // In this case there is no point in retrying delivery since the error is
                         // non-retriable.
-                        deliver_status(&delivery_status, QueuedBatch::failure(batch)).await;
+                        delivery_status.send(QueuedBatch::failure(batch)).await.ok()?;
                     }
                 }
             }
@@ -129,10 +137,4 @@ fn collect_delivery_response(
         failure,
         retry,
     }
-}
-
-async fn deliver_status(receiver: &mpsc::Sender<QueuedBatch>, status: QueuedBatch) {
-    receiver.send(status).await.unwrap_or_else(|err| {
-        warn!("Failed to send delivery status: {}", err);
-    });
 }

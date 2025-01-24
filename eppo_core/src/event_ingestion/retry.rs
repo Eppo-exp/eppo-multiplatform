@@ -9,7 +9,7 @@ use tokio::sync::mpsc;
 /// Retry events that failed to be delivered through `retry_downlink`, forwards remaining events to
 /// `delivery_status`.
 pub(super) async fn retry(
-    mut uplink: mpsc::Receiver<QueuedBatch>,
+    mut uplink: mpsc::Receiver<BatchedMessage<QueuedEvent>>,
     retry_downlink: mpsc::Sender<BatchedMessage<QueuedEvent>>,
     delivery_status: mpsc::Sender<QueuedBatch>,
     max_retries: u32,
@@ -17,18 +17,14 @@ pub(super) async fn retry(
     max_retry_delay: Duration,
 ) -> Option<()> {
     loop {
-        let QueuedBatch {
-            retry,
-            success,
-            failure,
-        } = uplink.recv().await?;
-        if !retry.is_empty() {
+        let BatchedMessage { batch, flush: _flush } = uplink.recv().await?;
+        if !batch.is_empty() {
             // take the number of attempts from the first event in the batch to determine the
             // exponential backoff delay
-            let attempts = retry[0].attempts as usize;
+            let attempts = batch[0].attempts as usize;
             if wait_exponential_backoff(attempts, max_retries, min_retry_duration, max_retry_delay).await {
                 retry_downlink
-                    .send(BatchedMessage::new(retry.clone(), None))
+                    .send(BatchedMessage::new(batch.clone(), None))
                     .await
                     .ok()?;
             } else {
@@ -36,7 +32,7 @@ pub(super) async fn retry(
             }
         }
         delivery_status
-            .send(QueuedBatch::new(success, failure, retry))
+            .send(QueuedBatch::retry(batch))
             .await
             .ok()?;
     }
