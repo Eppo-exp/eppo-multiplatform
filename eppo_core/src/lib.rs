@@ -69,6 +69,8 @@ mod error;
 mod event_ingestion;
 mod obfuscation;
 mod precomputed;
+#[allow(unused)] // Will be used with event_ingestion
+mod sdk_key;
 mod sdk_metadata;
 mod str;
 
