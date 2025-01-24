@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::borrow::Cow;
 
 use chrono::{DateTime, Utc};
 
@@ -12,11 +12,11 @@ use crate::{
 #[derive(Debug)]
 pub struct Configuration {
     /// Timestamp when configuration was fetched by the SDK.
-    pub fetched_at: DateTime<Utc>,
+    pub(crate) fetched_at: DateTime<Utc>,
     /// Flags configuration.
-    pub flags: UniversalFlagConfig,
+    pub(crate) flags: UniversalFlagConfig,
     /// Bandits configuration.
-    pub bandits: Option<BanditResponse>,
+    pub(crate) bandits: Option<BanditResponse>,
 }
 
 impl Configuration {
@@ -51,9 +51,38 @@ impl Configuration {
         self.bandits.as_ref()?.bandits.get(bandit_key)
     }
 
-    /// Get a set of all available flags. Note that this may return both disabled flags and flags
-    /// with bad configuration.
-    pub fn flag_keys(&self) -> HashSet<Str> {
-        self.flags.compiled.flags.keys().cloned().collect()
+    /// Returns an iterator over all flag keys. Note that this may return both disabled flags and
+    /// flags with bad configuration. Mostly useful for debugging.
+    pub fn flag_keys(&self) -> impl Iterator<Item = &Str> {
+        self.flags.compiled.flags.keys()
+    }
+
+    /// Returns an iterator over all bandit keys. Mostly useful to debugging.
+    pub fn bandit_keys(&self) -> impl Iterator<Item = &Str> {
+        self.bandits.iter().flat_map(|it| it.bandits.keys())
+    }
+
+    /// Returns bytes representing flags configuration.
+    ///
+    /// The return value should be treated as opaque and passed on to another Eppo client for
+    /// initialization.
+    pub fn get_flags_configuration(&self) -> Option<Cow<[u8]>> {
+        Some(Cow::Borrowed(self.flags.to_json()))
+    }
+
+    /// Returns bytes representing bandits configuration.
+    ///
+    /// The return value should be treated as opaque and passed on to another Eppo client for
+    /// initialization.
+    pub fn get_bandits_configuration(&self) -> Option<Cow<[u8]>> {
+        let bandits = self.bandits.as_ref()?;
+        let json = serde_json::to_vec(bandits);
+
+        // TODO: replace with .inspect_err() once we bump MSRV to 1.76
+        if let Err(err) = &json {
+            log::warn!(target: "eppo", "failed to serialize bandits: {err:?}");
+        }
+
+        json.ok().map(Cow::Owned)
     }
 }
