@@ -3,9 +3,25 @@ use std::future::Future;
 use tokio::task::JoinHandle;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
-/// `BackgroundRuntime` is a tokio runtime that is used to run background activities with controlled
-/// shutdown. It may also be occasionally used to execute async future in sync context (e.g., from
-/// user's thread where we don't assume that tokio runtime is available).
+/// `BackgroundRuntime` has two goals:
+/// - Allow executing different background tasks concurrently on a single tokio runtime.
+/// - Handle graceful shutdown.
+///
+/// The first goal is achieved by holding a (non-owning) handle to an existing tokio
+/// runtime. `BackgroundRuntime` does not actually create/own/drive the tokio runtime and that needs
+/// to be done by someone else (see [`BackgroundThread`](super::BackgroundThread) for example). This
+/// is to make `BackgroundRuntime` more flexible as not all environments support multi-threading
+/// (e.g., wasm) and some may already have a global runtime users might want to reuse.
+///
+/// The graceful shutdown is achieved by combining [`CancellationToken`] and [`TaskTracker`]. Their
+/// usage is described in [tokio tutorial](https://tokio.rs/tokio/topics/shutdown).
+///
+/// Because graceful shutdown requires cooperation with the task (it needs to watch and react to
+/// cancellation token) and most tasks don't actually have any cleanup requirements, we distinguish
+/// between "tracked" and "untracked" tasks. Tracked tasks are the tasks that have cleanup
+/// requirements (e.g., to ensure files are fsync'ed) and are waited by the runtime before
+/// exiting. Untracked tasks are everything else and may get stopped and dropped during runtime
+/// shutdown.
 ///
 /// When `BackgroundRuntime` is dropped, all background activities are commanded to stop.
 pub struct BackgroundRuntime {
@@ -89,7 +105,11 @@ impl BackgroundRuntime {
         self.cancellation_token.cancel();
     }
 
-    /// Wait for all background activities to stop.
+    /// Wait for the background runtime to stop. (It has to be stopped with
+    /// [`BackgroundRuntime::stop()`].)
+    ///
+    /// This is intended to be used by a tokio runtime driver (e.g., [`BackgroundThread`]) to
+    /// determine when we're done and tokio runtime can be stopped.
     pub(super) fn wait(&self) -> impl Future {
         let tracker = self.watched_tasks.clone();
         async move { tracker.wait().await }

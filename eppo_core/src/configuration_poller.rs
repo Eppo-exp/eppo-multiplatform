@@ -88,7 +88,10 @@ pub fn start_configuration_poller(
 ) -> ConfigurationPoller {
     let (status_tx, status_rx) = watch::channel(None);
 
-    let cancellation_token = runtime.cancellation_token().child_token();
+    let cancellation_token = runtime.cancellation_token();
+    // Note: even though configuration poller listens to a cancellation token, it doesn't have any
+    // special cleanup requirements, so we use `spawn_untracked()`. The cancellation token is used
+    // to allow stopping the poller without stopping the rest of background runtime.
     runtime.spawn_untracked({
         let cancellation_token = cancellation_token.clone();
         async move {
@@ -104,6 +107,9 @@ pub fn start_configuration_poller(
     }
 }
 
+/// Polls periodically for `Configuration` using `fetcher` and stores it in a `store`. Additionally,
+/// it reports its current status (successfully fetched configuration or error occurred) to
+/// `status`.
 async fn configuration_poller(
     mut fetcher: ConfigurationFetcher,
     store: Arc<ConfigurationStore>,
