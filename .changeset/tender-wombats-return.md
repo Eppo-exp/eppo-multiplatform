@@ -6,4 +6,4 @@
 
 This allows further evolution of configuration without breaking users.
 
-It should be an invisible to SDKs.
+The change should be invisible to SDKs.
