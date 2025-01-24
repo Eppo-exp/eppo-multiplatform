@@ -48,7 +48,7 @@ impl EventDispatcher {
         let (flusher_downlink_tx, flusher_downlink_rx) = mpsc::channel(1);
         let (batcher_downlink_tx, batcher_downlink_rx) = mpsc::channel(1);
         let (delivery_downlink_tx, delivery_downlink_rx) = mpsc::channel(1);
-        let (retry_downlink_tx, receiver) = mpsc::channel(1);
+        let (output_tx, receiver) = mpsc::channel(1);
 
         // Spawn the auto_flusher, batcher and delivery
         tokio::spawn(auto_flusher::auto_flusher(
@@ -64,13 +64,14 @@ impl EventDispatcher {
         tokio::spawn(delivery::delivery(
             batcher_downlink_rx,
             delivery_downlink_tx,
+            output_tx.clone(),
             config.max_retries,
             event_delivery,
         ));
         tokio::spawn(retry::retry(
             delivery_downlink_rx,
             batcher_downlink_tx,
-            retry_downlink_tx,
+            output_tx,
             config.max_retries as u32,
             config.retry_interval,
             config.max_retry_delay,
