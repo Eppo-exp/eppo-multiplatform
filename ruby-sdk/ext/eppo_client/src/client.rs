@@ -1,10 +1,13 @@
 use std::{cell::RefCell, str::FromStr, sync::Arc, time::Duration};
 
 use eppo_core::{
+    background::BackgroundThread,
     configuration_fetcher::{ConfigurationFetcher, ConfigurationFetcherConfig},
+    configuration_poller::{
+        start_configuration_poller, ConfigurationPoller, ConfigurationPollerConfig,
+    },
     configuration_store::ConfigurationStore,
     eval::{Evaluator, EvaluatorConfig},
-    poller_thread::{PollerThread, PollerThreadConfig},
     ufc::VariationType,
     Attributes, ContextAttributes,
 };
@@ -59,7 +62,7 @@ pub struct Client {
     //
     // This should be safe as Ruby only uses a single OS thread, and `Client` lives in the Ruby
     // world.
-    poller_thread: RefCell<Option<PollerThread>>,
+    poller_thread: RefCell<Option<(BackgroundThread, ConfigurationPoller)>>,
 }
 
 impl Client {
@@ -84,21 +87,21 @@ impl Client {
         let configuration_store = Arc::new(ConfigurationStore::new());
 
         let poller_thread = if let Some(poll_interval) = config.poll_interval {
-            Some(
-                PollerThread::start_with_config(
-                    ConfigurationFetcher::new(ConfigurationFetcherConfig {
-                        base_url: config.base_url,
-                        api_key: config.api_key,
-                        sdk_metadata: SDK_METADATA,
-                    }),
-                    configuration_store.clone(),
-                    PollerThreadConfig {
-                        interval: poll_interval,
-                        jitter: config.poll_jitter,
-                    },
-                )
-                .expect("should be able to start poller thread"),
-            )
+            let thread = BackgroundThread::start().expect("should be able to start poller thread");
+            let poller = start_configuration_poller(
+                thread.runtime(),
+                ConfigurationFetcher::new(ConfigurationFetcherConfig {
+                    base_url: config.base_url,
+                    api_key: config.api_key,
+                    sdk_metadata: SDK_METADATA,
+                }),
+                configuration_store.clone(),
+                ConfigurationPollerConfig {
+                    interval: poll_interval,
+                    jitter: config.poll_jitter,
+                },
+            );
+            Some((thread, poller))
         } else {
             None
         };
@@ -234,8 +237,8 @@ impl Client {
     }
 
     pub fn shutdown(&self) {
-        if let Some(t) = self.poller_thread.take() {
-            let _ = t.shutdown();
+        if let Some((thread, _poller)) = self.poller_thread.take() {
+            let _ = thread.graceful_shutdown();
         }
     }
 }

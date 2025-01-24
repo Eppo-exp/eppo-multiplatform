@@ -39,11 +39,11 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     )?;
     core.const_set(
         "DEFAULT_POLL_INTERVAL_SECONDS",
-        eppo_core::poller_thread::PollerThreadConfig::DEFAULT_POLL_INTERVAL.as_secs(),
+        eppo_core::configuration_poller::ConfigurationPollerConfig::DEFAULT_POLL_INTERVAL.as_secs(),
     )?;
     core.const_set(
         "DEFAULT_POLL_JITTER_SECONDS",
-        eppo_core::poller_thread::PollerThreadConfig::DEFAULT_POLL_JITTER.as_secs(),
+        eppo_core::configuration_poller::ConfigurationPollerConfig::DEFAULT_POLL_JITTER.as_secs(),
     )?;
 
     configuration::init(ruby)?;
