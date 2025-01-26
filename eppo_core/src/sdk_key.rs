@@ -31,7 +31,7 @@ impl SdkKey {
         use base64::prelude::*;
 
         let (_, payload) = self.as_str().split_once(".")?;
-        let payload = BASE64_STANDARD.decode(payload).ok()?;
+        let payload = BASE64_URL_SAFE_NO_PAD.decode(payload).ok()?;
         let (_, hostname) =
             url::form_urlencoded::parse(&payload).find(|(key, _value)| key == "eh")?;
 
@@ -84,7 +84,7 @@ mod tests {
     fn test_decode_non_url_safe_event_ingestion_url() {
         use base64::prelude::*;
 
-        let payload = BASE64_STANDARD.encode("eh=12%3D3456(lol)%2Bhi/.e+testing.eppo.cloud");
+        let payload = BASE64_URL_SAFE_NO_PAD.encode("eh=12%3D3456(lol)%2Bhi/.e+testing.eppo.cloud");
         let sdk_key = SdkKey::new(format!("zCsQuoHJxVPp895.{payload}").into());
 
         assert_eq!(
