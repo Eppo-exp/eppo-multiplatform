@@ -56,14 +56,14 @@ pub mod configuration_fetcher;
 pub mod configuration_poller;
 pub mod configuration_store;
 pub mod eval;
+#[cfg(feature = "event_ingestion")]
+pub mod event_ingestion;
 pub mod events;
 #[cfg(feature = "pyo3")]
 pub mod pyo3;
 pub mod sharder;
 pub mod timestamp;
 pub mod ufc;
-#[cfg(feature = "event_ingestion")]
-pub mod event_ingestion;
 
 mod configuration;
 mod error;
@@ -80,4 +80,5 @@ pub use attributes::{
 };
 pub use configuration::Configuration;
 pub use error::{Error, EvaluationError, Result};
+pub use sdk_key::SdkKey;
 pub use sdk_metadata::SdkMetadata;

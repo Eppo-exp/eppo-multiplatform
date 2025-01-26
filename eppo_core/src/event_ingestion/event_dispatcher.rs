@@ -3,6 +3,7 @@ use crate::event_ingestion::delivery::QueuedBatch;
 use crate::event_ingestion::event_delivery::EventDelivery;
 use crate::event_ingestion::queued_event::QueuedEvent;
 use crate::event_ingestion::{auto_flusher, batcher, delivery, retry};
+use crate::sdk_key::SdkKey;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::Duration;
@@ -13,9 +14,10 @@ const MIN_BATCH_SIZE: usize = 1;
 const MAX_BATCH_SIZE: usize = 10_000;
 
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct EventDispatcherConfig {
-    pub sdk_key: String,
-    pub ingestion_url: String,
+    pub sdk_key: SdkKey,
+    pub ingestion_url: Url,
     pub delivery_interval: Duration,
     pub retry_interval: Duration,
     pub max_retry_delay: Duration,
@@ -25,8 +27,12 @@ pub struct EventDispatcherConfig {
 }
 
 impl EventDispatcherConfig {
-    pub fn default(sdk_key: String, ingestion_url: String) -> Self {
-        EventDispatcherConfig {
+    /// Creates new event ingestion config.
+    ///
+    /// Returns `None` if `sdk_key` is not suitable for event ingestion.
+    pub fn new(sdk_key: SdkKey) -> Option<Self> {
+        let ingestion_url = sdk_key.event_ingestion_url()?;
+        let config = EventDispatcherConfig {
             sdk_key,
             ingestion_url,
             delivery_interval: DEFAULT_DELIVERY_INTERVAL,
@@ -35,7 +41,8 @@ impl EventDispatcherConfig {
             max_retries: DEFAULT_MAX_RETRIES,
             batch_size: DEFAULT_BATCH_SIZE,
             max_queue_size: DEFAULT_MAX_QUEUE_SIZE,
-        }
+        };
+        Some(config)
     }
 }
 

@@ -1,8 +1,6 @@
 use std::{cell::RefCell, str::FromStr, sync::Arc, time::Duration};
 
 use crate::{configuration::Configuration, SDK_METADATA};
-use eppo_core::event_ingestion::event_dispatcher::EventDispatcher;
-use eppo_core::event_ingestion::sdk_key_decoder::decode_event_ingestion_url;
 use eppo_core::{
     background::BackgroundThread,
     configuration_fetcher::{ConfigurationFetcher, ConfigurationFetcherConfig},
@@ -11,9 +9,9 @@ use eppo_core::{
     },
     configuration_store::ConfigurationStore,
     eval::{Evaluator, EvaluatorConfig},
-    event_ingestion::event_dispatcher::EventDispatcherConfig,
+    event_ingestion::{event_dispatcher::EventDispatcherConfig, EventDispatcher},
     ufc::VariationType,
-    Attributes, ContextAttributes,
+    Attributes, ContextAttributes, SdkKey,
 };
 use magnus::{error::Result, exception, prelude::*, Error, IntoValue, Ruby, TryConvert, Value};
 
@@ -45,8 +43,8 @@ impl TryConvert for Config {
             .transpose()?
         };
 
-        let event_ingestion_config = decode_event_ingestion_url(&sdk_key)
-            .map(|url| EventDispatcherConfig::default(sdk_key.clone(), url));
+        let event_ingestion_config =
+            EventDispatcherConfig::new(SdkKey::new(sdk_key.clone().into()));
         Ok(Config {
             api_key: sdk_key,
             base_url,

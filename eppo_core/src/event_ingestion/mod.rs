@@ -4,9 +4,10 @@ mod batcher;
 mod delivery;
 mod event;
 mod event_delivery;
+pub mod event_dispatcher;
 mod queued_event;
 mod retry;
-pub mod sdk_key_decoder;
-pub mod event_dispatcher;
 
 use batched_message::BatchedMessage;
+
+pub use event_dispatcher::{EventDispatcher, EventDispatcherConfig};
