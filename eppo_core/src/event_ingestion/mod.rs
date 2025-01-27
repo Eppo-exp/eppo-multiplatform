@@ -4,10 +4,11 @@ mod batcher;
 mod delivery;
 mod event;
 mod event_delivery;
-pub mod event_dispatcher;
+mod event_ingestion;
 mod queued_event;
 mod retry;
 
 use batched_message::BatchedMessage;
+use event::Event;
 
-pub use event_dispatcher::{EventDispatcher, EventDispatcherConfig};
+pub use event_ingestion::{EventIngestion, EventIngestionConfig};
