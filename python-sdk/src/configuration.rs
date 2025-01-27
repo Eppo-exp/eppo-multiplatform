@@ -50,44 +50,28 @@ impl Configuration {
     // Returns a set of all flag keys that have been initialized.
     // This can be useful to debug the initialization process.
     fn get_flag_keys<'py>(&'py self, py: Python<'py>) -> PyResult<Bound<PySet>> {
-        PySet::new_bound(py, &self.configuration.flag_keys())
+        PySet::new_bound(py, self.configuration.flag_keys())
     }
 
     // Returns a set of all bandit keys that have been initialized.
     // This can be useful to debug the initialization process.
     fn get_bandit_keys<'py>(&'py self, py: Python<'py>) -> PyResult<Bound<PySet>> {
-        PySet::new_bound(
-            py,
-            self.configuration
-                .bandits
-                .iter()
-                .flat_map(|it| it.bandits.keys()),
-        )
+        PySet::new_bound(py, self.configuration.bandit_keys())
     }
 
     /// Return bytes representing flags configuration.
     ///
     /// It should be treated as opaque and passed on to another Eppo client (e.g., javascript client
     /// on frontend) for initialization.
-    fn get_flags_configuration(&self) -> Cow<[u8]> {
-        Cow::Borrowed(self.configuration.flags.to_json())
+    fn get_flags_configuration(&self) -> Option<Cow<[u8]>> {
+        self.configuration.get_flags_configuration()
     }
 
     /// Return bytes representing bandits configuration.
     ///
     /// It should be treated as opaque and passed on to another Eppo client for initialization.
-    fn get_bandits_configuration(&self) -> PyResult<Option<Cow<[u8]>>> {
-        self.configuration
-            .bandits
-            .as_ref()
-            .map(|it| serde_json::to_vec(it).map(Cow::Owned))
-            .transpose()
-            .map_err(|err| {
-                // This should normally never happen.
-                PyRuntimeError::new_err(format!(
-                    "failed to serialize bandits configuration: {err:?}"
-                ))
-            })
+    fn get_bandits_configuration(&self) -> Option<Cow<[u8]>> {
+        self.configuration.get_bandits_configuration()
     }
 }
 
