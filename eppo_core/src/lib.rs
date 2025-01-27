@@ -58,8 +58,8 @@ pub mod configuration_store;
 pub mod eval;
 #[cfg(feature = "event_ingestion")]
 mod sdk_key;
+#[cfg(feature = "event_ingestion")]
 pub mod event_ingestion;
-pub mod events;
 #[cfg(feature = "pyo3")]
 pub mod pyo3;
 pub mod sharder;
