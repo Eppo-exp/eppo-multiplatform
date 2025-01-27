@@ -60,6 +60,7 @@ pub mod eval;
 mod sdk_key;
 #[cfg(feature = "event_ingestion")]
 pub mod event_ingestion;
+pub mod events;
 #[cfg(feature = "pyo3")]
 pub mod pyo3;
 pub mod sharder;
@@ -79,5 +80,6 @@ pub use attributes::{
 };
 pub use configuration::Configuration;
 pub use error::{Error, EvaluationError, Result};
+#[cfg(feature = "event_ingestion")]
 pub use sdk_key::SdkKey;
 pub use sdk_metadata::SdkMetadata;
