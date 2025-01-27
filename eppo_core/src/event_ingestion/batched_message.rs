@@ -21,6 +21,14 @@ impl<T> BatchedMessage<T> {
         BatchedMessage { batch, flush }
     }
 
+    /// Create a new message with a single value.
+    pub fn singleton(value: T) -> BatchedMessage<T> {
+        BatchedMessage {
+            batch: vec![value],
+            flush: None,
+        }
+    }
+
     pub fn requires_flush(&self) -> bool {
         self.flush.is_some()
     }

@@ -2,7 +2,7 @@ use crate::event_ingestion::event::Event;
 use crate::event_ingestion::event_delivery::EventDeliveryError::{
     JsonDeserializationError, JsonSerializationError,
 };
-use crate::Str;
+use crate::sdk_key::SdkKey;
 use log::{debug, info};
 use reqwest::StatusCode;
 use serde::Serialize;
@@ -14,7 +14,7 @@ const MAX_EVENT_SERIALIZED_LENGTH: usize = 4096;
 
 #[derive(Clone)]
 pub(super) struct EventDelivery {
-    sdk_key: Str,
+    sdk_key: SdkKey,
     ingestion_url: Url,
     client: reqwest::Client,
 }
@@ -65,7 +65,7 @@ struct IngestionRequestBody<'a> {
 
 /// Responsible for delivering event batches to the Eppo ingestion service.
 impl EventDelivery {
-    pub fn new(sdk_key: Str, ingestion_url: Url) -> Self {
+    pub fn new(sdk_key: SdkKey, ingestion_url: Url) -> Self {
         let client = reqwest::Client::new();
         EventDelivery {
             sdk_key,
@@ -150,10 +150,10 @@ fn ensure_max_event_size(event: &Event) -> Result<bool, EventDeliveryError> {
 mod tests {
     use crate::event_ingestion::event::Event;
     use crate::event_ingestion::event_delivery::{
-        EventDelivery, DeliveryResult, MAX_EVENT_SERIALIZED_LENGTH,
+        DeliveryResult, EventDelivery, MAX_EVENT_SERIALIZED_LENGTH,
     };
+    use crate::sdk_key::SdkKey;
     use crate::timestamp::now;
-    use crate::Str;
     use serde_json::json;
     use std::collections::{HashMap, HashSet};
     use url::Url;
@@ -165,7 +165,7 @@ mod tests {
     #[tokio::test]
     async fn test_deliver_fails_on_large_payload() {
         let client = EventDelivery::new(
-            Str::from("foobar"),
+            SdkKey::new("foobar".into()),
             Url::parse("https://example.com").unwrap(),
         );
         // Create an event that will produce a large JSON string.
@@ -194,17 +194,14 @@ mod tests {
             .mount(&mock_server)
             .await;
         let client = EventDelivery::new(
-            Str::from("foobar"),
+            SdkKey::new("foobar".into()),
             Url::parse(mock_server.uri().as_str()).unwrap(),
         );
         let small_event = new_test_event("A".repeat(3500));
         let result = client.deliver(&[&small_event]).await;
         // Should be ok because payload is not over MAX_EVENT_PAYLOAD_SIZE
         assert!(result.is_ok(), "Expected Ok, got {:?}", result);
-        assert_eq!(
-            result.unwrap(),
-            DeliveryResult::empty()
-        )
+        assert_eq!(result.unwrap(), DeliveryResult::empty())
     }
 
     fn new_test_event(user_id: String) -> Event {
