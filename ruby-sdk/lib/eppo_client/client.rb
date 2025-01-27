@@ -43,7 +43,9 @@ module EppoClient
       @core.shutdown
     end
 
-    def track(event_type, payload)
+    # Unstable
+    # Enqueues an arbitrary event. Events must have a type and a payload
+    def unstable_track(event_type, payload)
       @core.track(event_type, payload)
     end
 
