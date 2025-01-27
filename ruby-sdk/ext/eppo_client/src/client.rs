@@ -1,8 +1,6 @@
 use std::{cell::RefCell, str::FromStr, sync::Arc, time::Duration};
 
 use crate::{configuration::Configuration, SDK_METADATA};
-use eppo_core::event_ingestion::event_dispatcher::EventDispatcher;
-use eppo_core::event_ingestion::sdk_key_decoder::decode_event_ingestion_url;
 use eppo_core::{
     background::BackgroundThread,
     configuration_fetcher::{ConfigurationFetcher, ConfigurationFetcherConfig},
@@ -11,9 +9,9 @@ use eppo_core::{
     },
     configuration_store::ConfigurationStore,
     eval::{Evaluator, EvaluatorConfig},
-    event_ingestion::event_dispatcher::EventDispatcherConfig,
+    event_ingestion::{EventIngestion, EventIngestionConfig},
     ufc::VariationType,
-    Attributes, ContextAttributes,
+    Attributes, ContextAttributes, SdkKey,
 };
 use magnus::{error::Result, exception, prelude::*, Error, IntoValue, Ruby, TryConvert, Value};
 
@@ -25,7 +23,7 @@ pub struct Config {
     poll_interval: Option<Duration>,
     poll_jitter: Duration,
     log_level: Option<log::LevelFilter>,
-    event_ingestion_config: Option<EventDispatcherConfig>,
+    event_ingestion_config: Option<EventIngestionConfig>,
 }
 
 impl TryConvert for Config {
@@ -45,8 +43,7 @@ impl TryConvert for Config {
             .transpose()?
         };
 
-        let event_ingestion_config = decode_event_ingestion_url(&sdk_key)
-            .map(|url| EventDispatcherConfig::default(sdk_key.clone(), url));
+        let event_ingestion_config = EventIngestionConfig::new(SdkKey::new(sdk_key.clone().into()));
         Ok(Config {
             api_key: sdk_key,
             base_url,
@@ -62,13 +59,15 @@ impl TryConvert for Config {
 pub struct Client {
     configuration_store: Arc<ConfigurationStore>,
     evaluator: Evaluator,
+
     // Magnus only allows sharing aliased references (&T) through the API, so we need to use RefCell
     // to get interior mutability.
     //
     // This should be safe as Ruby only uses a single OS thread, and `Client` lives in the Ruby
     // world.
-    poller_thread: RefCell<Option<(BackgroundThread, ConfigurationPoller)>>,
-    event_dispatcher: Option<EventDispatcher>,
+    background_thread: RefCell<Option<BackgroundThread>>,
+    configuration_poller: Option<ConfigurationPoller>,
+    event_ingestion: Option<EventIngestion>,
 }
 
 impl Client {
@@ -92,10 +91,17 @@ impl Client {
 
         let configuration_store = Arc::new(ConfigurationStore::new());
 
-        let poller_thread = if let Some(poll_interval) = config.poll_interval {
-            let thread = BackgroundThread::start().expect("should be able to start poller thread");
+        let evaluator = Evaluator::new(EvaluatorConfig {
+            configuration_store: configuration_store.clone(),
+            sdk_metadata: SDK_METADATA,
+        });
+
+        let background_thread =
+            BackgroundThread::start().expect("should be able to start background thread");
+
+        let configuration_poller = if let Some(poll_interval) = config.poll_interval {
             let poller = start_configuration_poller(
-                thread.runtime(),
+                background_thread.runtime(),
                 ConfigurationFetcher::new(ConfigurationFetcherConfig {
                     base_url: config.base_url,
                     api_key: config.api_key,
@@ -107,22 +113,21 @@ impl Client {
                     jitter: config.poll_jitter,
                 },
             );
-            Some((thread, poller))
+            Some(poller)
         } else {
             None
         };
 
-        let evaluator = Evaluator::new(EvaluatorConfig {
-            configuration_store: configuration_store.clone(),
-            sdk_metadata: SDK_METADATA,
-        });
+        let event_ingestion = config
+            .event_ingestion_config
+            .map(|config| config.spawn(background_thread.runtime()));
 
-        let event_dispatcher = config.event_ingestion_config.map(EventDispatcher::new);
         Client {
             configuration_store,
             evaluator,
-            poller_thread: RefCell::new(poller_thread),
-            event_dispatcher,
+            background_thread: RefCell::new(Some(background_thread)),
+            configuration_poller,
+            event_ingestion,
         }
     }
 
@@ -245,19 +250,26 @@ impl Client {
     }
 
     pub fn shutdown(&self) {
-        if let Some((thread, _poller)) = self.poller_thread.take() {
-            let _ = thread.graceful_shutdown();
+        if let Some(thread) = self.background_thread.take() {
+            thread.graceful_shutdown();
         }
     }
 
     pub fn track(&self, event_type: String, payload: Value) -> Result<()> {
+        let Some(event_ingestion) = &self.event_ingestion else {
+            // Event ingestion is disabled, do nothing.
+            return Ok(());
+        };
+
         let payload: serde_json::Value = serde_magnus::deserialize(payload).map_err(|err| {
             Error::new(
                 exception::runtime_error(),
                 format!("Unexpected value for payload: {err}"),
             )
         })?;
-        // TODO: Spawn event dispatcher task (if not running) and send event to channel.
+
+        event_ingestion.track(event_type, payload);
+
         Ok(())
     }
 }
