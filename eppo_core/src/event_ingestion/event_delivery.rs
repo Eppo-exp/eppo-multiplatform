@@ -145,19 +145,18 @@ impl EventDelivery {
             .header("X-Eppo-Token", sdk_key.as_str())
             .json(&body)
             .send()
+            .await?
+            .error_for_status()?
+            .json::<IngestionResponseBody>()
             .await?;
-
-        let response = response.error_for_status()?;
-
-        let response_body = response.json::<IngestionResponseBody>().await?;
 
         debug!(
             target: "eppo",
             "Batch delivered successfully, {} events failed ingestion",
-            response_body.failed_events.len()
+            response.failed_events.len()
         );
 
-        Ok(response_body)
+        Ok(response)
     }
 }
 
