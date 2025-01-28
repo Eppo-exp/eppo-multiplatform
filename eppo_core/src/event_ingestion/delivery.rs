@@ -1,23 +1,19 @@
-use super::BatchedMessage;
-use crate::event_ingestion::event::Event;
-use crate::event_ingestion::event_delivery::{DeliveryResult, EventDelivery, EventDeliveryError};
-use crate::event_ingestion::queued_event::QueuedEvent;
-use log::warn;
+use std::time::Duration;
+
+use exponential_backoff::Backoff;
 use tokio::sync::mpsc;
+
+use super::{event::Event, event_delivery::EventDelivery, BatchedMessage};
 
 #[derive(Debug, PartialEq)]
 pub(super) struct DeliveryStatus {
-    pub success: Vec<QueuedEvent>,
-    pub failure: Vec<QueuedEvent>,
-    pub retry: Vec<QueuedEvent>,
+    pub success: Vec<Event>,
+    pub failure: Vec<Event>,
+    pub retry: Vec<Event>,
 }
 
 impl DeliveryStatus {
-    pub fn new(
-        success: Vec<QueuedEvent>,
-        failure: Vec<QueuedEvent>,
-        retry: Vec<QueuedEvent>,
-    ) -> Self {
+    pub fn new(success: Vec<Event>, failure: Vec<Event>, retry: Vec<Event>) -> Self {
         DeliveryStatus {
             success,
             failure,
@@ -25,7 +21,7 @@ impl DeliveryStatus {
         }
     }
 
-    pub fn success(success: Vec<QueuedEvent>) -> Self {
+    pub fn success(success: Vec<Event>) -> Self {
         DeliveryStatus {
             success,
             failure: Vec::new(),
@@ -33,7 +29,7 @@ impl DeliveryStatus {
         }
     }
 
-    pub fn failure(failure: Vec<QueuedEvent>) -> Self {
+    pub fn failure(failure: Vec<Event>) -> Self {
         DeliveryStatus {
             success: Vec::new(),
             retry: Vec::new(),
@@ -41,117 +37,97 @@ impl DeliveryStatus {
         }
     }
 
-    pub fn retry(retry: Vec<QueuedEvent>) -> Self {
+    pub fn retry(retry: Vec<Event>) -> Self {
         DeliveryStatus {
             success: Vec::new(),
             retry,
             failure: Vec::new(),
         }
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(super) struct DeliveryConfig {
+    pub max_retries: u32,
+    pub base_retry_delay: Duration,
+    pub max_retry_delay: Duration,
 }
 
 pub(super) async fn delivery(
-    mut uplink: mpsc::Receiver<BatchedMessage<QueuedEvent>>,
-    retry_downlink: mpsc::Sender<BatchedMessage<QueuedEvent>>,
+    mut uplink: mpsc::Receiver<BatchedMessage<Event>>,
     delivery_status: mpsc::Sender<DeliveryStatus>,
-    max_retries: u32,
     event_delivery: EventDelivery,
+    config: DeliveryConfig,
 ) -> Option<()> {
+    // We use this unbounded channel to loop back messages that need retrying.
+    let (retries_tx, mut retries_rx) =
+        mpsc::unbounded_channel::<(/* attempts: */ u32, BatchedMessage<Event>)>();
+
     loop {
-        let BatchedMessage {
-            batch,
-            flush: _flush,
-        } = uplink.recv().await?;
-        if batch.is_empty() {
-            continue;
+        // Randomly select between sending a new batch or retrying an old one.
+        let (attempts, msg) = tokio::select! {
+            msg = uplink.recv() => (0, msg?),
+            msg = retries_rx.recv() => msg?,
+        };
+
+        let BatchedMessage { batch, flush } = msg;
+
+        let mut result = event_delivery.deliver(batch).await;
+
+        if attempts >= config.max_retries {
+            // Exceeded max retries -> promote retriable errors to permanent ones.
+            result.failure.append(&mut result.retry);
         }
-        let events_to_deliver = batch
-            .iter()
-            .map(|queued_event| &queued_event.event)
-            .collect::<Vec<&Event>>();
-        let result = event_delivery.deliver(events_to_deliver.as_slice()).await;
-        match result {
-            Ok(response) => {
-                let DeliveryStatus {
-                    success,
-                    failure,
-                    retry,
-                } = collect_delivery_response(batch, response, max_retries);
-                // forward successful and failed events to the delivery status channel
-                if !success.is_empty() || !failure.is_empty() {
-                    delivery_status
-                        .send(DeliveryStatus::new(success, failure, Vec::new()))
-                        .await
-                        .ok()?;
-                }
-                // forward retryable events to the retry channel
-                if !retry.is_empty() {
-                    retry_downlink
-                        .send(BatchedMessage::new(retry, None))
-                        .await
-                        .ok()?;
-                }
-            }
-            Err(err) => {
-                match err {
-                    EventDeliveryError::RetriableError(_) => {
-                        // Retry later
-                        retry_downlink
-                            .send(BatchedMessage::new(batch, None))
-                            .await
-                            .ok()?;
-                    }
-                    _ => {
-                        warn!("Failed to deliver events: {}", err);
-                        // In this case there is no point in retrying delivery since the error is
-                        // non-retriable.
-                        delivery_status
-                            .send(DeliveryStatus::failure(batch))
-                            .await
-                            .ok()?;
-                    }
-                }
-            }
+
+        let retry_batch = std::mem::take(&mut result.retry);
+
+        let _ = delivery_status.send(result).await;
+
+        if retry_batch.is_empty() {
+            // We finished precessing the whole batch: it's either successfully delivered or failed
+            // permanently.
+            // TODO: flush
+        } else {
+            // Delay and re-insert retriable events.
+            let retries_tx = retries_tx.clone();
+            tokio::spawn(async move {
+                wait_exponential_backoff(
+                    attempts,
+                    config.max_retries,
+                    config.base_retry_delay,
+                    config.max_retry_delay,
+                )
+                .await;
+                let _ = retries_tx.send((
+                    attempts + 1,
+                    BatchedMessage {
+                        batch: retry_batch,
+                        flush,
+                    },
+                ));
+            });
         }
     }
 }
 
-fn collect_delivery_response(
-    batch: Vec<QueuedEvent>,
-    result: DeliveryResult,
+async fn wait_exponential_backoff(
+    attempts: u32,
     max_retries: u32,
-) -> DeliveryStatus {
-    if result.is_empty() {
-        return DeliveryStatus::success(batch);
-    }
-    let failed_retriable_event_uuids = result.retriable_failed_events;
-    let failed_non_retriable_event_uuids = result.non_retriable_failed_events;
-    warn!(
-        "Failed to deliver {} events (retriable)",
-        failed_retriable_event_uuids.len()
-    );
-    let mut success = Vec::new();
-    let mut failure = Vec::new();
-    let mut retry = Vec::new();
-    for queued_event in batch {
-        if failed_retriable_event_uuids.contains(&queued_event.event.uuid) {
-            if queued_event.attempts < max_retries {
-                // increment failed attempts count and retry
-                retry.push(QueuedEvent::new_from_failed(queued_event));
-            } else {
-                // max retries reached, mark as failed
-                failure.push(QueuedEvent::new_from_failed(queued_event));
-            }
-        } else if failed_non_retriable_event_uuids.contains(&queued_event.event.uuid) {
-            // event may not be retried
-            failure.push(QueuedEvent::new_from_failed(queued_event));
-        } else {
-            success.push(queued_event);
-        }
-    }
-    DeliveryStatus {
-        success,
-        failure,
-        retry,
-    }
+    min_retry_delay: Duration,
+    max_retry_delay: Duration,
+) {
+    // TODO: exponential_backoff iterator interface doesn't really suit our usage. Rewrite backoff
+    // calculation.
+    let backoff = Backoff::new(max_retries + 1, min_retry_delay, max_retry_delay);
+    let delay = backoff
+        .iter()
+        .skip(attempts as usize)
+        .take(1)
+        .next()
+        .flatten()
+        .unwrap_or(max_retry_delay);
+
+    log::debug!(target: "eppo", "retry waiting for {:?}", delay);
+
+    tokio::time::sleep(delay).await;
 }
