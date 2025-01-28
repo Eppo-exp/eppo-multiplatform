@@ -18,21 +18,21 @@ use super::{
 pub struct EventIngestionConfig {
     pub sdk_key: SdkKey,
     pub ingestion_url: Url,
-    pub delivery_interval: Duration,
-    pub retry_interval: Duration,
-    pub max_retry_delay: Duration,
-    pub max_retries: u32,
-    pub batch_size: usize,
     pub max_queue_size: usize,
+    pub delivery_interval: Duration,
+    pub batch_size: usize,
+    pub max_retries: u32,
+    pub base_retry_delay: Duration,
+    pub max_retry_delay: Duration,
 }
 
 impl EventIngestionConfig {
-    const DEFAULT_BATCH_SIZE: usize = 1_000;
+    const DEFAULT_MAX_QUEUE_SIZE: usize = 10_000;
     const DEFAULT_DELIVERY_INTERVAL: Duration = Duration::from_secs(10);
-    const DEFAULT_RETRY_INTERVAL: Duration = Duration::from_secs(5);
+    const DEFAULT_BATCH_SIZE: usize = 1_000;
+    const DEFAULT_BASE_RETRY_DELAY: Duration = Duration::from_secs(5);
     const DEFAULT_MAX_RETRY_DELAY: Duration = Duration::from_secs(30);
     const DEFAULT_MAX_RETRIES: u32 = 3;
-    const DEFAULT_MAX_QUEUE_SIZE: usize = 10_000;
 
     /// Creates new event ingestion config.
     ///
@@ -42,12 +42,12 @@ impl EventIngestionConfig {
         let config = EventIngestionConfig {
             sdk_key,
             ingestion_url,
-            delivery_interval: Self::DEFAULT_DELIVERY_INTERVAL,
-            retry_interval: Self::DEFAULT_RETRY_INTERVAL,
-            max_retry_delay: Self::DEFAULT_MAX_RETRY_DELAY,
-            max_retries: Self::DEFAULT_MAX_RETRIES,
-            batch_size: Self::DEFAULT_BATCH_SIZE,
             max_queue_size: Self::DEFAULT_MAX_QUEUE_SIZE,
+            delivery_interval: Self::DEFAULT_DELIVERY_INTERVAL,
+            batch_size: Self::DEFAULT_BATCH_SIZE,
+            max_retries: Self::DEFAULT_MAX_RETRIES,
+            base_retry_delay: Self::DEFAULT_BASE_RETRY_DELAY,
+            max_retry_delay: Self::DEFAULT_MAX_RETRY_DELAY,
         };
         Some(config)
     }
@@ -92,7 +92,7 @@ impl EventIngestion {
             event_delivery,
             DeliveryConfig {
                 max_retries: config.max_retries,
-                base_retry_delay: config.retry_interval,
+                base_retry_delay: config.base_retry_delay,
                 max_retry_delay: config.max_retry_delay,
             },
         ));
@@ -202,12 +202,12 @@ mod tests {
         EventIngestionConfig {
             sdk_key: SdkKey::new("test-sdk-key".into()),
             ingestion_url,
-            batch_size,
-            delivery_interval: Duration::from_millis(10),
-            retry_interval: Duration::from_millis(1),
-            max_retry_delay: Duration::from_millis(10),
-            max_retries: 2,
             max_queue_size: 10,
+            delivery_interval: Duration::from_millis(10),
+            batch_size,
+            max_retries: 2,
+            base_retry_delay: Duration::from_millis(1),
+            max_retry_delay: Duration::from_millis(10),
         }
     }
 
