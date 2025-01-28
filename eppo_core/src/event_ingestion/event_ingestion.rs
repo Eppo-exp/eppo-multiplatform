@@ -7,8 +7,10 @@ use uuid::Uuid;
 use crate::{background::BackgroundRuntime, sdk_key::SdkKey};
 
 use super::{
-    auto_flusher, batcher, delivery, event_delivery::EventDelivery, queued_event::QueuedEvent,
-    retry, BatchedMessage, Event,
+    auto_flusher, batcher,
+    delivery::{self, DeliveryConfig},
+    event_delivery::EventDelivery,
+    BatchedMessage, Event,
 };
 
 #[derive(Debug, Clone)]
@@ -57,19 +59,21 @@ impl EventIngestionConfig {
 
 /// A handle to Event Ingestion subsystem.
 pub struct EventIngestion {
-    tx: mpsc::Sender<BatchedMessage<QueuedEvent>>,
+    tx: mpsc::Sender<BatchedMessage<Event>>,
 }
 
 impl EventIngestion {
     /// Starts the event ingestion subsystem on the given background runtime.
     pub fn spawn(runtime: &BackgroundRuntime, config: &EventIngestionConfig) -> EventIngestion {
-        let event_delivery =
-            EventDelivery::new(config.sdk_key.clone(), config.ingestion_url.clone());
+        let event_delivery = EventDelivery::new(
+            reqwest::Client::new(),
+            config.sdk_key.clone(),
+            config.ingestion_url.clone(),
+        );
 
         let (input, flusher_uplink) = mpsc::channel(config.max_queue_size);
         let (flusher_downlink, batcher_uplink) = mpsc::channel(1);
         let (batcher_downlink, delivery_uplink) = mpsc::channel(1);
-        let (delivery_downlink, retry_uplink) = mpsc::channel(1);
         let (delivery_status_tx, delivery_status_rx) = mpsc::channel(1);
 
         runtime.spawn_untracked(auto_flusher::auto_flusher(
@@ -84,18 +88,13 @@ impl EventIngestion {
         ));
         runtime.spawn_untracked(delivery::delivery(
             delivery_uplink,
-            delivery_downlink,
             delivery_status_tx.clone(),
-            config.max_retries,
             event_delivery,
-        ));
-        runtime.spawn_untracked(retry::retry(
-            retry_uplink,
-            // This is sending to input of delivery
-            batcher_downlink,
-            config.max_retries,
-            config.retry_interval,
-            config.max_retry_delay,
+            DeliveryConfig {
+                max_retries: config.max_retries,
+                base_retry_delay: config.retry_interval,
+                max_retry_delay: config.max_retry_delay,
+            },
         ));
 
         // For now, nobody is interested in delivery statuses.
@@ -116,9 +115,7 @@ impl EventIngestion {
     }
 
     fn track_event(&self, event: Event) {
-        let result = self
-            .tx
-            .try_send(BatchedMessage::singleton(QueuedEvent::new(event)));
+        let result = self.tx.try_send(BatchedMessage::singleton(event));
 
         if let Err(err) = result {
             log::warn!(target: "eppo", "failed to submit event to event ingestion: {}", err);

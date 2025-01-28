@@ -1,14 +1,14 @@
-use crate::event_ingestion::event::Event;
-use crate::event_ingestion::event_delivery::EventDeliveryError::{
-    JsonDeserializationError, JsonSerializationError,
-};
-use crate::sdk_key::SdkKey;
-use log::{debug, info};
-use reqwest::StatusCode;
-use serde::Serialize;
 use std::collections::HashSet;
+
+use log::debug;
+use reqwest::StatusCode;
+use serde::{Deserialize, Serialize};
 use url::Url;
 use uuid::Uuid;
+
+use crate::sdk_key::SdkKey;
+
+use super::{delivery::DeliveryStatus, event::Event};
 
 const MAX_EVENT_SERIALIZED_LENGTH: usize = 4096;
 
@@ -19,54 +19,66 @@ pub(super) struct EventDelivery {
     client: reqwest::Client,
 }
 
-#[derive(Debug, PartialEq)]
-pub(super) struct DeliveryResult {
-    // Events that failed delivery but that may be retried at a later time
-    pub retriable_failed_events: HashSet<Uuid>,
-    // Events that failed delivery and should not be retried (the failure is final)
-    pub non_retriable_failed_events: HashSet<Uuid>,
-}
-
-impl DeliveryResult {
-    pub fn empty() -> Self {
-        DeliveryResult {
-            retriable_failed_events: HashSet::new(),
-            non_retriable_failed_events: HashSet::new(),
-        }
-    }
-    pub fn is_empty(&self) -> bool {
-        self.retriable_failed_events.is_empty() && self.non_retriable_failed_events.is_empty()
-    }
-}
-
-#[derive(serde::Deserialize, Debug)]
-pub(super) struct RawEventDeliveryResponse {
-    pub failed_events: HashSet<Uuid>,
-}
-
 #[derive(thiserror::Error, Debug)]
 pub(super) enum EventDeliveryError {
-    #[error("Single event payload too large {0} (expected < {max})", max = MAX_EVENT_SERIALIZED_LENGTH)]
-    EventPayloadTooLargeError(usize),
-    #[error("Failed to serialize events to JSON")]
-    JsonSerializationError(serde_json::Error),
-    #[error("Failed to parse JSON response")]
-    JsonDeserializationError(reqwest::Error),
     #[error("Transient error delivering events")]
-    RetriableError(reqwest::Error),
+    RetriableError(#[source] reqwest::Error),
     #[error("Non-retriable error")]
-    NonRetriableError(reqwest::Error),
+    NonRetriableError(#[source] reqwest::Error),
+}
+
+impl From<reqwest::Error> for EventDeliveryError {
+    fn from(err: reqwest::Error) -> Self {
+        if err.is_builder() || err.is_request() {
+            // Issue with request. Most likely a json serialization error.
+            EventDeliveryError::NonRetriableError(err)
+        } else if err.is_status() {
+            match err.status() {
+                Some(StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN) => {
+                    log::warn!(target: "eppo", "client is not authorized. Check your API key");
+                    EventDeliveryError::NonRetriableError(err)
+                }
+                Some(
+                    status @ (StatusCode::BAD_REQUEST
+                    | StatusCode::NOT_FOUND
+                    | StatusCode::METHOD_NOT_ALLOWED
+                    | StatusCode::CONFLICT
+                    | StatusCode::UNPROCESSABLE_ENTITY),
+                ) => {
+                    // These errors are not-retriable
+                    log::warn!(target: "eppo", "received {status} response delivering events: {:?}", err);
+                    EventDeliveryError::NonRetriableError(err)
+                }
+                Some(status) if status.is_server_error() => {
+                    log::warn!(target: "eppo", "received {status} response delivering events: {err:?}");
+                    EventDeliveryError::RetriableError(err)
+                }
+                _ => {
+                    // Other error statuses **might be** retriable
+                    log::warn!(target: "eppo", "received non-200 response delivering events: {:?}", err);
+                    EventDeliveryError::RetriableError(err)
+                }
+            }
+        } else {
+            // Failed to get a server response. Most likely, an intermittent network error.
+            EventDeliveryError::RetriableError(err)
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]
 struct IngestionRequestBody<'a> {
-    eppo_events: &'a [&'a Event],
+    eppo_events: &'a [Event],
+}
+
+#[derive(Debug, Deserialize)]
+struct IngestionResponseBody {
+    failed_events: HashSet<Uuid>,
 }
 
 /// Responsible for delivering event batches to the Eppo ingestion service.
 impl EventDelivery {
-    pub fn new(sdk_key: SdkKey, ingestion_url: Url) -> Self {
-        let client = reqwest::Client::new();
+    pub fn new(client: reqwest::Client, sdk_key: SdkKey, ingestion_url: Url) -> Self {
         EventDelivery {
             sdk_key,
             ingestion_url,
@@ -74,147 +86,124 @@ impl EventDelivery {
         }
     }
 
-    /// Delivers the provided event batch and returns a Vec with the events that failed to be delivered.
-    pub(super) async fn deliver(
+    /// Delivers the provided event batch and returns delivery status.
+    pub(super) async fn deliver(&self, events: Vec<Event>) -> DeliveryStatus {
+        let result = self.deliver_inner(&events).await;
+
+        let body = match result {
+            Ok(body) => body,
+            Err(EventDeliveryError::RetriableError(_)) => return DeliveryStatus::retry(events),
+            Err(_) => {
+                // Non-retriable error
+                return DeliveryStatus::failure(events);
+            }
+        };
+
+        if body.failed_events.is_empty() {
+            // Partial failure is expected to be rather rare, so this branch is an optimization for
+            // the more common case (whole-batch success).
+            return DeliveryStatus::success(events);
+        }
+
+        let mut status = DeliveryStatus::new(
+            Vec::with_capacity(events.len() - body.failed_events.len()),
+            Vec::new(),
+            Vec::with_capacity(body.failed_events.len()),
+        );
+        for event in events {
+            if body.failed_events.contains(&event.uuid) {
+                status.retry.push(event);
+            } else {
+                status.success.push(event);
+            }
+        }
+
+        status
+    }
+
+    async fn deliver_inner(
         &self,
-        events: &[&Event],
-    ) -> Result<DeliveryResult, EventDeliveryError> {
+        events: &[Event],
+    ) -> Result<IngestionResponseBody, EventDeliveryError> {
+        if events.is_empty() {
+            return Ok(IngestionResponseBody {
+                failed_events: HashSet::new(),
+            });
+        }
+
         let ingestion_url = self.ingestion_url.clone();
         let sdk_key = &self.sdk_key;
         debug!("Delivering {} events to {}", events.len(), ingestion_url);
-        let mut failed_validation_events = HashSet::new();
-        let mut events_to_deliver = Vec::new();
-        for &event in events {
-            if !ensure_max_event_size(&event)? {
-                failed_validation_events.insert(event.uuid);
-            } else {
-                events_to_deliver.push(event);
-            }
-        }
-        if events_to_deliver.is_empty() {
-            // Short circuit if nothing left to deliver after filtering for event validation
-            return Ok(DeliveryResult {
-                retriable_failed_events: HashSet::new(),
-                non_retriable_failed_events: failed_validation_events,
-            });
-        }
+
         let body = IngestionRequestBody {
-            eppo_events: events_to_deliver.as_slice(),
+            eppo_events: events,
         };
-        let serialized_body = serde_json::to_vec(&body).map_err(|e| JsonSerializationError(e))?;
+
         let response = self
             .client
             .post(ingestion_url)
             .header("X-Eppo-Token", sdk_key.as_str())
-            .body(serialized_body)
+            .json(&body)
             .send()
-            .await
-            .map_err(EventDeliveryError::RetriableError)?;
-        let response = response.error_for_status().map_err(|err| {
-            return if err.status() == Some(StatusCode::UNAUTHORIZED) {
-                // This error is not-retriable
-                log::warn!(target: "eppo", "client is not authorized. Check your API key");
-                EventDeliveryError::NonRetriableError(err)
-            } else if err.status() == Some(StatusCode::BAD_REQUEST) {
-                // This error is not-retriable
-                log::warn!(target: "eppo", "received 400 response delivering events: {:?}", err);
-                EventDeliveryError::NonRetriableError(err)
-            } else {
-                // Other errors **might be** retriable
-                log::warn!(target: "eppo", "received non-200 response delivering events: {:?}", err);
-                EventDeliveryError::RetriableError(err)
-            }
-        })?;
-        let response = response
-            .json::<RawEventDeliveryResponse>()
-            .await
-            .map_err(|e| JsonDeserializationError(e))?;
-        info!(
-            "Batch delivered successfully, {} events failed ingestion",
-            response.failed_events.len()
-        );
-        Ok(DeliveryResult {
-            retriable_failed_events: response.failed_events,
-            non_retriable_failed_events: failed_validation_events,
-        })
-    }
-}
+            .await?;
 
-/// Returns whether the provided event's serialized JSON string is over the length limit
-fn ensure_max_event_size(event: &Event) -> Result<bool, EventDeliveryError> {
-    let serialized_event = serde_json::to_vec(event).map_err(|e| JsonSerializationError(e))?;
-    Ok(serialized_event.len() < MAX_EVENT_SERIALIZED_LENGTH)
+        let response = response.error_for_status()?;
+
+        let response_body = response.json::<IngestionResponseBody>().await?;
+
+        debug!(
+            target: "eppo",
+            "Batch delivered successfully, {} events failed ingestion",
+            response_body.failed_events.len()
+        );
+
+        Ok(response_body)
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::event_ingestion::event::Event;
-    use crate::event_ingestion::event_delivery::{
-        DeliveryResult, EventDelivery, MAX_EVENT_SERIALIZED_LENGTH,
-    };
     use crate::sdk_key::SdkKey;
     use crate::timestamp::now;
     use serde_json::json;
-    use std::collections::{HashMap, HashSet};
     use url::Url;
     use uuid::Uuid;
-    use wiremock::matchers::{method, path};
+    use wiremock::matchers::{header, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
-    /// Test that an event over-4096-byte serialized length triggers a EventPayloadTooLargeError.
     #[tokio::test]
-    async fn test_deliver_fails_on_large_payload() {
-        let client = EventDelivery::new(
-            SdkKey::new("foobar".into()),
-            Url::parse("https://example.com").unwrap(),
-        );
-        // Create an event that will produce a large JSON string.
-        // Just repeat "A" enough times that JSON definitely exceeds 4096 bytes.
-        let huge_string = "A".repeat(MAX_EVENT_SERIALIZED_LENGTH + 1);
-        let large_event = new_test_event(huge_string);
-        let result = client.deliver(&[&large_event]).await;
-        assert!(result.is_ok(), "Expected Ok, got {:?}", result);
-        assert_eq!(
-            result.unwrap(),
-            DeliveryResult {
-                non_retriable_failed_events: HashSet::from([large_event.uuid]),
-                retriable_failed_events: HashSet::new()
-            }
-        )
-    }
-
-    /// Test that an event serialized size **just** under 4096 bytes succeeds.
-    #[tokio::test]
-    async fn test_deliver_succeeds_on_small_payload() {
-        let response_body = ResponseTemplate::new(200).set_body_json(json!({"failed_events": []}));
+    async fn test_delivery() {
         let mock_server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/"))
-            .respond_with(response_body)
+            .and(header("X-Eppo-Token", "foobar"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({"failed_events": []})))
+            .expect(1)
             .mount(&mock_server)
             .await;
+
         let client = EventDelivery::new(
+            reqwest::Client::new(),
             SdkKey::new("foobar".into()),
             Url::parse(mock_server.uri().as_str()).unwrap(),
         );
-        let small_event = new_test_event("A".repeat(3500));
-        let result = client.deliver(&[&small_event]).await;
-        // Should be ok because payload is not over MAX_EVENT_PAYLOAD_SIZE
-        assert!(result.is_ok(), "Expected Ok, got {:?}", result);
-        assert_eq!(result.unwrap(), DeliveryResult::empty())
-    }
 
-    fn new_test_event(user_id: String) -> Event {
-        let payload: HashMap<&str, String> = HashMap::from([
-            ("user_id", user_id),
-            ("session_id", "session456".to_string()),
-        ]);
-        let serialized_payload = serde_json::to_value(payload).expect("Serialization failed");
-        Event {
+        let event = Event {
             uuid: Uuid::new_v4(),
             timestamp: now(),
             event_type: "test".to_string(),
-            payload: serialized_payload,
-        }
+            payload: serde_json::json!({
+                "user_id": "user123",
+                "session_id": "session456",
+            }),
+        };
+
+        let result = client.deliver(vec![event.clone()]).await;
+
+        assert_eq!(result, DeliveryStatus::success(vec![event]));
+
+        mock_server.verify().await;
     }
 }
