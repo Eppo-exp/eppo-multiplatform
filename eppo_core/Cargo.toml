@@ -25,7 +25,7 @@ vendored = ["reqwest/native-tls-vendored"]
 [dependencies]
 base64 = "0.22.1"
 chrono = { version = "0.4.38", features = ["serde"] }
-derive_more = { version = "1.0.0", default-features = false, features = ["from", "into"] }
+derive_more = { version = "2.0.0", default-features = false, features = ["from", "into"] }
 faststr = { version = "0.2.23", features = ["serde"] }
 log = { version = "0.4.21", features = ["kv", "kv_serde"] }
 md5 = "0.7.0"
