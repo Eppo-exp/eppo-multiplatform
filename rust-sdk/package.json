@@ -1,9 +1,8 @@
 {
   "private": true,
   "name": "rust-sdk",
-  "version": "5.0.2",
-  "dependencies": {
-  },
+  "version": "5.0.3",
+  "dependencies": {},
   "devDependencies": {},
   "scripts": {
     "postversion": "./postversion.sh"
