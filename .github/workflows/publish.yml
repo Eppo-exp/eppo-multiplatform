@@ -196,8 +196,8 @@ jobs:
         if: matrix._.platform == 'x86_64-linux' # GitHub actions architecture
         run: |
           gem install pkg/eppo-server-sdk-*.gem --verbose
-          script="puts EppoClient::Core::Client.new(EppoClient::Config.new('placeholder'))"
-          ruby -reppo_client -e "$script" 2>&1 | grep 'fetching new configuration'
+          script="EppoClient::init(EppoClient::Config.new('placeholder')); EppoClient::Client.instance.shutdown"
+          ruby -reppo_client -e "$script" 2>&1 || { echo "❌ Failed to run smoke test"; exit 1 }
           echo "✅ Successfully installed gem"
         env:
           EPPO_LOG: "eppo=debug"
