@@ -1,5 +1,27 @@
 # eppo_core
 
+## 8.0.0
+
+### Major Changes
+
+- [#168](https://github.com/Eppo-exp/eppo-multiplatform/pull/168) [`9d40446`](https://github.com/Eppo-exp/eppo-multiplatform/commit/9d40446c2346ac0869566699100baf69287da560) Thanks [@rasendubi](https://github.com/rasendubi)! - refactor(core): split poller thread into background thread and configuration poller.
+
+  In preparation for doing more work in the background, we're refactoring poller thread into a more generic background thread / background runtime with configuration poller running on top of it.
+
+  This changes API of the core but should be invisible for SDKs. The only noticeable difference is that client should be more responsive to graceful shutdown requests.
+
+- [#180](https://github.com/Eppo-exp/eppo-multiplatform/pull/180) [`02a310d`](https://github.com/Eppo-exp/eppo-multiplatform/commit/02a310d4c0196821b29ff8cc4007374c41dfad26) Thanks [@rasendubi](https://github.com/rasendubi)! - [core] Refactor: make Configuration implementation private.
+
+  This allows further evolution of configuration without breaking users.
+
+  The change should be invisible to SDKs.
+
+### Patch Changes
+
+- [#185](https://github.com/Eppo-exp/eppo-multiplatform/pull/185) [`1623ee2`](https://github.com/Eppo-exp/eppo-multiplatform/commit/1623ee215be5f07075f25a7c7413697082fd90cc) Thanks [@dependabot](https://github.com/apps/dependabot)! - [core] update rand requirement from 0.8.5 to 0.9.0
+
+- [#190](https://github.com/Eppo-exp/eppo-multiplatform/pull/190) [`8c44059`](https://github.com/Eppo-exp/eppo-multiplatform/commit/8c44059a5daf54b522db69c85589a6f04cc7b5a5) Thanks [@dependabot](https://github.com/apps/dependabot)! - chore(deps): update derive_more requirement from 1.0.0 to 2.0.0
+
 ## 7.0.3
 
 ### Patch Changes

@@ -1,9 +1,8 @@
 {
   "private": true,
   "name": "ruby-sdk",
-  "version": "3.4.2",
-  "dependencies": {
-  },
+  "version": "3.4.3",
+  "dependencies": {},
   "devDependencies": {},
   "scripts": {
     "postversion": "./postversion.sh"
