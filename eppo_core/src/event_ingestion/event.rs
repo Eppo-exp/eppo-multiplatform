@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub(super) struct Event {
     pub uuid: uuid::Uuid,
     pub timestamp: Timestamp,
+    #[serde(rename = "type")]
     pub event_type: String,
     pub payload: serde_json::Value,
 }
