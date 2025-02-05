@@ -3,4 +3,4 @@
 "ruby-sdk": patch
 ---
 
-Ingestion: Fix JSON serialization of Event type field
+[unstable] Event Ingestion: Fix JSON serialization of Event type field
