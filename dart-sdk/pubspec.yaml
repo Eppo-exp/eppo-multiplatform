@@ -1,0 +1,20 @@
+name: eppo_sdk
+description: Eppo SDK for Dart
+version: 1.0.0
+repository: https://github.com/Eppo-exp/eppo-multiplatform
+publish_to: none
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  lints: ^5.1.1
+  flutter_rust_bridge: ^2.7.1
+  freezed_annotation: ^2.2.0
+  native_assets_cli: ^0.2.0
+
+dev_dependencies:
+  test: ^1.25.14
+  freezed: ^2.5.7
+  build_runner: ^2.4.4
+  ffigen: ^16.1.0
