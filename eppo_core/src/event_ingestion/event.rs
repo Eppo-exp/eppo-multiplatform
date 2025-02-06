@@ -1,7 +1,7 @@
 use crate::timestamp::Timestamp;
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize, Serializer};
 use serde::de::Deserializer;
+use serde::{Deserialize, Serialize, Serializer};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub(super) struct Event {

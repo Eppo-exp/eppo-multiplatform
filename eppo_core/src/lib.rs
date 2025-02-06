@@ -56,12 +56,12 @@ pub mod configuration_fetcher;
 pub mod configuration_poller;
 pub mod configuration_store;
 pub mod eval;
-mod sdk_key;
 #[cfg(feature = "event_ingestion")]
 pub mod event_ingestion;
 pub mod events;
 #[cfg(feature = "pyo3")]
 pub mod pyo3;
+mod sdk_key;
 pub mod sharder;
 pub mod timestamp;
 pub mod ufc;
