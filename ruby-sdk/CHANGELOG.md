@@ -1,5 +1,11 @@
 # ruby-sdk
 
+## 3.4.5
+
+### Patch Changes
+
+- [#201](https://github.com/Eppo-exp/eppo-multiplatform/pull/201) [`1d310c7`](https://github.com/Eppo-exp/eppo-multiplatform/commit/1d310c7019dde1aa5a965e064eab15187b064d96) Thanks [@felipecsl](https://github.com/felipecsl)! - [Unstable] Event Ingestion: Fix JSON serialization of Event timestamp field
+
 ## 3.4.4
 
 ### Patch Changes
