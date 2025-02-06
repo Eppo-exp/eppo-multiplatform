@@ -183,7 +183,7 @@ mod tests {
             .and(body_json(&json!({
                 "eppo_events": [{
                     "uuid": uuid,
-                    "timestamp": timestamp,
+                    "timestamp": timestamp.timestamp_millis(),
                     "type": "test",
                     "payload": {
                         "user_id": "user123",
