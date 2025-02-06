@@ -61,7 +61,6 @@ pub mod event_ingestion;
 pub mod events;
 #[cfg(feature = "pyo3")]
 pub mod pyo3;
-mod sdk_key;
 pub mod sharder;
 pub mod timestamp;
 pub mod ufc;
@@ -70,6 +69,7 @@ mod configuration;
 mod error;
 mod obfuscation;
 mod precomputed;
+mod sdk_key;
 mod sdk_metadata;
 mod str;
 
