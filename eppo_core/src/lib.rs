@@ -56,7 +56,6 @@ pub mod configuration_fetcher;
 pub mod configuration_poller;
 pub mod configuration_store;
 pub mod eval;
-mod sdk_key;
 #[cfg(feature = "event_ingestion")]
 pub mod event_ingestion;
 pub mod events;
@@ -70,6 +69,7 @@ mod configuration;
 mod error;
 mod obfuscation;
 mod precomputed;
+mod sdk_key;
 mod sdk_metadata;
 mod str;
 
