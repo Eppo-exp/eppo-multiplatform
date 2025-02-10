@@ -1,5 +1,6 @@
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
+use serde_json::Value;
 use tokio::sync::mpsc;
 use url::Url;
 use uuid::Uuid;
@@ -9,7 +10,7 @@ use crate::{background::BackgroundRuntime, sdk_key::SdkKey};
 use super::{
     auto_flusher, batcher,
     delivery::{self, DeliveryConfig},
-    event_delivery::EventDelivery,
+    event_delivery::{ContextError, EventDelivery},
     BatchedMessage, Event,
 };
 
@@ -60,6 +61,7 @@ impl EventIngestionConfig {
 /// A handle to Event Ingestion subsystem.
 pub struct EventIngestion {
     tx: mpsc::Sender<BatchedMessage<Event>>,
+    event_delivery: EventDelivery,
 }
 
 impl EventIngestion {
@@ -89,7 +91,7 @@ impl EventIngestion {
         runtime.spawn_untracked(delivery::delivery(
             delivery_uplink,
             delivery_status_tx.clone(),
-            event_delivery,
+            event_delivery.clone(),
             DeliveryConfig {
                 max_retries: config.max_retries,
                 base_retry_delay: config.base_retry_delay,
@@ -100,7 +102,10 @@ impl EventIngestion {
         // For now, nobody is interested in delivery statuses.
         let _ = delivery_status_rx;
 
-        EventIngestion { tx: input }
+        EventIngestion {
+            tx: input,
+            event_delivery,
+        }
     }
 
     pub fn track(&self, event_type: String, payload: serde_json::Value) {
@@ -112,6 +117,19 @@ impl EventIngestion {
         };
 
         self.track_event(event);
+    }
+
+    /// Attaches a context to be included with all events dispatched by the EventDispatcher.
+    /// The context is delivered as a top-level object in the ingestion request payload.
+    /// An existing key can be removed by providing a `null` value.
+    /// Calling this method with same key multiple times causes only the last value to be used for the
+    /// given key.
+    ///
+    /// @param key - The context entry key.
+    /// @param value - The context entry value, must be a string, number, boolean, or null. If value is
+    /// an object or an array, will throw an ArgumentError.
+    pub fn attach_context(&mut self, key: String, value: Value) -> Result<(), ContextError> {
+        self.event_delivery.attach_context(key, value)
     }
 
     fn track_event(&self, event: Event) {
@@ -148,6 +166,7 @@ mod tests {
         Mock::given(method("POST"))
             .and(path("/"))
             .and(body_json(&json!({
+                "context": {},
                 "eppo_events": [event.clone()],
             })))
             .and(header("x-eppo-token", "test-sdk-key"))
@@ -172,7 +191,7 @@ mod tests {
         let mock_server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/"))
-            .and(body_json(&json!({"eppo_events": [event] })))
+            .and(body_json(&json!({"context": {}, "eppo_events": [event] })))
             .and(header("x-eppo-token", "test-sdk-key"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "failed_events": [event.uuid],

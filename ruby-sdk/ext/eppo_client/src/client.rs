@@ -55,6 +55,15 @@ impl TryConvert for Config {
     }
 }
 
+#[magnus::wrap(class = "EventIngestion")]
+struct MutEventIngestion(RefCell<EventIngestion>);
+
+impl MutEventIngestion {
+    pub fn new(event_ingestion: EventIngestion) -> Self {
+        Self(RefCell::new(event_ingestion))
+    }
+}
+
 #[magnus::wrap(class = "EppoClient::Core::Client")]
 pub struct Client {
     configuration_store: Arc<ConfigurationStore>,
@@ -67,8 +76,9 @@ pub struct Client {
     // world.
     background_thread: RefCell<Option<BackgroundThread>>,
     configuration_poller: Option<ConfigurationPoller>,
-    event_ingestion: Option<EventIngestion>,
+    event_ingestion: Option<MutEventIngestion>,
 }
+
 
 impl Client {
     pub fn new(config: Config) -> Client {
@@ -120,7 +130,7 @@ impl Client {
 
         let event_ingestion = config
             .event_ingestion_config
-            .map(|config| config.spawn(background_thread.runtime()));
+            .map(|config| MutEventIngestion::new(config.spawn(background_thread.runtime())));
 
         Client {
             configuration_store,
@@ -255,6 +265,23 @@ impl Client {
         }
     }
 
+    pub fn set_context(&self, key: String, value: Value) -> Result<()> {
+        let Some(event_ingestion) = &self.event_ingestion else {
+            // Event ingestion is disabled, do nothing.
+            return Ok(());
+        };
+        let value: serde_json::Value = serde_magnus::deserialize(value).map_err(|err| {
+            Error::new(
+                exception::runtime_error(),
+                format!("Unexpected value for payload: {err}"),
+            )
+        })?;
+
+        event_ingestion.0.borrow_mut().attach_context(key, value);
+
+        Ok(())
+    }
+
     pub fn track(&self, event_type: String, payload: Value) -> Result<()> {
         let Some(event_ingestion) = &self.event_ingestion else {
             // Event ingestion is disabled, do nothing.
@@ -268,7 +295,7 @@ impl Client {
             )
         })?;
 
-        event_ingestion.track(event_type, payload);
+        event_ingestion.0.borrow().track(event_type, payload);
 
         Ok(())
     }

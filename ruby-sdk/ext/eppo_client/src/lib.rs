@@ -29,6 +29,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
         method!(Client::get_bandit_action_details, 5),
     )?;
     core_client.define_method("track", method!(Client::track, 2))?;
+    core_client.define_method("set_context", method!(Client::set_context, 2))?;
     core_client.define_method("configuration", method!(Client::get_configuration, 0))?;
     core_client.define_method("configuration=", method!(Client::set_configuration, 1))?;
     core_client.define_method("shutdown", method!(Client::shutdown, 0))?;
