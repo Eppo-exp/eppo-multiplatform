@@ -79,7 +79,6 @@ pub struct Client {
     event_ingestion: Option<MutEventIngestion>,
 }
 
-
 impl Client {
     pub fn new(config: Config) -> Client {
         // Initialize logger

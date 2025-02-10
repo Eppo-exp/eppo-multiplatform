@@ -134,14 +134,12 @@ impl EventDelivery {
     pub fn attach_context(&mut self, key: String, value: Value) -> Result<(), ContextError> {
         // ensure value is valid not object or array
         return match value {
-            Value::Object(_) | Value::Array(_) => {
-                Err(ContextError::InvalidContextValueType)
-            }
+            Value::Object(_) | Value::Array(_) => Err(ContextError::InvalidContextValueType),
             _ => {
                 self.context.insert(key, value);
                 Ok(())
             }
-        }
+        };
     }
 
     async fn deliver_inner(
@@ -242,10 +240,18 @@ mod tests {
             }),
         };
 
-        delivery.attach_context("key1".to_string(), json!("value1")).unwrap();
-        delivery.attach_context("key2".to_string(), json!(42)).unwrap();
-        delivery.attach_context("key3".to_string(), json!(true)).unwrap();
-        delivery.attach_context("key4".to_string(), json!(null)).unwrap();
+        delivery
+            .attach_context("key1".to_string(), json!("value1"))
+            .unwrap();
+        delivery
+            .attach_context("key2".to_string(), json!(42))
+            .unwrap();
+        delivery
+            .attach_context("key3".to_string(), json!(true))
+            .unwrap();
+        delivery
+            .attach_context("key4".to_string(), json!(null))
+            .unwrap();
 
         let result = delivery.deliver(vec![event.clone()]).await;
 
@@ -261,10 +267,18 @@ mod tests {
             SdkKey::new("foobar".into()),
             Url::parse("http://example.com").unwrap(),
         );
-        assert!(delivery.attach_context("key1".to_string(), json!("value1")).is_ok());
-        assert!(delivery.attach_context("key2".to_string(), json!(42)).is_ok());
-        assert!(delivery.attach_context("key3".to_string(), json!(true)).is_ok());
-        assert!(delivery.attach_context("key4".to_string(), json!(null)).is_ok());
+        assert!(delivery
+            .attach_context("key1".to_string(), json!("value1"))
+            .is_ok());
+        assert!(delivery
+            .attach_context("key2".to_string(), json!(42))
+            .is_ok());
+        assert!(delivery
+            .attach_context("key3".to_string(), json!(true))
+            .is_ok());
+        assert!(delivery
+            .attach_context("key4".to_string(), json!(null))
+            .is_ok());
         assert_eq!(delivery.context.len(), 4);
         assert_eq!(delivery.context.get("key1").unwrap(), &json!("value1"));
         assert_eq!(delivery.context.get("key2").unwrap(), &json!(42));

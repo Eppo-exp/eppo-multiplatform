@@ -44,9 +44,15 @@ module EppoClient
     end
 
     # Unstable
-    # Enqueues an arbitrary event. Events must have a type and a payload
+    # Enqueues an arbitrary event. Events must have a type and a payload.
     def unstable_track(event_type, payload)
       @core.track(event_type, payload)
+    end
+
+    # Unstable
+    # Sets an arbitrary context key/value pair to be sent with all events.
+    def unstable_set_context(key, value)
+      @core.set_context(key, value)
     end
 
     def get_string_assignment(flag_key, subject_key, subject_attributes, default_value)
