@@ -1,4 +1,7 @@
-use std::{collections::{HashMap, HashSet}, sync::Mutex};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Mutex,
+};
 
 use log::debug;
 use reqwest::StatusCode;

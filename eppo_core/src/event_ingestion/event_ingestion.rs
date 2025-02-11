@@ -61,7 +61,7 @@ impl EventIngestionConfig {
 /// A handle to Event Ingestion subsystem.
 pub struct EventIngestion {
     tx: mpsc::Sender<BatchedMessage<Event>>,
-    context_sender: mpsc::Sender<(String, Value)>
+    context_sender: mpsc::Sender<(String, Value)>,
 }
 
 impl EventIngestion {
