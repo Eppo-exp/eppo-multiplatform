@@ -1,6 +1,5 @@
 use std::{sync::Arc, time::Duration};
 
-use serde_json::Value;
 use tokio::sync::{mpsc, Mutex};
 use url::Url;
 use uuid::Uuid;
@@ -11,7 +10,7 @@ use super::{
     auto_flusher, batcher,
     delivery::{self, DeliveryConfig},
     event_delivery::EventDelivery,
-    BatchedMessage, Event,
+    BatchedMessage, ContextValue, Event,
 };
 
 #[derive(Debug, Clone)]
@@ -61,7 +60,7 @@ impl EventIngestionConfig {
 /// A handle to Event Ingestion subsystem.
 pub struct EventIngestion {
     tx: mpsc::Sender<BatchedMessage<Event>>,
-    context_sender: mpsc::Sender<(String, Value)>,
+    context_sender: mpsc::Sender<(String, ContextValue)>,
 }
 
 impl EventIngestion {
@@ -74,13 +73,11 @@ impl EventIngestion {
         )));
 
         let event_delivery_clone = Arc::clone(&event_delivery);
-        let (context_sender, mut context_rx) = mpsc::channel::<(String, Value)>(100);
+        let (context_sender, mut context_rx) = mpsc::channel::<(String, ContextValue)>(100);
         runtime.spawn_untracked(async move {
             while let Some((key, value)) = context_rx.recv().await {
                 let mut event_delivery = event_delivery_clone.lock().await;
-                if let Err(err) = event_delivery.attach_context(key, value) {
-                    log::warn!(target: "eppo", "Failed to attach context: {}", err);
-                }
+                event_delivery.attach_context(key, value)
             }
         });
 
@@ -140,7 +137,7 @@ impl EventIngestion {
     /// @param key - The context entry key.
     /// @param value - The context entry value, must be a string, number, boolean, or null. If value is
     /// an object or an array, will throw an ArgumentError.
-    pub fn attach_context(&self, key: String, value: Value) {
+    pub fn attach_context(&self, key: String, value: ContextValue) {
         let result = self.context_sender.try_send((key, value));
         if let Err(err) = result {
             log::warn!(target: "eppo", "Failed to send context update to worker: {}", err);
@@ -231,7 +228,7 @@ mod tests {
             .and(body_json(&json!({
                 "context": {
                     "string": "value",
-                    "number": 42,
+                    "number": 42.0,
                     "boolean": true,
                     "null": null,
                 },
@@ -249,10 +246,10 @@ mod tests {
         let config = new_test_event_config(Url::parse(&mock_server.uri()).unwrap(), batch_size);
         let runtime = BackgroundRuntime::new(tokio::runtime::Handle::current());
         let event_ingestion = config.spawn(&runtime);
-        event_ingestion.attach_context("string".to_string(), json!("value"));
-        event_ingestion.attach_context("number".to_string(), json!(42));
-        event_ingestion.attach_context("boolean".to_string(), json!(true));
-        event_ingestion.attach_context("null".to_string(), json!(null));
+        event_ingestion.attach_context("string".to_string(), ContextValue::String("value".into()));
+        event_ingestion.attach_context("number".to_string(), ContextValue::Number(42.0));
+        event_ingestion.attach_context("boolean".to_string(), ContextValue::Boolean(true));
+        event_ingestion.attach_context("null".to_string(), ContextValue::Null);
         event_ingestion.track_event(event);
         // wait some time for the async task to finish
         // TODO: use flush instead of sleeping

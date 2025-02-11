@@ -9,7 +9,7 @@ use eppo_core::{
     },
     configuration_store::ConfigurationStore,
     eval::{Evaluator, EvaluatorConfig},
-    event_ingestion::{EventIngestion, EventIngestionConfig},
+    event_ingestion::{ContextValue, EventIngestion, EventIngestionConfig},
     ufc::VariationType,
     Attributes, ContextAttributes, SdkKey,
 };
@@ -264,11 +264,18 @@ impl Client {
         let value: serde_json::Value = serde_magnus::deserialize(value).map_err(|err| {
             Error::new(
                 exception::runtime_error(),
-                format!("Unexpected value for payload: {err}"),
+                format!("Unexpected value: {}", err),
             )
         })?;
 
-        event_ingestion.attach_context(key, value);
+        let context_value = ContextValue::try_from_json(value).map_err(|err| {
+            Error::new(
+                exception::runtime_error(),
+                format!("Unexpected value for context value: {}", err),
+            )
+        })?;
+
+        event_ingestion.attach_context(key, context_value);
 
         Ok(())
     }

@@ -1,18 +1,14 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Mutex,
-};
+use std::collections::{HashMap, HashSet};
 
 use log::debug;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use url::Url;
 use uuid::Uuid;
 
 use crate::sdk_key::SdkKey;
 
-use super::{delivery::DeliveryStatus, event::Event};
+use super::{delivery::DeliveryStatus, event::Event, ContextValue};
 
 const MAX_EVENT_SERIALIZED_LENGTH: usize = 4096;
 
@@ -21,13 +17,7 @@ pub(super) struct EventDelivery {
     sdk_key: SdkKey,
     ingestion_url: Url,
     client: reqwest::Client,
-    context: HashMap<String, Value>,
-}
-
-#[derive(thiserror::Error, Debug, Clone, PartialEq)]
-pub enum ContextError {
-    #[error("JSON value cannot be an object or an array")]
-    InvalidContextValueType,
+    context: HashMap<String, ContextValue>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -79,7 +69,7 @@ impl From<reqwest::Error> for EventDeliveryError {
 
 #[derive(Debug, Serialize)]
 struct IngestionRequestBody<'a> {
-    context: &'a HashMap<String, Value>,
+    context: &'a HashMap<String, ContextValue>,
     eppo_events: &'a [Event],
 }
 
@@ -134,15 +124,9 @@ impl EventDelivery {
         status
     }
 
-    pub fn attach_context(&mut self, key: String, value: Value) -> Result<(), ContextError> {
+    pub fn attach_context(&mut self, key: String, value: ContextValue) {
         // ensure value is valid (not object or array)
-        return match value {
-            Value::Object(_) | Value::Array(_) => Err(ContextError::InvalidContextValueType),
-            _ => {
-                self.context.insert(key, value);
-                Ok(())
-            }
-        };
+        self.context.insert(key, value);
     }
 
     async fn deliver_inner(
@@ -208,7 +192,7 @@ mod tests {
             .and(body_json(&json!({
                 "context": {
                     "key1": "value1",
-                    "key2": 42,
+                    "key2": 42.0,
                     "key3": true,
                     "key4": null,
                 },
@@ -243,18 +227,10 @@ mod tests {
             }),
         };
 
-        delivery
-            .attach_context("key1".to_string(), json!("value1"))
-            .unwrap();
-        delivery
-            .attach_context("key2".to_string(), json!(42))
-            .unwrap();
-        delivery
-            .attach_context("key3".to_string(), json!(true))
-            .unwrap();
-        delivery
-            .attach_context("key4".to_string(), json!(null))
-            .unwrap();
+        delivery.attach_context("key1".to_string(), ContextValue::String("value1".into()));
+        delivery.attach_context("key2".to_string(), ContextValue::Number(42.0));
+        delivery.attach_context("key3".to_string(), ContextValue::Boolean(true));
+        delivery.attach_context("key4".to_string(), ContextValue::Null);
 
         let result = delivery.deliver(vec![event.clone()]).await;
 
@@ -270,41 +246,16 @@ mod tests {
             SdkKey::new("foobar".into()),
             Url::parse("http://example.com").unwrap(),
         );
-        assert!(delivery
-            .attach_context("key1".to_string(), json!("value1"))
-            .is_ok());
-        assert!(delivery
-            .attach_context("key2".to_string(), json!(42))
-            .is_ok());
-        assert!(delivery
-            .attach_context("key3".to_string(), json!(true))
-            .is_ok());
-        assert!(delivery
-            .attach_context("key4".to_string(), json!(null))
-            .is_ok());
+
+        delivery.attach_context("key1".to_string(), ContextValue::String("value1".into()));
+        delivery.attach_context("key2".to_string(), ContextValue::Number(42.0));
+        delivery.attach_context("key3".to_string(), ContextValue::Boolean(true));
+        delivery.attach_context("key4".to_string(), ContextValue::Null);
         let ctx = delivery.context;
         assert_eq!(ctx.len(), 4);
-        assert_eq!(ctx.get("key1").unwrap(), &json!("value1"));
-        assert_eq!(ctx.get("key2").unwrap(), &json!(42));
-        assert_eq!(ctx.get("key3").unwrap(), &json!(true));
-        assert_eq!(ctx.get("key4").unwrap(), &json!(null));
-    }
-
-    #[test]
-    fn test_attach_context_invalid_values() {
-        let mut delivery = EventDelivery::new(
-            reqwest::Client::new(),
-            SdkKey::new("foobar".into()),
-            Url::parse("http://example.com").unwrap(),
-        );
-        assert_eq!(
-            delivery.attach_context("key1".to_string(), json!({"foo": "bar"})),
-            Err(ContextError::InvalidContextValueType)
-        );
-        assert_eq!(
-            delivery.attach_context("key2".to_string(), json!([1, 2, 3])),
-            Err(ContextError::InvalidContextValueType)
-        );
-        assert_eq!(delivery.context.len(), 0);
+        assert_eq!(ctx["key1"], ContextValue::String("value1".into()));
+        assert_eq!(ctx["key2"], ContextValue::Number(42.0));
+        assert_eq!(ctx["key3"], ContextValue::Boolean(true));
+        assert_eq!(ctx["key4"], ContextValue::Null);
     }
 }
