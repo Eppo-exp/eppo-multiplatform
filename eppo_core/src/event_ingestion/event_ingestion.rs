@@ -128,8 +128,10 @@ impl EventIngestion {
     /// @param key - The context entry key.
     /// @param value - The context entry value, must be a string, number, boolean, or null. If value is
     /// an object or an array, will throw an ArgumentError.
-    pub fn attach_context(&mut self, key: String, value: Value) -> Result<(), ContextError> {
-        self.event_delivery.attach_context(key, value)
+    pub fn attach_context(&mut self, key: String, value: Value) {
+        if let Err(err) = self.event_delivery.attach_context(key, value) {
+            log::warn!(target: "eppo", "failed to attach context: {}", err);
+        }
     }
 
     fn track_event(&self, event: Event) {

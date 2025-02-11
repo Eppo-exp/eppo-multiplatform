@@ -55,15 +55,6 @@ impl TryConvert for Config {
     }
 }
 
-#[magnus::wrap(class = "EventIngestion")]
-struct MutEventIngestion(RefCell<EventIngestion>);
-
-impl MutEventIngestion {
-    pub fn new(event_ingestion: EventIngestion) -> Self {
-        Self(RefCell::new(event_ingestion))
-    }
-}
-
 #[magnus::wrap(class = "EppoClient::Core::Client")]
 pub struct Client {
     configuration_store: Arc<ConfigurationStore>,
@@ -76,7 +67,7 @@ pub struct Client {
     // world.
     background_thread: RefCell<Option<BackgroundThread>>,
     configuration_poller: Option<ConfigurationPoller>,
-    event_ingestion: Option<MutEventIngestion>,
+    event_ingestion: RefCell<Option<EventIngestion>>,
 }
 
 impl Client {
@@ -129,14 +120,14 @@ impl Client {
 
         let event_ingestion = config
             .event_ingestion_config
-            .map(|config| MutEventIngestion::new(config.spawn(background_thread.runtime())));
+            .map(|config| config.spawn(background_thread.runtime()));
 
         Client {
             configuration_store,
             evaluator,
             background_thread: RefCell::new(Some(background_thread)),
             configuration_poller,
-            event_ingestion,
+            event_ingestion: RefCell::new(event_ingestion),
         }
     }
 
@@ -265,7 +256,8 @@ impl Client {
     }
 
     pub fn set_context(&self, key: String, value: Value) -> Result<()> {
-        let Some(event_ingestion) = &self.event_ingestion else {
+        let mut binding = self.event_ingestion.borrow_mut();
+        let Some(event_ingestion) = binding.as_mut() else {
             // Event ingestion is disabled, do nothing.
             return Ok(());
         };
@@ -276,13 +268,13 @@ impl Client {
             )
         })?;
 
-        event_ingestion.0.borrow_mut().attach_context(key, value);
+        event_ingestion.attach_context(key, value);
 
         Ok(())
     }
-
     pub fn track(&self, event_type: String, payload: Value) -> Result<()> {
-        let Some(event_ingestion) = &self.event_ingestion else {
+        let binding = self.event_ingestion.borrow();
+        let Some(event_ingestion) = binding.as_ref() else {
             // Event ingestion is disabled, do nothing.
             return Ok(());
         };
@@ -294,7 +286,7 @@ impl Client {
             )
         })?;
 
-        event_ingestion.0.borrow().track(event_type, payload);
+        event_ingestion.track(event_type, payload);
 
         Ok(())
     }
