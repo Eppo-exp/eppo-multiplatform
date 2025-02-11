@@ -141,8 +141,9 @@ impl EventIngestion {
     /// @param value - The context entry value, must be a string, number, boolean, or null. If value is
     /// an object or an array, will throw an ArgumentError.
     pub fn attach_context(&self, key: String, value: Value) {
-        if self.context_sender.try_send((key, value)).is_err() {
-            log::warn!(target: "eppo", "Failed to send context update to worker");
+        let result = self.context_sender.try_send((key, value));
+        if let Err(err) = result {
+            log::warn!(target: "eppo", "Failed to send context update to worker: {}", err);
         }
     }
 
