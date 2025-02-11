@@ -125,7 +125,6 @@ impl EventDelivery {
     }
 
     pub fn attach_context(&mut self, key: String, value: ContextValue) {
-        // ensure value is valid (not object or array)
         self.context.insert(key, value);
     }
 
