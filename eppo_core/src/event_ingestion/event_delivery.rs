@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::{collections::{HashMap, HashSet}, sync::Mutex};
 
 use log::debug;
 use reqwest::StatusCode;
@@ -132,7 +132,7 @@ impl EventDelivery {
     }
 
     pub fn attach_context(&mut self, key: String, value: Value) -> Result<(), ContextError> {
-        // ensure value is valid not object or array
+        // ensure value is valid (not object or array)
         return match value {
             Value::Object(_) | Value::Array(_) => Err(ContextError::InvalidContextValueType),
             _ => {
@@ -279,11 +279,12 @@ mod tests {
         assert!(delivery
             .attach_context("key4".to_string(), json!(null))
             .is_ok());
-        assert_eq!(delivery.context.len(), 4);
-        assert_eq!(delivery.context.get("key1").unwrap(), &json!("value1"));
-        assert_eq!(delivery.context.get("key2").unwrap(), &json!(42));
-        assert_eq!(delivery.context.get("key3").unwrap(), &json!(true));
-        assert_eq!(delivery.context.get("key4").unwrap(), &json!(null));
+        let ctx = delivery.context;
+        assert_eq!(ctx.len(), 4);
+        assert_eq!(ctx.get("key1").unwrap(), &json!("value1"));
+        assert_eq!(ctx.get("key2").unwrap(), &json!(42));
+        assert_eq!(ctx.get("key3").unwrap(), &json!(true));
+        assert_eq!(ctx.get("key4").unwrap(), &json!(null));
     }
 
     #[test]

@@ -1,7 +1,7 @@
-use std::{collections::HashMap, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use serde_json::Value;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, Mutex};
 use url::Url;
 use uuid::Uuid;
 
@@ -10,7 +10,7 @@ use crate::{background::BackgroundRuntime, sdk_key::SdkKey};
 use super::{
     auto_flusher, batcher,
     delivery::{self, DeliveryConfig},
-    event_delivery::{ContextError, EventDelivery},
+    event_delivery::EventDelivery,
     BatchedMessage, Event,
 };
 
@@ -61,18 +61,30 @@ impl EventIngestionConfig {
 /// A handle to Event Ingestion subsystem.
 pub struct EventIngestion {
     tx: mpsc::Sender<BatchedMessage<Event>>,
-    event_delivery: EventDelivery,
+    context_sender: mpsc::Sender<(String, Value)>
 }
 
 impl EventIngestion {
     /// Starts the event ingestion subsystem on the given background runtime.
     pub fn spawn(runtime: &BackgroundRuntime, config: &EventIngestionConfig) -> EventIngestion {
-        let event_delivery = EventDelivery::new(
+        let event_delivery = Arc::new(Mutex::new(EventDelivery::new(
             reqwest::Client::new(),
             config.sdk_key.clone(),
             config.ingestion_url.clone(),
-        );
+        )));
 
+        let event_delivery_clone = Arc::clone(&event_delivery);
+        let (context_sender, mut context_rx) = mpsc::channel::<(String, Value)>(100);
+        runtime.spawn_untracked(async move {
+            while let Some((key, value)) = context_rx.recv().await {
+                let mut event_delivery = event_delivery_clone.lock().await;
+                if let Err(err) = event_delivery.attach_context(key, value) {
+                    log::warn!(target: "eppo", "Failed to attach context: {}", err);
+                }
+            }
+        });
+
+        let event_delivery_clone = Arc::clone(&event_delivery);
         let (input, flusher_uplink) = mpsc::channel(config.max_queue_size);
         let (flusher_downlink, batcher_uplink) = mpsc::channel(1);
         let (batcher_downlink, delivery_uplink) = mpsc::channel(1);
@@ -91,7 +103,7 @@ impl EventIngestion {
         runtime.spawn_untracked(delivery::delivery(
             delivery_uplink,
             delivery_status_tx.clone(),
-            event_delivery.clone(),
+            event_delivery_clone,
             DeliveryConfig {
                 max_retries: config.max_retries,
                 base_retry_delay: config.base_retry_delay,
@@ -104,7 +116,7 @@ impl EventIngestion {
 
         EventIngestion {
             tx: input,
-            event_delivery,
+            context_sender,
         }
     }
 
@@ -128,9 +140,9 @@ impl EventIngestion {
     /// @param key - The context entry key.
     /// @param value - The context entry value, must be a string, number, boolean, or null. If value is
     /// an object or an array, will throw an ArgumentError.
-    pub fn attach_context(&mut self, key: String, value: Value) {
-        if let Err(err) = self.event_delivery.attach_context(key, value) {
-            log::warn!(target: "eppo", "failed to attach context: {}", err);
+    pub fn attach_context(&self, key: String, value: Value) {
+        if self.context_sender.try_send((key, value)).is_err() {
+            log::warn!(target: "eppo", "Failed to send context update to worker");
         }
     }
 
@@ -138,7 +150,7 @@ impl EventIngestion {
         let result = self.tx.try_send(BatchedMessage::singleton(event));
 
         if let Err(err) = result {
-            log::warn!(target: "eppo", "failed to submit event to event ingestion: {}", err);
+            log::warn!(target: "eppo", "Failed to submit event to event ingestion: {}", err);
         }
     }
 }
@@ -203,6 +215,47 @@ mod tests {
             .await;
 
         run_dispatcher_task(event.clone(), &mock_server.uri()).await;
+
+        mock_server.verify().await;
+    }
+
+    #[tokio::test]
+    async fn test_attach_context() {
+        init();
+
+        let event = new_test_event();
+        let mock_server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/"))
+            .and(body_json(&json!({
+                "context": {
+                    "string": "value",
+                    "number": 42,
+                    "boolean": true,
+                    "null": null,
+                },
+                "eppo_events": [event.clone()],
+            })))
+            .and(header("x-eppo-token", "test-sdk-key"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "failed_events": []
+            })))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let batch_size = 1;
+        let config = new_test_event_config(Url::parse(&mock_server.uri()).unwrap(), batch_size);
+        let runtime = BackgroundRuntime::new(tokio::runtime::Handle::current());
+        let event_ingestion = config.spawn(&runtime);
+        event_ingestion.attach_context("string".to_string(), json!("value"));
+        event_ingestion.attach_context("number".to_string(), json!(42));
+        event_ingestion.attach_context("boolean".to_string(), json!(true));
+        event_ingestion.attach_context("null".to_string(), json!(null));
+        event_ingestion.track_event(event);
+        // wait some time for the async task to finish
+        // TODO: use flush instead of sleeping
+        tokio::time::sleep(Duration::from_millis(100)).await;
 
         mock_server.verify().await;
     }
