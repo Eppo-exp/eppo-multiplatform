@@ -1,6 +1,6 @@
 ---
-"eppo_core": minor
-"ruby-sdk": minor
+"eppo_core": patch
+"ruby-sdk": patch
 ---
 
 [Unstable] Add ability for attaching context to events dispatched
