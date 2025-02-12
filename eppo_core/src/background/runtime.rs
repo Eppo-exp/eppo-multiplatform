@@ -101,6 +101,7 @@ impl BackgroundRuntime {
 
     /// Command background activities to stop and exit.
     pub(crate) fn stop(&self) {
+        log::debug!(target: "eppo", "stopping background runtime");
         self.watched_tasks.close();
         self.cancellation_token.cancel();
     }
