@@ -1,5 +1,11 @@
 # ruby-sdk
 
+## 3.4.6
+
+### Patch Changes
+
+- [#206](https://github.com/Eppo-exp/eppo-multiplatform/pull/206) [`8c04c92`](https://github.com/Eppo-exp/eppo-multiplatform/commit/8c04c9254dc24660f172614b867c0324d94663bd) Thanks [@dependabot](https://github.com/apps/dependabot)! - chore(deps): bump openssl from 0.10.68 to 0.10.70
+
 ## 3.4.5
 
 ### Patch Changes
