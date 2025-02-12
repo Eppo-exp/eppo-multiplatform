@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use log::debug;
 use reqwest::StatusCode;
@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::sdk_key::SdkKey;
 
-use super::{delivery::DeliveryStatus, event::Event};
+use super::{delivery::DeliveryStatus, event::Event, ContextValue};
 
 const MAX_EVENT_SERIALIZED_LENGTH: usize = 4096;
 
@@ -17,6 +17,7 @@ pub(super) struct EventDelivery {
     sdk_key: SdkKey,
     ingestion_url: Url,
     client: reqwest::Client,
+    context: HashMap<String, ContextValue>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -68,6 +69,7 @@ impl From<reqwest::Error> for EventDeliveryError {
 
 #[derive(Debug, Serialize)]
 struct IngestionRequestBody<'a> {
+    context: &'a HashMap<String, ContextValue>,
     eppo_events: &'a [Event],
 }
 
@@ -83,6 +85,7 @@ impl EventDelivery {
             sdk_key,
             ingestion_url,
             client,
+            context: HashMap::new(),
         }
     }
 
@@ -121,6 +124,10 @@ impl EventDelivery {
         status
     }
 
+    pub fn attach_context(&mut self, key: String, value: ContextValue) {
+        self.context.insert(key, value);
+    }
+
     async fn deliver_inner(
         &self,
         events: &[Event],
@@ -136,6 +143,7 @@ impl EventDelivery {
         debug!("Delivering {} events to {}", events.len(), ingestion_url);
 
         let body = IngestionRequestBody {
+            context: &self.context,
             eppo_events: events,
         };
 
@@ -181,6 +189,12 @@ mod tests {
             .and(path("/"))
             .and(header("X-Eppo-Token", "foobar"))
             .and(body_json(&json!({
+                "context": {
+                    "key1": "value1",
+                    "key2": 42.0,
+                    "key3": true,
+                    "key4": null,
+                },
                 "eppo_events": [{
                     "uuid": uuid,
                     "timestamp": timestamp.timestamp_millis(),
@@ -196,7 +210,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let client = EventDelivery::new(
+        let mut delivery = EventDelivery::new(
             reqwest::Client::new(),
             SdkKey::new("foobar".into()),
             Url::parse(mock_server.uri().as_str()).unwrap(),
@@ -212,10 +226,35 @@ mod tests {
             }),
         };
 
-        let result = client.deliver(vec![event.clone()]).await;
+        delivery.attach_context("key1".to_string(), ContextValue::String("value1".into()));
+        delivery.attach_context("key2".to_string(), ContextValue::Number(42.0));
+        delivery.attach_context("key3".to_string(), ContextValue::Boolean(true));
+        delivery.attach_context("key4".to_string(), ContextValue::Null);
+
+        let result = delivery.deliver(vec![event.clone()]).await;
 
         assert_eq!(result, DeliveryStatus::success(vec![event]));
 
         mock_server.verify().await;
+    }
+
+    #[test]
+    fn test_attach_context_valid_values() {
+        let mut delivery = EventDelivery::new(
+            reqwest::Client::new(),
+            SdkKey::new("foobar".into()),
+            Url::parse("http://example.com").unwrap(),
+        );
+
+        delivery.attach_context("key1".to_string(), ContextValue::String("value1".into()));
+        delivery.attach_context("key2".to_string(), ContextValue::Number(42.0));
+        delivery.attach_context("key3".to_string(), ContextValue::Boolean(true));
+        delivery.attach_context("key4".to_string(), ContextValue::Null);
+        let ctx = delivery.context;
+        assert_eq!(ctx.len(), 4);
+        assert_eq!(ctx["key1"], ContextValue::String("value1".into()));
+        assert_eq!(ctx["key2"], ContextValue::Number(42.0));
+        assert_eq!(ctx["key3"], ContextValue::Boolean(true));
+        assert_eq!(ctx["key4"], ContextValue::Null);
     }
 }

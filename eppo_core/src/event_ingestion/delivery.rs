@@ -1,7 +1,7 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use exponential_backoff::Backoff;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, Mutex};
 
 use super::{event::Event, event_delivery::EventDelivery, BatchedMessage};
 
@@ -56,7 +56,7 @@ pub(super) struct DeliveryConfig {
 pub(super) async fn delivery(
     mut uplink: mpsc::Receiver<BatchedMessage<Event>>,
     delivery_status: mpsc::Sender<DeliveryStatus>,
-    event_delivery: EventDelivery,
+    event_delivery: Arc<Mutex<EventDelivery>>,
     config: DeliveryConfig,
 ) -> Option<()> {
     // We use this unbounded channel to loop back messages that need retrying.
@@ -72,7 +72,8 @@ pub(super) async fn delivery(
 
         let BatchedMessage { batch, flush } = msg;
 
-        let mut result = event_delivery.deliver(batch).await;
+        let delivery = event_delivery.lock().await;
+        let mut result = delivery.deliver(batch).await;
 
         if attempts >= config.max_retries {
             // Exceeded max retries -> promote retriable errors to permanent ones.
