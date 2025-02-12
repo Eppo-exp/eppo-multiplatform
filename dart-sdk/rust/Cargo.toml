@@ -1,0 +1,12 @@
+[package]
+name = "eppo_dart"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+flutter_rust_bridge = "=2.7.1"

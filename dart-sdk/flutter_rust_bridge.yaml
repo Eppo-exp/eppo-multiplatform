@@ -1,0 +1,10 @@
+rust_input: rust/src/api/**/*.rs
+dart_output: lib/src/rust
+c_output: frb_generated.h
+dart_entrypoint_class_name: EppoSdk
+
+# Default to generating sync code.
+# 1. Most of Eppo SDK is designed to be fast and run sync.
+# 2. This removes the need for users to set cross-origin headers.[1]
+# [1]: https://cjycode.com/flutter_rust_bridge/manual/miscellaneous/web-cross-origin#run-without-cross-origin-headers
+default_dart_async: false
