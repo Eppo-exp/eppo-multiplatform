@@ -3,10 +3,14 @@ name = "eppo_dart"
 version = "0.1.0"
 edition = "2021"
 
+# Marking this cargo package as its own workspace for `cargo build` to
+# put built library to the expect location (./target relative to
+# here).
 [workspace]
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-flutter_rust_bridge = "=2.7.1"
+flutter_rust_bridge = { version = "=2.7.1" }
+eppo_core = "=8.0.0"

@@ -1,6 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 
-import 'package:eppo_sdk/src/rust/api/minimal.dart';
+import 'package:eppo_sdk/src/rust/api/client.dart';
 import 'package:eppo_sdk/src/rust/frb_generated.dart';
 import 'package:test/test.dart';
 
@@ -9,11 +10,10 @@ Future<void> main() async {
   await EppoSdk.init();
   print('Action: Init rust (after)');
 
-  print('Action: Configure tests (before)');
-  test('dart call minimalAdder', () async {
-    print('Action: Call rust (before)');
-    expect(await minimalAdder(a: 100, b: 200), 300);
-    print('Action: Call rust (after)');
-  });
-  print('Action: Configure tests (end)');
+  var client = EppoClient(sdkKey: "<redacted>");
+
+  await client.waitForConfiguration();
+
+  var value = client.boolAssignment("a-boolean-flag", "subject1", false);
+  print('value: ${value}');
 }
