@@ -1,6 +1,5 @@
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
-use derive_more::From;
 use serde::{Deserialize, Serialize};
 
 use crate::Str;
