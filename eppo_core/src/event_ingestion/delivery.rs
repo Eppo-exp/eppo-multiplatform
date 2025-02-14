@@ -72,8 +72,10 @@ pub(super) async fn delivery(
 
         let BatchedMessage { batch, flush } = msg;
 
-        let delivery = event_delivery.lock().await;
-        let mut result = delivery.deliver(batch).await;
+        let mut result = {
+          let delivery = event_delivery.lock().await;
+          delivery.deliver(batch).await
+        };
 
         if attempts >= config.max_retries {
             // Exceeded max retries -> promote retriable errors to permanent ones.
