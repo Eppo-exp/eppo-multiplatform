@@ -1,7 +1,9 @@
-rust_input: rust/src/api/**/*.rs
+rust_input: crate::api
 dart_output: lib/src/rust
 c_output: frb_generated.h
-dart_entrypoint_class_name: EppoSdk
+
+rust_preamble: |
+  use eppo_core::{Str, AttributeValue};
 
 # Default to generating sync code.
 # 1. Most of Eppo SDK is designed to be fast and run sync.

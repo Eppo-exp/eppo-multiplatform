@@ -1,17 +1,18 @@
-use std::{sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use flutter_rust_bridge::frb;
 
 use eppo_core::{
     background::BackgroundRuntime,
-    configuration_fetcher::{ConfigurationFetcher, ConfigurationFetcherConfig},
+    configuration_fetcher::{ConfigurationFetcher, ConfigurationFetcherConfig, DEFAULT_BASE_URL},
     configuration_poller::{
         start_configuration_poller, ConfigurationPoller, ConfigurationPollerConfig,
     },
     configuration_store::ConfigurationStore,
-    eval::{Evaluator, EvaluatorConfig},
+    eval::{BanditResult, Evaluator, EvaluatorConfig},
+    events::{AssignmentEvent, BanditEvent},
     ufc::{Assignment, AssignmentValue, VariationType},
-    Attributes, SdkMetadata, Str,
+    AttributeValue, Attributes, SdkMetadata, Str,
 };
 
 const SDK_METADATA: SdkMetadata = SdkMetadata {
@@ -20,16 +21,23 @@ const SDK_METADATA: SdkMetadata = SdkMetadata {
 };
 
 #[frb(opaque)]
-pub struct EppoClient {
+pub struct CoreClient {
     configuration_store: Arc<ConfigurationStore>,
     background: BackgroundRuntime,
     poller: ConfigurationPoller,
     evaluator: Evaluator,
 }
 
-impl EppoClient {
+impl CoreClient {
     #[frb(sync)]
-    pub fn new(sdk_key: String) -> EppoClient {
+    pub fn new(
+        sdk_key: String,
+        #[frb(default = "https://fscdn.eppo.cloud/api")] base_url: String,
+        // flutter_rust_bridge doesn't seem to support std::time::Duration, so we're converting
+        // through chrono.
+        #[frb(default = "const Duration(seconds: 30)")] poll_interval: chrono::Duration,
+        #[frb(default = "const Duration(seconds: 3)")] poll_jitter: chrono::Duration,
+    ) -> CoreClient {
         let configuration_store = Arc::new(ConfigurationStore::new());
 
         let handle = crate::frb_generated::FLUTTER_RUST_BRIDGE_HANDLER
@@ -44,7 +52,7 @@ impl EppoClient {
         let poller = start_configuration_poller(
             &background,
             ConfigurationFetcher::new(ConfigurationFetcherConfig {
-                base_url: "https://fscdn.eppo.cloud/api".to_owned(),
+                base_url,
                 api_key: sdk_key,
                 sdk_metadata: SDK_METADATA,
             }),
@@ -60,7 +68,7 @@ impl EppoClient {
             sdk_metadata: SDK_METADATA,
         });
 
-        EppoClient {
+        CoreClient {
             configuration_store,
             background,
             poller,
@@ -68,12 +76,12 @@ impl EppoClient {
         }
     }
 
-    pub async fn wait_for_configuration(&self) {
-        let result = self.poller.wait_for_configuration().await;
+    pub async fn wait_for_initialization(&self) {
+        let _result = self.poller.wait_for_configuration().await;
     }
 
     #[frb(sync, positional)]
-    pub fn string_assignment(&self, flag_key: &str, subject_key: &str, default: String) -> String {
+    pub fn string_assignment(&self, flag_key: &str, subject_key: &str) -> Option<String> {
         let Ok(Some(Assignment {
             value: AssignmentValue::String(result),
             event,
@@ -84,27 +92,53 @@ impl EppoClient {
             Some(VariationType::String),
         )
         else {
-            return default;
+            return None;
         };
 
-        result.as_str().into()
+        Some(result.as_str().into())
     }
 
     #[frb(sync, positional)]
-    pub fn bool_assignment(&self, flag_key: &str, subject_key: &str, default: bool) -> bool {
+    pub fn bool_assignment(
+        &self,
+        flag_key: &str,
+        subject_key: Str,
+        subject_attributes: HashMap<Str, AttributeValue>,
+    ) -> (Option<bool>, Option<AssignmentEvent>) {
         let Ok(Some(Assignment {
             value: AssignmentValue::Boolean(result),
             event,
         })) = self.evaluator.get_assignment(
             flag_key,
-            &subject_key.into(),
-            &Arc::new(Attributes::new()),
+            &subject_key,
+            &Arc::new(subject_attributes),
             Some(VariationType::Boolean),
         )
         else {
-            return default;
+            return (None, None);
         };
 
-        result
+        (Some(result), event)
+    }
+
+    #[frb(sync, positional)]
+    pub fn bandit_action(
+        &self,
+        flag_key: &str,
+        subject_key: Str,
+        subject_attributes: HashMap<Str, AttributeValue>,
+        actions: HashMap<Str, HashMap<Str, AttributeValue>>,
+        default_variation: Str,
+    ) -> BanditResult {
+        self.evaluator.get_bandit_action(
+            flag_key,
+            &subject_key,
+            &subject_attributes.into(),
+            &actions
+                .into_iter()
+                .map(|(key, value)| (key, value.into()))
+                .collect(),
+            &default_variation,
+        )
     }
 }
