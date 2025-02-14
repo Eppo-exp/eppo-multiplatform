@@ -9,7 +9,7 @@ use eppo_core::{
     },
     configuration_store::ConfigurationStore,
     eval::{Evaluator, EvaluatorConfig},
-    event_ingestion::{EventIngestion, EventIngestionConfig},
+    event_ingestion::{ContextValue, EventIngestion, EventIngestionConfig},
     ufc::VariationType,
     Attributes, ContextAttributes, SdkKey,
 };
@@ -67,7 +67,7 @@ pub struct Client {
     // world.
     background_thread: RefCell<Option<BackgroundThread>>,
     configuration_poller: Option<ConfigurationPoller>,
-    event_ingestion: Option<EventIngestion>,
+    event_ingestion: RefCell<Option<EventIngestion>>,
 }
 
 impl Client {
@@ -127,7 +127,7 @@ impl Client {
             evaluator,
             background_thread: RefCell::new(Some(background_thread)),
             configuration_poller,
-            event_ingestion,
+            event_ingestion: RefCell::new(event_ingestion),
         }
     }
 
@@ -255,8 +255,33 @@ impl Client {
         }
     }
 
+    pub fn set_context(&self, key: String, value: Value) -> Result<()> {
+        let mut binding = self.event_ingestion.borrow_mut();
+        let Some(event_ingestion) = binding.as_mut() else {
+            // Event ingestion is disabled, do nothing.
+            return Ok(());
+        };
+        let value: serde_json::Value = serde_magnus::deserialize(value).map_err(|err| {
+            Error::new(
+                exception::runtime_error(),
+                format!("Unexpected value: {}", err),
+            )
+        })?;
+
+        let context_value = ContextValue::try_from_json(value).map_err(|err| {
+            Error::new(
+                exception::runtime_error(),
+                format!("Unexpected value for context value: {}", err),
+            )
+        })?;
+
+        event_ingestion.attach_context(key, context_value);
+
+        Ok(())
+    }
     pub fn track(&self, event_type: String, payload: Value) -> Result<()> {
-        let Some(event_ingestion) = &self.event_ingestion else {
+        let binding = self.event_ingestion.borrow();
+        let Some(event_ingestion) = binding.as_ref() else {
             // Event ingestion is disabled, do nothing.
             return Ok(());
         };
