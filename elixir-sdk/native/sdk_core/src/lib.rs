@@ -1,17 +1,19 @@
 use eppo_core::{
-    background::BackgroundThread,
-    configuration_fetcher::{ConfigurationFetcher, ConfigurationFetcherConfig, DEFAULT_BASE_URL},
+    configuration_fetcher::{ConfigurationFetcher, ConfigurationFetcherConfig},
     configuration_poller::{start_configuration_poller, ConfigurationPollerConfig},
     configuration_store::ConfigurationStore,
     eval::{Evaluator, EvaluatorConfig},
+    {Str, AttributeValue, Attributes},
+    ufc::{VariationType, Assignment},
     SdkMetadata,
+    background::BackgroundThread,
 };
 
-use rustler::{Atom, NifStruct, ResourceArc, Term};
+use rustler::{Encoder, Env, NifResult, NifStruct, ResourceArc, Term, Atom};
+use rustler::types::atom;
 use std::{sync::{Arc, RwLock}};
 use std::panic::{RefUnwindSafe, UnwindSafe};
-use std::sync::atomic::{AtomicBool, Ordering};
-
+use std::collections::HashMap;
 
 const SDK_METADATA: SdkMetadata = SdkMetadata {
     name: "elixir",
@@ -22,10 +24,9 @@ static CLIENT_INSTANCE: RwLock<Option<ResourceArc<EppoClient>>> = RwLock::new(No
 
 #[derive(NifStruct)]
 #[module = "SdkCore.Config"]
-struct Config<'a> {
+struct Config {
     api_key: String,
     base_url: String,
-    assignment_logger: Term<'a>,
     is_graceful_mode: bool,
     poll_interval_seconds: Option<u64>,
     poll_jitter_seconds: u64,
@@ -100,7 +101,7 @@ fn init(config: Config) -> Result<(), String> {
     Ok(())
 }
 
-#[rustler::nif]
+// #[rustler::nif]
 fn get_instance() -> Result<ResourceArc<EppoClient>, String> {
     let instance = CLIENT_INSTANCE
         .read()
@@ -122,10 +123,82 @@ fn shutdown() -> Atom {
     atoms::ok()
 }
 
-mod atoms {
-    rustler::atoms! {
-        ok
+fn get_assignment(
+    flag_key: String,
+    subject_key: String,
+    eppo_attributes: Arc<HashMap<Str, AttributeValue>>,
+    expected_type: VariationType,
+) -> Result<Option<Assignment>, String> {
+    let client = get_instance()?;
+
+    // Get assignment
+    let assignment = client.evaluator.get_assignment(
+        &Str::new(flag_key),
+        &Str::new(subject_key),
+        &eppo_attributes,
+        Some(expected_type)
+    ).map_err(|e| format!("Failed to get assignment: {:?}", e))?;
+
+    Ok(assignment)
+}
+
+fn convert_attributes(subject_attributes: Term) -> NifResult<Arc<HashMap<Str, AttributeValue>>> {
+    // Convert subject_attributes Term to HashMap
+    let attributes: HashMap<String, String> = subject_attributes
+        .decode()
+        .map_err(|e| rustler::Error::Term(Box::new(format!("Failed to decode subject attributes: {:?}", e))))?;
+    
+    // Convert attributes to the required format
+    Ok(Arc::new(attributes
+        .into_iter()
+        .map(|(k, v)| (Str::new(k), AttributeValue::categorical(v)))
+        .collect::<HashMap<Str, AttributeValue>>()))
+}
+
+#[rustler::nif]
+fn get_string_assignment<'a>(
+    env: Env<'a>,
+    flag_key: String,
+    subject_key: String,
+    subject_attributes: Term<'a>
+) -> NifResult<Term<'a>> {
+    let eppo_attributes = convert_attributes(subject_attributes)?;
+    let assignment = get_assignment(flag_key, subject_key, eppo_attributes, VariationType::String);
+    match assignment {
+        Ok(Some(assignment)) => match assignment.value.as_str() {
+            Some(s) => Ok(s.encode(env)),
+            None => Ok(atoms::nil().encode(env))
+        },
+        _ => Ok(atoms::nil().encode(env))
     }
 }
+
+#[rustler::nif]
+fn get_boolean_assignment<'a>(
+    env: Env<'a>,
+    flag_key: String,
+    subject_key: String,
+    subject_attributes: Term<'a>
+) -> NifResult<Term<'a>> {
+    let eppo_attributes = convert_attributes(subject_attributes)?;
+    let assignment = get_assignment(flag_key, subject_key, eppo_attributes, VariationType::Boolean);
+    match assignment {
+        Ok(Some(assignment)) => match assignment.value.as_str() {
+            Some(s) => Ok(s.encode(env)),
+            None => Ok(atoms::nil().encode(env))
+        },
+        _ => Ok(atoms::nil().encode(env))
+    }
+}
+
+
+// Update atoms module
+mod atoms {
+    rustler::atoms! {
+        ok,
+        nil
+    }
+}
+
 
 rustler::init!("Elixir.SdkCore"); 

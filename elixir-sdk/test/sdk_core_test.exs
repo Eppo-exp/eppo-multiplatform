@@ -32,6 +32,10 @@ defmodule SdkCoreTest do
     assert {:ok, _} = SdkCore.get_instance()
   end
 
+  test "get_instance fails if init is not called" do
+    assert {:error, "init() must be called before get_instance()"} = SdkCore.get_instance()
+  end
+
   test "shutdown succeeds after init" do
     config = %SdkCore.Config{
       api_key: "test-key",
