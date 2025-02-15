@@ -1,0 +1,13 @@
+[package]
+name = "sdk_core"
+version = "0.1.0"
+authors = []
+edition = "2021"
+
+[lib]
+name = "sdk_core"
+crate-type = ["cdylib"]
+
+[dependencies]
+rustler = "0.36.1"
+eppo_core = { path = "../../../eppo_core" }
