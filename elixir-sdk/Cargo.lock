@@ -241,6 +241,7 @@ dependencies = [
  "rand",
  "regex",
  "reqwest",
+ "rustler",
  "semver",
  "serde",
  "serde-bool",

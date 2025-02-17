@@ -52,6 +52,9 @@ serde-pyobject = { version = "0.5.0", optional = true }
 magnus = { version = "0.6.4", default-features = false, optional = true }
 serde_magnus = { version = "0.8.1", default-features = false, optional = true }
 
+# rustler dependencies
+rustler = "0.36.1"
+
 # vendored dependencies
 [target.'cfg(all(target_os = "linux", target_arch = "s390x"))'.dependencies]
 # OpenSSL 3.3+ includes a patch[1] for s390x architecture that uses a

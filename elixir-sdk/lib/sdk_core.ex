@@ -15,8 +15,7 @@ defmodule SdkCore do
   def shutdown(), do: error()
 
   # Feature flag evaluation functions
-  def get_string_assignment(_flag_key, _subject_key, _subject_attributes), do: error()
-  def get_boolean_assignment(_flag_key, _subject_key, _subject_attributes), do: error()
+  def get_assignment(_flag_key, _subject_key, _subject_attributes, _expected_type), do: error()
 
   # Helper function for NIF not loaded errors
   defp error, do: :erlang.nif_error(:nif_not_loaded)

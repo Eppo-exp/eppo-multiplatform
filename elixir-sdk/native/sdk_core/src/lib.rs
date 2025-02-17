@@ -115,16 +115,16 @@ fn get_instance() -> Result<ResourceArc<EppoClient>, String> {
 }
 
 #[rustler::nif]
-fn shutdown() -> Atom {
+fn shutdown() -> Result<(), String> {
     if let Ok(mut instance) = CLIENT_INSTANCE.write() {
         if let Some(client) = instance.take() {
             drop(client);
         }
     }
-    atoms::ok()
+    Ok(())
 }
 
-fn get_assignment(
+fn get_assignment_internal(
     flag_key: String,
     subject_key: String,
     eppo_attributes: Arc<HashMap<Str, AttributeValue>>,
@@ -169,11 +169,18 @@ fn convert_value_term<'a>(env: Env<'a>, value: AssignmentValue) -> NifResult<Ter
 
 fn convert_event_term<'a>(env: Env<'a>, event: Option<AssignmentEvent>) -> NifResult<Term<'a>> {
     if let Some(event) = event {
-        Ok(serde_json::to_string(&event)
-        .map_err(|e| rustler::Error::Term(Box::new(format!("Failed to serialize event: {:?}", e))))?
-        .encode(env))
+        let json_value = serde_json::to_value(&event)
+            .map_err(|e| rustler::Error::Term(Box::new(format!("Failed to serialize event: {:?}", e))))?;
+        if let serde_json::Value::Object(map) = json_value {
+            let converted: HashMap<String, String> = map.into_iter()
+                .map(|(k, v)| (k, v.to_string()))
+                .collect();
+            Ok(converted.encode(env))
+        } else {
+            Err(rustler::Error::Term(Box::new("Event did not serialize to an object".to_string())))
+        }
     } else {
-        Ok(atoms::nil().encode(env))
+        Ok(HashMap::<String, String>::new().encode(env))
     }
 }
 
@@ -189,43 +196,23 @@ fn convert_assignment_result<'a>(env: Env<'a>, assignment: Result<Option<Assignm
 }
 
 #[rustler::nif]
-fn get_string_assignment<'a>(
+fn get_assignment<'a>(
     env: Env<'a>,
     flag_key: String,
     subject_key: String,
-    subject_attributes: Term<'a>
+    subject_attributes: Term<'a>,
+    expected_type: VariationType,
 ) -> NifResult<Term<'a>> {
     let eppo_attributes = convert_attributes(subject_attributes)?;
-    let assignment = get_assignment(flag_key, subject_key, eppo_attributes, VariationType::String);
+    let assignment = get_assignment_internal(flag_key, subject_key, eppo_attributes, expected_type);
     convert_assignment_result(env, assignment)
 }
-
-#[rustler::nif]
-fn get_boolean_assignment<'a>(
-    env: Env<'a>,
-    flag_key: String,
-    subject_key: String,
-    subject_attributes: Term<'a>
-) -> NifResult<Term<'a>> {
-    let eppo_attributes = convert_attributes(subject_attributes)?;
-    let assignment = get_assignment(flag_key, subject_key, eppo_attributes, VariationType::Boolean);
-    match assignment {
-        Ok(Some(assignment)) => match assignment.value.as_str() {
-            Some(s) => Ok(s.encode(env)),
-            None => Ok(atoms::nil().encode(env))
-        },
-        _ => Ok(atoms::nil().encode(env))
-    }
-}
-
 
 // Update atoms module
 mod atoms {
     rustler::atoms! {
-        ok,
         nil
     }
 }
-
 
 rustler::init!("Elixir.SdkCore"); 
