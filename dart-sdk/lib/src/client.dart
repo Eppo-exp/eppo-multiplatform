@@ -20,6 +20,15 @@ final class EvaluationResult<T> {
   final String? action;
   final Map<String, dynamic>? evaluationDetails;
   EvaluationResult({required this.variation, this.action, this.evaluationDetails});
+
+  @override
+  String toString() => 'variation: $variation, action: $action';
+
+  @override
+  operator ==(o) => o is EvaluationResult<T> && o.variation == this.variation && o.action == this.action;
+
+  @override
+  int get hashCode => Object.hash(variation, action);
 }
 
 final class EppoClient {
