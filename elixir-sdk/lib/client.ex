@@ -13,6 +13,8 @@ defmodule Client do
   end
 
   def init(%Config{} = config) do
+    Process.put(:eppo_sdk_config, config)
+
     core_config = %Core.Config{
       api_key: config.api_key,
       base_url: config.base_url,
@@ -27,11 +29,19 @@ defmodule Client do
   def shutdown, do: Core.shutdown()
 
   def get_string_assignment(flag_key, subject_key, subject_attributes, default) do
-    assignment = Core.get_string_assignment(flag_key, subject_key, subject_attributes)
+    {value, event} = Core.get_string_assignment(flag_key, subject_key, subject_attributes)
+    config = Process.get(:eppo_sdk_config)
 
-    case assignment do
-      nil -> default
-      assignment -> assignment
+    case value do
+      nil ->
+        default
+
+      :error ->
+        default
+
+      value ->
+        config.assignment_logger.log_assignment(event)
+        value
     end
   end
 

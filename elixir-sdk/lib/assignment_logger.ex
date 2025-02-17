@@ -1,5 +1,6 @@
 defmodule AssignmentLogger do
-  def log_assignment(_flag_key, _subject_key, _subject_attributes, _assignment) do
-    # implement me
+  # Override with your own implementation
+  def log_assignment(event) do
+    IO.inspect(event, label: "assignment_event")
   end
 end

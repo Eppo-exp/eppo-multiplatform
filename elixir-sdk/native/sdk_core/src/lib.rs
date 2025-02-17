@@ -4,9 +4,10 @@ use eppo_core::{
     configuration_store::ConfigurationStore,
     eval::{Evaluator, EvaluatorConfig},
     {Str, AttributeValue, Attributes},
-    ufc::{VariationType, Assignment},
+    ufc::{VariationType, Assignment, AssignmentValue,},
     SdkMetadata,
     background::BackgroundThread,
+    events::AssignmentEvent,
 };
 
 use rustler::{Encoder, Env, NifResult, NifStruct, ResourceArc, Term, Atom};
@@ -142,6 +143,7 @@ fn get_assignment(
     Ok(assignment)
 }
 
+
 fn convert_attributes(subject_attributes: Term) -> NifResult<Arc<HashMap<Str, AttributeValue>>> {
     // Convert subject_attributes Term to HashMap
     let attributes: HashMap<String, String> = subject_attributes
@@ -155,6 +157,37 @@ fn convert_attributes(subject_attributes: Term) -> NifResult<Arc<HashMap<Str, At
         .collect::<HashMap<Str, AttributeValue>>()))
 }
 
+fn convert_value_term<'a>(env: Env<'a>, value: AssignmentValue) -> NifResult<Term<'a>> {
+    match value {
+        AssignmentValue::String(s) => Ok(s.encode(env)),
+        AssignmentValue::Integer(i) => Ok(i.encode(env)),
+        AssignmentValue::Numeric(n) => Ok(n.encode(env)),
+        AssignmentValue::Boolean(b) => Ok(b.encode(env)),
+        AssignmentValue::Json { raw, .. } => Ok(raw.encode(env)),
+    }
+}
+
+fn convert_event_term<'a>(env: Env<'a>, event: Option<AssignmentEvent>) -> NifResult<Term<'a>> {
+    if let Some(event) = event {
+        Ok(serde_json::to_string(&event)
+        .map_err(|e| rustler::Error::Term(Box::new(format!("Failed to serialize event: {:?}", e))))?
+        .encode(env))
+    } else {
+        Ok(atoms::nil().encode(env))
+    }
+}
+
+fn convert_assignment_result<'a>(env: Env<'a>, assignment: Result<Option<Assignment>, String>) -> NifResult<Term<'a>> {
+    match assignment {
+        Ok(Some(assignment)) => {
+            let value = convert_value_term(env, assignment.value)?;
+            let event = convert_event_term(env, assignment.event)?;
+            Ok((value, event).encode(env))
+        }
+        _ => Err(rustler::Error::Term(Box::new(format!("Failed to get assignment: {:?}", assignment))))
+    }
+}
+
 #[rustler::nif]
 fn get_string_assignment<'a>(
     env: Env<'a>,
@@ -164,13 +197,7 @@ fn get_string_assignment<'a>(
 ) -> NifResult<Term<'a>> {
     let eppo_attributes = convert_attributes(subject_attributes)?;
     let assignment = get_assignment(flag_key, subject_key, eppo_attributes, VariationType::String);
-    match assignment {
-        Ok(Some(assignment)) => match assignment.value.as_str() {
-            Some(s) => Ok(s.encode(env)),
-            None => Ok(atoms::nil().encode(env))
-        },
-        _ => Ok(atoms::nil().encode(env))
-    }
+    convert_assignment_result(env, assignment)
 }
 
 #[rustler::nif]

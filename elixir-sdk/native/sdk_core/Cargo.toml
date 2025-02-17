@@ -11,3 +11,4 @@ crate-type = ["cdylib"]
 [dependencies]
 rustler = "0.36.1"
 eppo_core = { path = "../../../eppo_core" }
+serde_json = "1.0.138"
