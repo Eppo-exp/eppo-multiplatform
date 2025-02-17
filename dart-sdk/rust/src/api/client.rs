@@ -81,25 +81,76 @@ impl CoreClient {
     }
 
     #[frb(sync, positional)]
-    pub fn string_assignment(&self, flag_key: &str, subject_key: &str) -> Option<String> {
+    pub fn string_assignment(
+        &self,
+        flag_key: &str,
+        subject_key: Str,
+        subject_attributes: HashMap<Str, AttributeValue>,
+    ) -> (Option<Str>, Option<AssignmentEvent>) {
         let Ok(Some(Assignment {
             value: AssignmentValue::String(result),
             event,
         })) = self.evaluator.get_assignment(
             flag_key,
-            &subject_key.into(),
-            &Arc::new(Attributes::new()),
+            &subject_key,
+            &Arc::new(subject_attributes),
             Some(VariationType::String),
         )
         else {
-            return None;
+            return (None, None);
         };
 
-        Some(result.as_str().into())
+        (Some(result), event)
     }
 
     #[frb(sync, positional)]
-    pub fn bool_assignment(
+    pub fn numeric_assignment(
+        &self,
+        flag_key: &str,
+        subject_key: Str,
+        subject_attributes: HashMap<Str, AttributeValue>,
+    ) -> (Option<f64>, Option<AssignmentEvent>) {
+        let Ok(Some(Assignment {
+            value: AssignmentValue::Numeric(result),
+            event,
+        })) = self.evaluator.get_assignment(
+            flag_key,
+            &subject_key,
+            &Arc::new(subject_attributes),
+            Some(VariationType::Numeric),
+        )
+        else {
+            return (None, None);
+        };
+
+        (Some(result), event)
+    }
+
+    #[frb(sync, positional)]
+    pub fn integer_assignment(
+        &self,
+        flag_key: &str,
+        subject_key: Str,
+        subject_attributes: HashMap<Str, AttributeValue>,
+    ) -> (Option<i64>, Option<AssignmentEvent>) {
+        let Ok(Some(Assignment {
+            value: AssignmentValue::Integer(result),
+            event,
+        })) = self.evaluator.get_assignment(
+            flag_key,
+            &subject_key,
+            &Arc::new(subject_attributes),
+            Some(VariationType::Integer),
+        )
+        else {
+            return (None, None);
+        };
+
+        (Some(result), event)
+    }
+
+    #[frb(sync, positional)]
+    pub fn boolean_assignment(
         &self,
         flag_key: &str,
         subject_key: Str,
@@ -113,6 +164,33 @@ impl CoreClient {
             &subject_key,
             &Arc::new(subject_attributes),
             Some(VariationType::Boolean),
+        )
+        else {
+            return (None, None);
+        };
+
+        (Some(result), event)
+    }
+
+    #[frb(sync, positional)]
+    pub fn json_assignment(
+        &self,
+        flag_key: &str,
+        subject_key: Str,
+        subject_attributes: HashMap<Str, AttributeValue>,
+    ) -> (Option<Str>, Option<AssignmentEvent>) {
+        let Ok(Some(Assignment {
+            value:
+                AssignmentValue::Json {
+                    raw: result,
+                    parsed: _,
+                },
+            event,
+        })) = self.evaluator.get_assignment(
+            flag_key,
+            &subject_key,
+            &Arc::new(subject_attributes),
+            Some(VariationType::Json),
         )
         else {
             return (None, None);

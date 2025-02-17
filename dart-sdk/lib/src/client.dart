@@ -1,7 +1,9 @@
-import 'package:eppo_sdk/src/rust/frb_generated.dart' as core;
-import 'package:eppo_sdk/src/rust/api.dart' show BanditResult;
-import 'package:eppo_sdk/src/rust/api/client.dart' as core;
-import 'package:eppo_sdk/src/rust/api/attributes.dart' as core;
+import 'dart:convert' show jsonDecode;
+import 'package:meta/meta.dart' show internal;
+
+import './rust/frb_generated.dart' as core;
+import './rust/api/client.dart' as core;
+import './rust/api/attributes.dart' as core;
 
 import './subject.dart' show Subject, AttributeKind;
 import './attributes.dart' show Attributes;
@@ -42,29 +44,70 @@ final class EppoClient {
     });
   }
 
-  /// Returns a Future that resolve when the client completed initialization,
-  /// received a configuration, and is ready to serve assignment and bandits.
+  /// Returns a Future that resolves when the client completes initialization,
+  /// receives a configuration, and is ready to serve assignment and bandits.
   Future<void> whenReady() async {
     await this._initialized;
     await this._core!.waitForInitialization();
   }
 
-  bool boolAssignment(String flagKey, Subject subject, bool defaultValue) {
+  String stringAssignment(String flagKey, Subject subject, String defaultValue) {
     final core = this._core;
     if (core == null) {
       return defaultValue;
     }
 
-    final (result, event) = core.boolAssignment(flagKey, subject.key, subject.attributes.coreAttributes);
+    final (result, event) = core.stringAssignment(flagKey, subject.key, subject.attributes.coreAttributes);
+    this.logAssignmentEvent(event);
+    return result ?? defaultValue;
+  }
 
-    if (event != null) {
-      try {
-        this._logger?.logAssignment(event);
-      } catch (e) {
-      }
+  double numericAssignment(String flagKey, Subject subject, double defaultValue) {
+    final core = this._core;
+    if (core == null) {
+      return defaultValue;
     }
 
+    final (result, event) = core.numericAssignment(flagKey, subject.key, subject.attributes.coreAttributes);
+    this.logAssignmentEvent(event);
     return result ?? defaultValue;
+  }
+
+  int integerAssignment(String flagKey, Subject subject, int defaultValue) {
+    final core = this._core;
+    if (core == null) {
+      return defaultValue;
+    }
+
+    final (result, event) = core.integerAssignment(flagKey, subject.key, subject.attributes.coreAttributes);
+    this.logAssignmentEvent(event);
+    return result ?? defaultValue;
+  }
+
+  bool booleanAssignment(String flagKey, Subject subject, bool defaultValue) {
+    final core = this._core;
+    if (core == null) {
+      return defaultValue;
+    }
+
+    final (result, event) = core.booleanAssignment(flagKey, subject.key, subject.attributes.coreAttributes);
+    this.logAssignmentEvent(event);
+    return result ?? defaultValue;
+  }
+
+  dynamic jsonAssignment(String flagKey, Subject subject, dynamic defaultValue) {
+    final core = this._core;
+    if (core == null) {
+      return defaultValue;
+    }
+
+    final (result, event) = core.jsonAssignment(flagKey, subject.key, subject.attributes.coreAttributes);
+    this.logAssignmentEvent(event);
+    if (result != null) {
+      return jsonDecode(result);
+    } else {
+      return defaultValue;
+    }
   }
 
   EvaluationResult<String> banditAction(String flagKey, Subject subject, Map<String, Attributes> actions, String defaultVariation) {
@@ -80,18 +123,32 @@ final class EppoClient {
       actions.map((key, value) => MapEntry(key, value.coreAttributes)),
       defaultVariation);
 
-    final assignmentEvent = result.assignmentEvent;
-    if (assignmentEvent != null) {
-      this._logger?.logAssignment(assignmentEvent);
-    }
-    final banditEvent = result.banditEvent;
-    if (banditEvent != null) {
-      this._logger?.logBanditAction(banditEvent);
-    }
+    this.logAssignmentEvent(result.assignmentEvent);
+    this.logBanditEvent(result.banditEvent);
 
     return EvaluationResult(
       variation: result.variation,
       action: result.action,
     );
+  }
+
+  @internal
+  void logAssignmentEvent(Map<String, dynamic>? event) {
+    if (event != null) {
+      try {
+        this._logger?.logAssignment(event);
+      } catch (e) {
+      }
+    }
+  }
+
+  @internal
+  void logBanditEvent(Map<String, dynamic>? event) {
+    if (event != null) {
+      try {
+        this._logger?.logBanditAction(event);
+      } catch (e) {
+      }
+    }
   }
 }

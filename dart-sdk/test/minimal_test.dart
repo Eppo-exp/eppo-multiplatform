@@ -34,21 +34,21 @@ Future<void> main() async {
 
   test('serves default value before initialized', () {
       final client = makeClientFor('ufc');
-      final assignment = client.boolAssignment('kill-switch', Subject('subject1'), true);
+      final assignment = client.booleanAssignment('kill-switch', Subject('subject1'), true);
       expect(assignment, true);
   });
 
   test('serves non-default value after initialized', () async {
       final client = makeClientFor('ufc');
       await client.whenReady();
-      final assignment = client.boolAssignment('kill-switch', Subject('subject1'), true);
+      final assignment = client.booleanAssignment('kill-switch', Subject('subject1'), true);
       expect(assignment, false);
   });
 
   test('serves non-default value with targeting rules', () async {
       final client = makeClientFor('ufc');
       await client.whenReady();
-      final assignment = client.boolAssignment(
+      final assignment = client.booleanAssignment(
         'kill-switch',
         Subject('subject1')
           ..stringAttribute('country', 'US'),
