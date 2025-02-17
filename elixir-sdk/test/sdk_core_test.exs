@@ -1,11 +1,12 @@
 defmodule SdkCoreTest do
   use ExUnit.Case
 
+  @base_url "https://fscdn.eppo.cloud/api"
+
   test "init with valid config succeeds" do
     config = %SdkCore.Config{
       api_key: "test-key",
-      base_url: "https://api.eppo.cloud",
-      assignment_logger: nil
+      base_url: @base_url
     }
 
     assert {:ok, _} = SdkCore.init(config)
@@ -14,33 +15,16 @@ defmodule SdkCoreTest do
   test "init with empty api_key fails" do
     config = %SdkCore.Config{
       api_key: "",
-      base_url: "https://api.eppo.cloud",
-      assignment_logger: nil
+      base_url: @base_url
     }
 
     assert {:error, "Invalid value for api_key: cannot be blank"} = SdkCore.init(config)
   end
 
-  test "get_instance returns client after init" do
-    config = %SdkCore.Config{
-      api_key: "test-key",
-      base_url: "https://api.eppo.cloud",
-      assignment_logger: nil
-    }
-
-    {:ok, _} = SdkCore.init(config)
-    assert {:ok, _} = SdkCore.get_instance()
-  end
-
-  test "get_instance fails if init is not called" do
-    assert {:error, "init() must be called before get_instance()"} = SdkCore.get_instance()
-  end
-
   test "shutdown succeeds after init" do
     config = %SdkCore.Config{
       api_key: "test-key",
-      base_url: "https://api.eppo.cloud",
-      assignment_logger: nil
+      base_url: @base_url
     }
 
     {:ok, _} = SdkCore.init(config)
