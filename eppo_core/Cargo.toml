@@ -52,7 +52,7 @@ serde-pyobject = { version = "0.5.0", optional = true }
 magnus = { version = "0.6.4", default-features = false, optional = true }
 serde_magnus = { version = "0.8.1", default-features = false, optional = true }
 
-# rustler dependencies
+# elixir dependencies
 rustler = "0.36.1"
 
 # vendored dependencies

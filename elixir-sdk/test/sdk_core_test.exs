@@ -28,6 +28,6 @@ defmodule SdkCoreTest do
     }
 
     {:ok, _} = SdkCore.init(config)
-    assert :ok = SdkCore.shutdown()
+    assert {:ok, _} = SdkCore.shutdown()
   end
 end

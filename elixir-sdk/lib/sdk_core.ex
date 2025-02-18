@@ -17,6 +17,9 @@ defmodule SdkCore do
   # Feature flag evaluation functions
   def get_assignment(_flag_key, _subject_key, _subject_attributes, _expected_type), do: error()
 
+  def get_assignment_details(_flag_key, _subject_key, _subject_attributes, _expected_type),
+    do: error()
+
   # Helper function for NIF not loaded errors
   defp error, do: :erlang.nif_error(:nif_not_loaded)
 end

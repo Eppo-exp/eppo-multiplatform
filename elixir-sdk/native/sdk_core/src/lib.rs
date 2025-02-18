@@ -3,8 +3,9 @@ use eppo_core::{
     configuration_poller::{start_configuration_poller, ConfigurationPollerConfig},
     configuration_store::ConfigurationStore,
     eval::{Evaluator, EvaluatorConfig},
+    eval::eval_details::EvaluationResultWithDetails,
     {Str, AttributeValue, Attributes},
-    ufc::{VariationType, Assignment, AssignmentValue,},
+    ufc::{VariationType, Assignment, AssignmentValue},
     SdkMetadata,
     background::BackgroundThread,
     events::AssignmentEvent,
@@ -124,7 +125,7 @@ fn shutdown() -> Result<(), String> {
     Ok(())
 }
 
-fn get_assignment_internal(
+fn get_assignment_inner(
     flag_key: String,
     subject_key: String,
     eppo_attributes: Arc<HashMap<Str, AttributeValue>>,
@@ -143,6 +144,26 @@ fn get_assignment_internal(
     Ok(assignment)
 }
 
+fn get_assignment_details_inner(
+    flag_key: String,
+    subject_key: String,
+    eppo_attributes: Arc<HashMap<Str, AttributeValue>>,
+    expected_type: VariationType,
+) -> Result<(
+    EvaluationResultWithDetails<AssignmentValue>,
+    Option<AssignmentEvent>,
+), String> {
+    let client = get_instance()?;
+
+    let assignment_with_details = client.evaluator.get_assignment_details(
+        &Str::new(flag_key),
+        &Str::new(subject_key),
+        &eppo_attributes,
+        Some(expected_type)
+    );
+
+    Ok(assignment_with_details)
+}
 
 fn convert_attributes(subject_attributes: Term) -> NifResult<Arc<HashMap<Str, AttributeValue>>> {
     // Convert subject_attributes Term to HashMap
@@ -184,17 +205,6 @@ fn convert_event_term<'a>(env: Env<'a>, event: Option<AssignmentEvent>) -> NifRe
     }
 }
 
-fn convert_assignment_result<'a>(env: Env<'a>, assignment: Result<Option<Assignment>, String>) -> NifResult<Term<'a>> {
-    match assignment {
-        Ok(Some(assignment)) => {
-            let value = convert_value_term(env, assignment.value)?;
-            let event = convert_event_term(env, assignment.event)?;
-            Ok((value, event).encode(env))
-        }
-        _ => Err(rustler::Error::Term(Box::new(format!("Failed to get assignment: {:?}", assignment))))
-    }
-}
-
 #[rustler::nif]
 fn get_assignment<'a>(
     env: Env<'a>,
@@ -204,8 +214,68 @@ fn get_assignment<'a>(
     expected_type: VariationType,
 ) -> NifResult<Term<'a>> {
     let eppo_attributes = convert_attributes(subject_attributes)?;
-    let assignment = get_assignment_internal(flag_key, subject_key, eppo_attributes, expected_type);
-    convert_assignment_result(env, assignment)
+    let assignment = get_assignment_inner(flag_key, subject_key, eppo_attributes, expected_type);
+    match assignment {
+        Ok(Some(assignment)) => {
+            let value = convert_value_term(env, assignment.value)?;
+            let event = convert_event_term(env, assignment.event)?;
+            Ok((value, event).encode(env))
+        }
+        _ => Err(rustler::Error::Term(Box::new("Failed to get assignment".to_string())))
+    }
+}
+
+#[rustler::nif]
+fn get_assignment_details<'a>(
+    env: Env<'a>,
+    flag_key: String,
+    subject_key: String,
+    subject_attributes: Term<'a>,
+    expected_type: VariationType,
+) -> NifResult<Term<'a>> {
+    let eppo_attributes = convert_attributes(subject_attributes)?;
+    let assignment_with_details =
+        get_assignment_details_inner(flag_key, subject_key, eppo_attributes, expected_type);
+    match assignment_with_details {
+        Ok((evaluation_result, assignment_event)) => {
+            // Create a HashMap to store all evaluation result fields
+            let mut result_map = HashMap::new();
+            
+            // Add variation
+            result_map.insert("variation".to_string(), match evaluation_result.variation {
+                Some(val) => convert_value_term(env, val)?,
+                None => atom::nil().encode(env),
+            });
+            
+            // Add action
+            result_map.insert("action".to_string(), match evaluation_result.action {
+                Some(action) => action.encode(env),
+                None => atom::nil().encode(env),
+            });
+            
+            // Add evaluation details
+            let json_details = serde_json::to_value(&evaluation_result.evaluation_details)
+                .map_err(|e| rustler::Error::Term(Box::new(format!(
+                    "Failed to serialize evaluation details: {:?}", e
+                ))))?;
+            
+            result_map.insert("details".to_string(), if let serde_json::Value::Object(map) = json_details {
+                let converted: HashMap<String, String> = map.into_iter()
+                    .map(|(k, v)| (k, v.to_string()))
+                    .collect();
+                converted.encode(env)
+            } else {
+                atom::nil().encode(env)
+            });
+
+            // Convert the event details
+            let event_term = convert_event_term(env, assignment_event)?;
+            
+            // Return tuple with result map and event
+            Ok((result_map, event_term).encode(env))
+        }
+        Err(err) => Err(rustler::Error::Term(Box::new(err))),
+    }
 }
 
 // Update atoms module
