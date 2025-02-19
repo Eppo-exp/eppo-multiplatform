@@ -1,4 +1,4 @@
-defmodule SdkCore do
+defmodule Eppo.Core do
   use Rustler, otp_app: :eppo_sdk, crate: "sdk_core"
 
   defmodule Config do

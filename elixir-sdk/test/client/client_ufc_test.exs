@@ -1,9 +1,10 @@
-defmodule ClientUFCTest do
+defmodule Eppo.ClientUFCTest do
   use ExUnit.Case
   import TestHelper
+  alias Eppo.Client
 
   # Move setup_all outside of describe block
-  setup_all do
+  setup do
     init_client_for("ufc")
     :ok
   end

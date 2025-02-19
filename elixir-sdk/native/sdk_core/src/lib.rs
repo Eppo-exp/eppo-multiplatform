@@ -25,7 +25,7 @@ const SDK_METADATA: SdkMetadata = SdkMetadata {
 static CLIENT_INSTANCE: RwLock<Option<ResourceArc<EppoClient>>> = RwLock::new(None);
 
 #[derive(NifStruct)]
-#[module = "SdkCore.Config"]
+#[module = "Eppo.Core.Config"]
 struct Config {
     api_key: String,
     base_url: String,
@@ -183,8 +183,8 @@ pub fn convert_attributes(subject_attributes: Term) -> NifResult<Arc<HashMap<Str
             // Strings are stored as categorical attributes.
             AttributeValue::categorical(s)
         } else {
-            // If none of the supported types matched, return a BadArg error.
-            return Err(Error::BadArg);
+            // If none of the supported types matched, return a null attribute.
+            AttributeValue::null()
         };
 
         // Insert the converted key and attribute value into the HashMap.
@@ -287,4 +287,4 @@ mod atoms {
     }
 }
 
-rustler::init!("Elixir.SdkCore"); 
+rustler::init!("Elixir.Eppo.Core"); 

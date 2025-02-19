@@ -1,5 +1,6 @@
-defmodule Client do
-  alias SdkCore, as: Core
+defmodule Eppo.Client do
+  use GenServer
+  alias Eppo.Core
   require Logger
 
   @moduledoc """
@@ -24,22 +25,25 @@ defmodule Client do
     ]
   end
 
+  def start_link(%Config{} = config) do
+    GenServer.start_link(__MODULE__, config, name: __MODULE__)
+  end
+
   @doc """
   Initializes the Eppo client with the provided configuration.
-  Returns {:ok, _} on success or {:error, reason} on failure.
+  Returns {:ok, pid} on success or {:error, reason} on failure.
   """
   def init(%Config{} = config) do
-    Process.put(:eppo_sdk_logger, config.assignment_logger)
-
-    core_config = %Core.Config{
-      api_key: config.api_key,
-      base_url: config.base_url,
-      is_graceful_mode: config.is_graceful_mode,
-      poll_interval_seconds: config.poll_interval_seconds,
-      poll_jitter_seconds: config.poll_jitter_seconds
-    }
-
-    Core.init(core_config)
+    case Core.init(%Core.Config{
+           api_key: config.api_key,
+           base_url: config.base_url,
+           is_graceful_mode: config.is_graceful_mode,
+           poll_interval_seconds: config.poll_interval_seconds,
+           poll_jitter_seconds: config.poll_jitter_seconds
+         }) do
+      {:ok, _} -> {:ok, %{assignment_logger: config.assignment_logger}}
+      error -> error
+    end
   end
 
   def shutdown, do: Core.shutdown()
@@ -139,8 +143,13 @@ defmodule Client do
     - default: Fallback Map if assignment fails
   """
   def get_json_assignment(flag_key, subject_key, subject_attributes, default) do
-    value_json = get_assignment(flag_key, subject_key, subject_attributes, default, :json)
-    if {:ok, value} = Jason.decode(value_json), do: value, else: default
+    # Use default as "" to force use of default value when decoding
+    value_json = get_assignment(flag_key, subject_key, subject_attributes, "", :json)
+
+    case decode_value(value_json) do
+      nil -> default
+      value -> value
+    end
   end
 
   @doc """
@@ -148,10 +157,14 @@ defmodule Client do
   Returns {value, details} tuple.
   """
   def get_json_assignment_details(flag_key, subject_key, subject_attributes, default) do
+    # Use default as "" to force use of default value when decoding
     {value_json, details} =
-      get_assignment_details(flag_key, subject_key, subject_attributes, default, :json)
+      get_assignment_details(flag_key, subject_key, subject_attributes, "", :json)
 
-    if {:ok, value} = Jason.decode(value_json), do: {value, details}, else: {default, details}
+    case decode_value(value_json) do
+      nil -> {default, details}
+      value -> {value, details}
+    end
   end
 
   defp get_assignment(flag_key, subject_key, subject_attributes, default, expected_type) do
@@ -177,15 +190,7 @@ defmodule Client do
           value: value
         })
 
-        case Jason.decode(event_json) do
-          {:ok, event} ->
-            log_assignment(event)
-
-          {:error, _} ->
-            Logger.error("Failed to decode assignment event #{event_json}", %{
-              event_json: event_json
-            })
-        end
+        log_assignment(event_json)
 
         value
     end
@@ -213,7 +218,7 @@ defmodule Client do
           value: value
         })
 
-        if {:ok, event} = Jason.decode(event_json), do: log_assignment(event)
+        log_assignment(event_json)
 
         if {:ok, details} = Jason.decode(Map.get(result, "details")),
           do: {value, details},
@@ -221,8 +226,38 @@ defmodule Client do
     end
   end
 
-  defp log_assignment(event) do
-    sdk_logger = Process.get(:eppo_sdk_logger)
-    sdk_logger.log_assignment(event)
+  defp log_assignment(nil), do: nil
+
+  defp log_assignment(event_json) do
+    case Jason.decode(event_json) do
+      {:ok, event} ->
+        logger = get_logger()
+        logger.log_assignment(event)
+
+      {:error, _} ->
+        Logger.error("Failed to decode assignment event #{event_json}", %{
+          event_json: event_json
+        })
+    end
+  end
+
+  defp decode_value(nil), do: nil
+
+  defp decode_value(value_json) do
+    case Jason.decode(value_json) do
+      {:ok, value} -> value
+      {:error, _} -> nil
+    end
+  end
+
+  defp get_logger() do
+    # Get logger from GenServer state instead of process dictionary
+    {:ok, logger} = GenServer.call(__MODULE__, :get_logger)
+    logger
+  end
+
+  # GenServer callbacks
+  def handle_call(:get_logger, _from, state) do
+    {:reply, {:ok, state.assignment_logger}, state}
   end
 end

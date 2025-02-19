@@ -1,6 +1,6 @@
-defmodule AssignmentLogger do
+defmodule Eppo.AssignmentLogger do
   # Override with your own implementation
   def log_assignment(event) do
-    IO.inspect(event, label: "assignment_event")
+    IO.inspect(event, label: "log_assignment")
   end
 end
