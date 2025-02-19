@@ -8,6 +8,7 @@
     "test:rust": "cargo test",
     "test:python": "cd python-sdk && pytest",
     "test:ruby": "cd ruby-sdk && bundle exec rake build && bundle exec rspec",
+    "test:dart": "cd dart-sdk && dart --enable-experiment=native-assets test",
     "with-server": "start-server-and-test start-mock-server http://127.0.0.1:8378",
     "start-mock-server": "npm start --prefix ./mock-server"
   },
