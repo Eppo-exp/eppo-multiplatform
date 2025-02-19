@@ -1,3 +1,8 @@
+mod config;
+mod conversion;
+
+use crate::config::Config;
+use crate::conversion::{convert_attributes, convert_value_term, convert_event_term};
 use eppo_core::{
     configuration_fetcher::{ConfigurationFetcher, ConfigurationFetcherConfig},
     configuration_poller::{start_configuration_poller, ConfigurationPollerConfig},
@@ -10,11 +15,12 @@ use eppo_core::{
     background::BackgroundThread,
     events::AssignmentEvent,
 };
-
-use rustler::{Encoder, Env, NifResult, NifStruct, ResourceArc, Term, Error};
-use rustler::types::atom;
-use std::{sync::{Arc, RwLock}};
 use std::panic::{RefUnwindSafe, UnwindSafe};
+use std::sync::{RwLock};
+
+use rustler::{Encoder, Env, NifResult, ResourceArc, Term};
+use rustler::types::atom;
+use std::sync::Arc;
 use std::collections::HashMap;
 
 const SDK_METADATA: SdkMetadata = SdkMetadata {
@@ -22,27 +28,19 @@ const SDK_METADATA: SdkMetadata = SdkMetadata {
     version: env!("CARGO_PKG_VERSION"),
 };
 
-static CLIENT_INSTANCE: RwLock<Option<ResourceArc<EppoClient>>> = RwLock::new(None);
+pub static CLIENT_INSTANCE: RwLock<Option<ResourceArc<EppoClient>>> = RwLock::new(None);
 
-#[derive(NifStruct)]
-#[module = "Eppo.Core.Config"]
-struct Config {
-    api_key: String,
-    base_url: String,
-    is_graceful_mode: bool,
-    poll_interval_seconds: Option<u64>,
-    poll_jitter_seconds: u64,
-}
-
-struct EppoClient {
-    evaluator: Evaluator,
-    background_thread: BackgroundThread,
+pub struct EppoClient {
+    pub evaluator: Evaluator,
+    pub background_thread: BackgroundThread,
 }
 
 #[rustler::resource_impl]
 impl rustler::Resource for EppoClient {}
 impl RefUnwindSafe for EppoClient {}
 impl UnwindSafe for EppoClient {}
+
+
 
 #[rustler::nif]
 fn init(config: Config) -> Result<(), String> {
@@ -103,7 +101,7 @@ fn init(config: Config) -> Result<(), String> {
     Ok(())
 }
 
-fn get_instance() -> Result<ResourceArc<EppoClient>, String> {
+pub fn get_instance() -> Result<ResourceArc<EppoClient>, String> {
     let instance = CLIENT_INSTANCE
         .read()
         .map_err(|e| format!("Failed to acquire read lock: {}", e))?;
@@ -163,57 +161,6 @@ fn get_assignment_details_inner(
 
     Ok(assignment_with_details)
 }
-
-pub fn convert_attributes(subject_attributes: Term) -> NifResult<Arc<HashMap<Str, AttributeValue>>> {
-    // Obtain an iterator over the map's key-value pairs.
-    let map: HashMap<String, Term> = subject_attributes.decode()?;
-    let mut attributes = HashMap::with_capacity(map.len());
-
-    for (key, value_term) in map {
-        // Try to decode the value as one of the supported types.
-        let attr_value = if let Ok(b) = value_term.decode::<bool>() {
-            // Booleans are stored as categorical attributes.
-            AttributeValue::categorical(b)
-        } else if let Ok(i) = value_term.decode::<i64>() {
-            // Integers are converted to f64 and stored as numeric.
-            AttributeValue::numeric(i as f64)
-        } else if let Ok(f) = value_term.decode::<f64>() {
-            AttributeValue::numeric(f)
-        } else if let Ok(s) = value_term.decode::<String>() {
-            // Strings are stored as categorical attributes.
-            AttributeValue::categorical(s)
-        } else {
-            // If none of the supported types matched, return a null attribute.
-            AttributeValue::null()
-        };
-
-        // Insert the converted key and attribute value into the HashMap.
-        // Here we assume that `Str` implements conversion from String.
-        attributes.insert(key.into(), attr_value);
-    }
-    Ok(Arc::new(attributes))
-}
-
-fn convert_value_term<'a>(env: Env<'a>, value: AssignmentValue) -> NifResult<Term<'a>> {
-    match value {
-        AssignmentValue::String(s) => Ok(s.encode(env)),
-        AssignmentValue::Integer(i) => Ok(i.encode(env)),
-        AssignmentValue::Numeric(n) => Ok(n.encode(env)),
-        AssignmentValue::Boolean(b) => Ok(b.encode(env)),
-        AssignmentValue::Json { raw, .. } => Ok(raw.encode(env)),
-    }
-}
-
-fn convert_event_term<'a>(env: Env<'a>, event: Option<AssignmentEvent>) -> NifResult<Term<'a>> {
-    if let Some(event) = event {
-        let json_value = serde_json::to_value(&event)
-            .map_err(|e| rustler::Error::Term(Box::new(format!("Failed to serialize event: {:?}", e))))?;
-        Ok(json_value.to_string().encode(env))
-    } else {
-        Ok(atom::nil().encode(env))
-    }
-}
-
 #[rustler::nif]
 fn get_assignment<'a>(
     env: Env<'a>,
@@ -277,13 +224,6 @@ fn get_assignment_details<'a>(
             Ok((result_map, event_term).encode(env))
         }
         Err(err) => Err(rustler::Error::Term(Box::new(err))),
-    }
-}
-
-// Update atoms module
-mod atoms {
-    rustler::atoms! {
-        nil
     }
 }
 
