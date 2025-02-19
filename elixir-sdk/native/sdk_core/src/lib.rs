@@ -4,14 +4,14 @@ use eppo_core::{
     configuration_store::ConfigurationStore,
     eval::{Evaluator, EvaluatorConfig},
     eval::eval_details::EvaluationResultWithDetails,
-    {Str, AttributeValue, Attributes},
+    {Str, AttributeValue},
     ufc::{VariationType, Assignment, AssignmentValue},
     SdkMetadata,
     background::BackgroundThread,
     events::AssignmentEvent,
 };
 
-use rustler::{Encoder, Env, NifResult, NifStruct, ResourceArc, Term, Atom};
+use rustler::{Encoder, Env, NifResult, NifStruct, ResourceArc, Term, Error};
 use rustler::types::atom;
 use std::{sync::{Arc, RwLock}};
 use std::panic::{RefUnwindSafe, UnwindSafe};
@@ -103,7 +103,6 @@ fn init(config: Config) -> Result<(), String> {
     Ok(())
 }
 
-// #[rustler::nif]
 fn get_instance() -> Result<ResourceArc<EppoClient>, String> {
     let instance = CLIENT_INSTANCE
         .read()
@@ -165,17 +164,34 @@ fn get_assignment_details_inner(
     Ok(assignment_with_details)
 }
 
-fn convert_attributes(subject_attributes: Term) -> NifResult<Arc<HashMap<Str, AttributeValue>>> {
-    // Convert subject_attributes Term to HashMap
-    let attributes: HashMap<String, String> = subject_attributes
-        .decode()
-        .map_err(|e| rustler::Error::Term(Box::new(format!("Failed to decode subject attributes: {:?}", e))))?;
-    
-    // Convert attributes to the required format
-    Ok(Arc::new(attributes
-        .into_iter()
-        .map(|(k, v)| (Str::new(k), AttributeValue::categorical(v)))
-        .collect::<HashMap<Str, AttributeValue>>()))
+pub fn convert_attributes(subject_attributes: Term) -> NifResult<Arc<HashMap<Str, AttributeValue>>> {
+    // Obtain an iterator over the map's key-value pairs.
+    let map: HashMap<String, Term> = subject_attributes.decode()?;
+    let mut attributes = HashMap::with_capacity(map.len());
+
+    for (key, value_term) in map {
+        // Try to decode the value as one of the supported types.
+        let attr_value = if let Ok(b) = value_term.decode::<bool>() {
+            // Booleans are stored as categorical attributes.
+            AttributeValue::categorical(b)
+        } else if let Ok(i) = value_term.decode::<i64>() {
+            // Integers are converted to f64 and stored as numeric.
+            AttributeValue::numeric(i as f64)
+        } else if let Ok(f) = value_term.decode::<f64>() {
+            AttributeValue::numeric(f)
+        } else if let Ok(s) = value_term.decode::<String>() {
+            // Strings are stored as categorical attributes.
+            AttributeValue::categorical(s)
+        } else {
+            // If none of the supported types matched, return a BadArg error.
+            return Err(Error::BadArg);
+        };
+
+        // Insert the converted key and attribute value into the HashMap.
+        // Here we assume that `Str` implements conversion from String.
+        attributes.insert(key.into(), attr_value);
+    }
+    Ok(Arc::new(attributes))
 }
 
 fn convert_value_term<'a>(env: Env<'a>, value: AssignmentValue) -> NifResult<Term<'a>> {

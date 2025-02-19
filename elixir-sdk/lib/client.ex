@@ -17,9 +17,9 @@ defmodule Client do
     defstruct [
       :api_key,
       :assignment_logger,
-      :is_graceful_mode,
-      :poll_interval_seconds,
-      :poll_jitter_seconds,
+      is_graceful_mode: true,
+      poll_interval_seconds: 30,
+      poll_jitter_seconds: 3,
       base_url: "https://fscdn.eppo.cloud/api"
     ]
   end
@@ -161,10 +161,11 @@ defmodule Client do
     IO.inspect(assignment, label: "assignment")
 
     case assignment do
-      :error ->
+      {:error, error} ->
         Logger.error("Error getting assignment", %{
           flag: flag_key,
-          subject: subject_key
+          subject: subject_key,
+          error: error
         })
 
         default
@@ -176,7 +177,16 @@ defmodule Client do
           value: value
         })
 
-        if {:ok, event} = Jason.decode(event_json), do: log_assignment(event)
+        case Jason.decode(event_json) do
+          {:ok, event} ->
+            log_assignment(event)
+
+          {:error, _} ->
+            Logger.error("Failed to decode assignment event #{event_json}", %{
+              event_json: event_json
+            })
+        end
+
         value
     end
   end
