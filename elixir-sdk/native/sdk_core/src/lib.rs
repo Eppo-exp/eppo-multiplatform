@@ -192,16 +192,9 @@ fn convert_event_term<'a>(env: Env<'a>, event: Option<AssignmentEvent>) -> NifRe
     if let Some(event) = event {
         let json_value = serde_json::to_value(&event)
             .map_err(|e| rustler::Error::Term(Box::new(format!("Failed to serialize event: {:?}", e))))?;
-        if let serde_json::Value::Object(map) = json_value {
-            let converted: HashMap<String, String> = map.into_iter()
-                .map(|(k, v)| (k, v.to_string()))
-                .collect();
-            Ok(converted.encode(env))
-        } else {
-            Err(rustler::Error::Term(Box::new("Event did not serialize to an object".to_string())))
-        }
+        Ok(json_value.to_string().encode(env))
     } else {
-        Ok(HashMap::<String, String>::new().encode(env))
+        Ok(atom::nil().encode(env))
     }
 }
 
@@ -259,14 +252,7 @@ fn get_assignment_details<'a>(
                     "Failed to serialize evaluation details: {:?}", e
                 ))))?;
             
-            result_map.insert("details".to_string(), if let serde_json::Value::Object(map) = json_details {
-                let converted: HashMap<String, String> = map.into_iter()
-                    .map(|(k, v)| (k, v.to_string()))
-                    .collect();
-                converted.encode(env)
-            } else {
-                atom::nil().encode(env)
-            });
+            result_map.insert("details".to_string(), json_details.to_string().encode(env));
 
             // Convert the event details
             let event_term = convert_event_term(env, assignment_event)?;

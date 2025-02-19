@@ -130,15 +130,17 @@ defmodule Client do
 
   @doc """
   Assigns a JSON variant based on the provided flag configuration.
+  Returns a Map
 
   ## Parameters
     - flag_key: Identifies which set of configuration rules to use
     - subject_key: Unique identifier for the subject (usually a user ID)
     - subject_attributes: Optional key-value pairs for rule evaluation
-    - default: Fallback value if assignment fails
+    - default: Fallback Map if assignment fails
   """
   def get_json_assignment(flag_key, subject_key, subject_attributes, default) do
-    get_assignment(flag_key, subject_key, subject_attributes, default, :json)
+    value_json = get_assignment(flag_key, subject_key, subject_attributes, default, :json)
+    if {:ok, value} = Jason.decode(value_json), do: value, else: default
   end
 
   @doc """
@@ -146,13 +148,19 @@ defmodule Client do
   Returns {value, details} tuple.
   """
   def get_json_assignment_details(flag_key, subject_key, subject_attributes, default) do
-    get_assignment_details(flag_key, subject_key, subject_attributes, default, :json)
+    {value_json, details} =
+      get_assignment_details(flag_key, subject_key, subject_attributes, default, :json)
+
+    if {:ok, value} = Jason.decode(value_json), do: {value, details}, else: {default, details}
   end
 
   defp get_assignment(flag_key, subject_key, subject_attributes, default, expected_type) do
-    {value, event} = Core.get_assignment(flag_key, subject_key, subject_attributes, expected_type)
+    assignment =
+      Core.get_assignment(flag_key, subject_key, subject_attributes, expected_type)
 
-    case value do
+    IO.inspect(assignment, label: "assignment")
+
+    case assignment do
       :error ->
         Logger.error("Error getting assignment", %{
           flag: flag_key,
@@ -161,14 +169,14 @@ defmodule Client do
 
         default
 
-      value ->
+      {value, event_json} ->
         Logger.info("Assignment", %{
           flag: flag_key,
           subject: subject_key,
           value: value
         })
 
-        log_assignment(event)
+        if {:ok, event} = Jason.decode(event_json), do: log_assignment(event)
         value
     end
   end
@@ -184,11 +192,10 @@ defmodule Client do
           subject: subject_key
         })
 
-        {default, nil, nil}
+        {default, nil}
 
-      {result, event} ->
+      {result, event_json} ->
         value = Map.get(result, "variation")
-        details = Map.get(result, "details")
 
         Logger.info("Assignment details", %{
           flag: flag_key,
@@ -196,8 +203,11 @@ defmodule Client do
           value: value
         })
 
-        log_assignment(event)
-        {value, details}
+        if {:ok, event} = Jason.decode(event_json), do: log_assignment(event)
+
+        if {:ok, details} = Jason.decode(Map.get(result, "details")),
+          do: {value, details},
+          else: {value, nil}
     end
   end
 
