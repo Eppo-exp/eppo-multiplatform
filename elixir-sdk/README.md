@@ -39,6 +39,7 @@ defmodule YourApp.Application do
   def start(_type, _args) do
     config = %Eppo.Client.Config{
       api_key: System.get_env("EPPO_API_KEY"),
+      assignment_logger: YourApp.AssignmentLogger,
       # ... other config options ...
     }
 
@@ -49,6 +50,22 @@ defmodule YourApp.Application do
 
     opts = [strategy: :one_for_one, name: YourApp.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+end
+```
+
+### Implementing an Assignment Logger
+
+The assignment logger is used to track experiment assignments for analytics. Implement the `Eppo.AssignmentLogger` behaviour in your application:
+
+```elixir
+defmodule YourApp.AssignmentLogger do
+  @behaviour Eppo.AssignmentLogger
+
+  @impl true
+  def log_assignment(event) do
+    # Implement your logging logic here
+    IO.inspect(event, label: "log_assignment")
   end
 end
 ```
@@ -74,7 +91,7 @@ assignment = Eppo.Client.get_string_assignment(
 If you need to start the server manually (not recommended for production):
 
 ```elixir
-config = %Eppo.Client.Config{api_key: "your-api-key"}
+config = %Eppo.Client.Config{api_key: "your-api-key", assignment_logger: YourApp.AssignmentLogger}
 {:ok, _pid} = Eppo.Server.start_link(config)
 
 # When testing locally, wait for the client to initialize

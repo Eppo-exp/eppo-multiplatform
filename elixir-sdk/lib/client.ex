@@ -2,20 +2,58 @@ defmodule Eppo.Client do
   alias Eppo.Core
   require Logger
 
+  @moduledoc """
+  Client for interacting with Eppo feature flags and experiments.
+
+  Provides methods to evaluate feature flags and experiments for subjects based on
+  targeting rules and randomization. Supports string and JSON value assignments with
+  optional evaluation details.
+
+  ## Configuration
+
+  The client is configured using `Eppo.Client.Config`:
+
+  - api_key: API key for authentication
+  - assignment_logger: Module for logging assignments (implements Eppo.AssignmentLogger)
+  - is_graceful_mode: Whether to fail gracefully on errors (default: true)
+  - poll_interval_seconds: Interval between config polls in seconds (default: 30)
+  - poll_jitter_seconds: Random jitter added to poll interval (default: 3)
+  - base_url: Base URL for the Eppo API (default: https://fscdn.eppo.cloud/api)
+
+  ## Usage
+
+  ### Initialization
+
+  To create a new client, use the `new/1` function with a `Config` struct:
+
+  ```elixir
+  config = %Eppo.Client.Config{api_key: "your-api-key", assignment_logger: YourApp.AssignmentLogger}
+  {:ok, client} = Eppo.Client.new(config)
+  ```
+
+  ### Evaluating Feature Flags
+
+  Use the client to evaluate feature flags and experiments for subjects:
+
+  ```elixir
+  assignment = Eppo.Client.get_string_assignment(client, "flag-key", "user-123", %{"country" => "US", "age" => 25}, "default")
+  ```
+  """
+
   defstruct [:client_ref, :assignment_logger]
 
-  @moduledoc """
-  Configuration struct for the Eppo client.
-
-  Fields:
-  - api_key: API key for authentication
-  - assignment_logger: Module for logging assignments
-  - is_graceful_mode: Whether to fail gracefully on errors
-  - poll_interval_seconds: Interval between config polls in seconds
-  - poll_jitter_seconds: Random jitter added to poll interval
-  - base_url: Base URL for the Eppo API (default: https://fscdn.eppo.cloud/api)
-  """
   defmodule Config do
+    @moduledoc """
+    Configuration for the Eppo client.
+
+    ## Fields
+      - api_key: Required API key for authentication
+      - assignment_logger: Optional module implementing Eppo.AssignmentLogger for tracking assignments
+      - is_graceful_mode: Whether to fail gracefully on errors (default: true)
+      - poll_interval_seconds: Interval between config polls in seconds (default: 30)
+      - poll_jitter_seconds: Random jitter added to poll interval (default: 3)
+      - base_url: Base URL for the Eppo API (default: https://fscdn.eppo.cloud/api)
+    """
     defstruct [
       :api_key,
       :assignment_logger,
@@ -27,22 +65,24 @@ defmodule Eppo.Client do
   end
 
   def new(%Config{} = config) do
-    case Core.init(%Core.Config{
-           api_key: config.api_key,
-           base_url: config.base_url,
-           is_graceful_mode: config.is_graceful_mode,
-           poll_interval_seconds: config.poll_interval_seconds,
-           poll_jitter_seconds: config.poll_jitter_seconds
-         }) do
-      client_ref ->
-        {:ok,
-         %__MODULE__{
-           client_ref: client_ref,
-           assignment_logger: config.assignment_logger
-         }}
+    try do
+      client_ref =
+        Core.init(%Core.Config{
+          api_key: config.api_key,
+          base_url: config.base_url,
+          is_graceful_mode: config.is_graceful_mode,
+          poll_interval_seconds: config.poll_interval_seconds,
+          poll_jitter_seconds: config.poll_jitter_seconds
+        })
 
-      error ->
-        {:error, error}
+      {:ok,
+       %__MODULE__{
+         client_ref: client_ref,
+         assignment_logger: config.assignment_logger
+       }}
+    rescue
+      e in ArgumentError ->
+        {:error, Exception.message(e)}
     end
   end
 

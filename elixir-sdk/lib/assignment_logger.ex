@@ -1,4 +1,12 @@
 defmodule Eppo.AssignmentLogger do
-  # Override with your own implementation
-  def log_assignment(event), do: nil
+  @moduledoc """
+  Behaviour for logging experiment assignments.
+  """
+
+  @callback log_assignment(event :: map()) :: any()
+
+  @doc """
+  Default implementation that does nothing.
+  """
+  def log_assignment(_event), do: nil
 end
