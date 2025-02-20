@@ -1,4 +1,4 @@
-defmodule Eppo.Core do
+defmodule EppoSdk.Core do
   @moduledoc """
   Defines the interface with the Rust core SDK for evaluating feature flags.
 

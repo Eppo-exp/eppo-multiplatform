@@ -193,4 +193,4 @@ fn get_assignment_details<'a>(
     }
 }
 
-rustler::init!("Elixir.Eppo.Core"); 
+rustler::init!("Elixir.EppoSdk.Core"); 

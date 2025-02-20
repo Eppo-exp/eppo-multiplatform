@@ -1,4 +1,4 @@
-defmodule Eppo.AssignmentLogger do
+defmodule EppoSdk.AssignmentLogger do
   @moduledoc """
   Behaviour for logging experiment assignments.
   """

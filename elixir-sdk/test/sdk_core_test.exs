@@ -1,7 +1,7 @@
-defmodule Eppo.CoreTest do
+defmodule EppoSdk.CoreTest do
   use ExUnit.Case
 
-  alias Eppo.Core
+  alias EppoSdk.Core
 
   @base_url "https://fscdn.eppo.cloud/api"
 

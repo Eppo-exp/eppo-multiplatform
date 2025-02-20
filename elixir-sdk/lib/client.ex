@@ -1,5 +1,4 @@
-defmodule Eppo.Client do
-  alias Eppo.Core
+defmodule EppoSdk.Client do
   require Logger
 
   @moduledoc """
@@ -11,10 +10,10 @@ defmodule Eppo.Client do
 
   ## Configuration
 
-  The client is configured using `Eppo.Client.Config`:
+  The client is configured using `EppoSdk.Client.Config`:
 
   - api_key: SDK API key for authentication (Can be configured in the [Eppo SDK keys page](https://eppo.cloud/configuration/environments/keys))
-  - assignment_logger: Module for logging assignments (implements Eppo.AssignmentLogger)
+  - assignment_logger: Module for logging assignments (implements EppoSdk.AssignmentLogger)
   - is_graceful_mode: Whether to fail gracefully on errors (default: true)
   - poll_interval_seconds: Interval between config polls in seconds (default: 30)
   - poll_jitter_seconds: Random jitter added to poll interval (default: 3)
@@ -27,8 +26,8 @@ defmodule Eppo.Client do
   To create a new client, use the `new/1` function with a `Config` struct:
 
   ```elixir
-  config = %Eppo.Client.Config{api_key: "your-api-key", assignment_logger: YourApp.AssignmentLogger}
-  {:ok, client} = Eppo.Client.new(config)
+  config = %EppoSdk.Client.Config{api_key: "your-api-key", assignment_logger: YourApp.AssignmentLogger}
+  {:ok, client} = EppoSdk.Client.new(config)
   ```
 
   ### Evaluating Feature Flags
@@ -36,7 +35,7 @@ defmodule Eppo.Client do
   Use the client to evaluate feature flags and experiments for subjects:
 
   ```elixir
-  assignment = Eppo.Client.get_string_assignment(
+  assignment = EppoSdk.Client.get_string_assignment(
     client,
     "flag-key",
     "user-123",
@@ -53,7 +52,7 @@ defmodule Eppo.Client do
   This is less efficient than using the get_assignment functions, and should only be used for debugging.
 
   ```elixir
-  {value, details} = Eppo.Client.get_string_assignment_details(
+  {value, details} = EppoSdk.Client.get_string_assignment_details(
     client,
     "flag-key",
     "user-123",
@@ -70,7 +69,7 @@ defmodule Eppo.Client do
 
     ## Fields
       - api_key: Required API key for authentication
-      - assignment_logger: Optional module implementing Eppo.AssignmentLogger for tracking assignments
+      - assignment_logger: Optional module implementing EppoSdk.AssignmentLogger for tracking assignments
       - is_graceful_mode: Whether to fail gracefully on errors (default: true)
       - poll_interval_seconds: Interval between config polls in seconds (default: 30)
       - poll_jitter_seconds: Random jitter added to poll interval (default: 3)
@@ -92,13 +91,13 @@ defmodule Eppo.Client do
   Takes a Config struct and returns {:ok, client} on success or {:error, reason} on failure.
 
   ```elixir
-  {:ok, client} = Eppo.Client.new(config)
+  {:ok, client} = EppoSdk.Client.new(config)
   ```
   """
   def new(%Config{} = config) do
     try do
       client_ref =
-        Core.init(%Core.Config{
+        EppoSdk.Core.init(%EppoSdk.Core.Config{
           api_key: config.api_key,
           base_url: config.base_url,
           is_graceful_mode: config.is_graceful_mode,
@@ -128,7 +127,7 @@ defmodule Eppo.Client do
 
 
   ```elixir
-  assignment = Eppo.Client.get_string_assignment(
+  assignment = EppoSdk.Client.get_string_assignment(
     client,
     "flag-key",
     "user-123",
@@ -151,7 +150,7 @@ defmodule Eppo.Client do
   Returns `{value, details}` tuple.
 
   ```elixir
-  {value, details} = Eppo.Client.get_string_assignment_details(
+  {value, details} = EppoSdk.Client.get_string_assignment_details(
     client,
     "flag-key",
     "user-123",
@@ -179,7 +178,7 @@ defmodule Eppo.Client do
     - default: Fallback value if assignment fails
 
   ```elixir
-  assignment = Eppo.Client.get_boolean_assignment(
+  assignment = EppoSdk.Client.get_boolean_assignment(
     client,
     "flag-key",
     "user-123",
@@ -221,7 +220,7 @@ defmodule Eppo.Client do
     - default: Fallback value if assignment fails
 
   ```elixir
-  assignment = Eppo.Client.get_integer_assignment(
+  assignment = EppoSdk.Client.get_integer_assignment(
     client,
     "flag-key",
     "user-123",
@@ -263,7 +262,7 @@ defmodule Eppo.Client do
     - default: Fallback value if assignment fails
 
   ```elixir
-  assignment = Eppo.Client.get_numeric_assignment(
+  assignment = EppoSdk.Client.get_numeric_assignment(
     client,
     "flag-key",
     "user-123",
@@ -307,7 +306,7 @@ defmodule Eppo.Client do
 
 
   ```elixir
-  assignment = Eppo.Client.get_json_assignment(
+  assignment = EppoSdk.Client.get_json_assignment(
     client,
     "flag-key",
     "user-123",
@@ -361,7 +360,7 @@ defmodule Eppo.Client do
          expected_type
        ) do
     assignment =
-      Core.get_assignment(
+      EppoSdk.Core.get_assignment(
         client.client_ref,
         flag_key,
         subject_key,
@@ -401,7 +400,7 @@ defmodule Eppo.Client do
          expected_type
        ) do
     assignment =
-      Core.get_assignment_details(
+      EppoSdk.Core.get_assignment_details(
         client.client_ref,
         flag_key,
         subject_key,

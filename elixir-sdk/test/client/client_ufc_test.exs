@@ -1,7 +1,7 @@
-defmodule Eppo.ClientUFCTest do
+defmodule EppoSdk.ClientUFCTest do
   use ExUnit.Case
   import TestHelper
-  alias Eppo.{Client, Server}
+  alias EppoSdk.{Client, Server}
 
   # Disable logging for tests
   @moduletag :capture_log

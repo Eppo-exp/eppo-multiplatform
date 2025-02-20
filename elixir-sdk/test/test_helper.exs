@@ -9,17 +9,17 @@ defmodule TestHelper do
 
   def init_client_for(test_name) do
     config =
-      %Eppo.Client.Config{
+      %EppoSdk.Client.Config{
         api_key: "test-api-key",
-        assignment_logger: Eppo.AssignmentLogger,
+        assignment_logger: EppoSdk.AssignmentLogger,
         base_url: "http://127.0.0.1:8378/#{test_name}/api"
       }
 
-    start_supervised({Eppo.Server, config})
+    start_supervised({EppoSdk.Server, config})
 
     # Sleep to allow client to fetch config
     unless test_name == "offline" do
-      :timer.sleep(50)
+      :timer.sleep(100)
     end
   end
 end
