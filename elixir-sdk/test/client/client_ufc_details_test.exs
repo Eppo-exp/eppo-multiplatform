@@ -30,7 +30,7 @@ defmodule Eppo.ClientUFCDetailsTest do
           subject_key = subject["subjectKey"]
           subject_attributes = subject["subjectAttributes"]
 
-          {value, details} =
+          {value, _details} =
             case variation_type do
               "STRING" ->
                 Client.get_string_assignment_details(
@@ -95,15 +95,15 @@ defmodule Eppo.ClientUFCDetailsTest do
     end
   end
 
-  defp assert_details_match(actual, expected) do
-    Enum.each(expected, fn {key, expected_value} ->
-      assert Map.has_key?(actual, key),
-             "Missing key #{inspect(key)} in actual details"
+  # defp assert_details_match(actual, expected) do
+  #   Enum.each(expected, fn {key, expected_value} ->
+  #     assert Map.has_key?(actual, key),
+  #            "Missing key #{inspect(key)} in actual details"
 
-      actual_value = Map.get(actual, key)
+  #     actual_value = Map.get(actual, key)
 
-      assert actual_value == expected_value,
-             "Value mismatch for key #{inspect(key)}\nExpected: #{inspect(expected_value)}\nGot: #{inspect(actual_value)}"
-    end)
-  end
+  #     assert actual_value == expected_value,
+  #            "Value mismatch for key #{inspect(key)}\nExpected: #{inspect(expected_value)}\nGot: #{inspect(actual_value)}"
+  #   end)
+  # end
 end
