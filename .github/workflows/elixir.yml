@@ -5,7 +5,13 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'elixir-sdk/**'
+      - 'eppo_core/**'
   pull_request:
+    paths:
+      - 'elixir-sdk/**'
+      - 'eppo_core/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
