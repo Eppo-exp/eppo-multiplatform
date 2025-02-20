@@ -11,7 +11,7 @@ defmodule Eppo.CoreTest do
       base_url: @base_url
     }
 
-    assert {:ok, _} = Core.init(config)
+    assert _client = Core.init(config)
   end
 
   test "init with empty api_key fails" do
@@ -21,15 +21,5 @@ defmodule Eppo.CoreTest do
     }
 
     assert {:error, "Invalid value for api_key: cannot be blank"} = Core.init(config)
-  end
-
-  test "shutdown succeeds after init" do
-    config = %Core.Config{
-      api_key: "test-key",
-      base_url: @base_url
-    }
-
-    {:ok, _} = Core.init(config)
-    assert {:ok, _} = Core.shutdown()
   end
 end

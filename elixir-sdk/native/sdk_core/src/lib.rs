@@ -16,7 +16,6 @@ use eppo_core::{
     events::AssignmentEvent,
 };
 use std::panic::{RefUnwindSafe, UnwindSafe};
-use std::sync::{RwLock};
 
 use rustler::{Encoder, Env, NifResult, ResourceArc, Term};
 use rustler::types::atom;
@@ -27,8 +26,6 @@ const SDK_METADATA: SdkMetadata = SdkMetadata {
     name: "elixir",
     version: env!("CARGO_PKG_VERSION"),
 };
-
-pub static CLIENT_INSTANCE: RwLock<Option<ResourceArc<EppoClient>>> = RwLock::new(None);
 
 pub struct EppoClient {
     pub evaluator: Evaluator,
@@ -41,12 +38,12 @@ impl RefUnwindSafe for EppoClient {}
 impl UnwindSafe for EppoClient {}
 
 
-
 #[rustler::nif]
-fn init(config: Config) -> Result<(), String> {
-    // Validate config
+fn init(config: Config) -> NifResult<ResourceArc<EppoClient>> {
     if config.api_key.is_empty() {
-        return Err("Invalid value for api_key: cannot be blank".to_string());
+        return Err(rustler::Error::Term(Box::new(
+            "Invalid value for api_key: cannot be blank"
+        )));
     }
 
     let store = Arc::new(ConfigurationStore::new());
@@ -60,7 +57,9 @@ fn init(config: Config) -> Result<(), String> {
     let fetcher = ConfigurationFetcher::new(fetcher_config);
 
     let background_thread = BackgroundThread::start()
-        .map_err(|e| format!("Failed to start background thread: {}", e))?;
+        .map_err(|e| rustler::Error::Term(Box::new(
+            format!("Failed to start background thread: {}", e)
+        )))?;
 
     let poller_config = ConfigurationPollerConfig::new()
         .with_interval(std::time::Duration::from_secs(
@@ -86,50 +85,16 @@ fn init(config: Config) -> Result<(), String> {
         background_thread,
     });
 
-    // Set global instance
-    let mut instance = CLIENT_INSTANCE
-        .write()
-        .map_err(|e| format!("Failed to acquire write lock: {}", e))?;
-    
-    if let Some(existing) = instance.take() {
-        // Shutdown existing client
-        drop(existing);
-    }
-    
-    *instance = Some(client.clone());
-
-    Ok(())
-}
-
-pub fn get_instance() -> Result<ResourceArc<EppoClient>, String> {
-    let instance = CLIENT_INSTANCE
-        .read()
-        .map_err(|e| format!("Failed to acquire read lock: {}", e))?;
-
-    match &*instance {
-        Some(client) => Ok(client.clone()),
-        None => Err("init() must be called before get_instance()".to_string()),
-    }
-}
-
-#[rustler::nif]
-fn shutdown() -> Result<(), String> {
-    if let Ok(mut instance) = CLIENT_INSTANCE.write() {
-        if let Some(client) = instance.take() {
-            drop(client);
-        }
-    }
-    Ok(())
+    Ok(client)
 }
 
 fn get_assignment_inner(
+    client: ResourceArc<EppoClient>,
     flag_key: String,
     subject_key: String,
     eppo_attributes: Arc<HashMap<Str, AttributeValue>>,
     expected_type: VariationType,
 ) -> Result<Option<Assignment>, String> {
-    let client = get_instance()?;
-
     // Get assignment
     let assignment = client.evaluator.get_assignment(
         &Str::new(flag_key),
@@ -142,6 +107,7 @@ fn get_assignment_inner(
 }
 
 fn get_assignment_details_inner(
+    client: ResourceArc<EppoClient>,
     flag_key: String,
     subject_key: String,
     eppo_attributes: Arc<HashMap<Str, AttributeValue>>,
@@ -150,8 +116,6 @@ fn get_assignment_details_inner(
     EvaluationResultWithDetails<AssignmentValue>,
     Option<AssignmentEvent>,
 ), String> {
-    let client = get_instance()?;
-
     let assignment_with_details = client.evaluator.get_assignment_details(
         &Str::new(flag_key),
         &Str::new(subject_key),
@@ -164,13 +128,14 @@ fn get_assignment_details_inner(
 #[rustler::nif]
 fn get_assignment<'a>(
     env: Env<'a>,
+    client: ResourceArc<EppoClient>,
     flag_key: String,
     subject_key: String,
     subject_attributes: Term<'a>,
     expected_type: VariationType,
 ) -> NifResult<Term<'a>> {
     let eppo_attributes = convert_attributes(subject_attributes)?;
-    let assignment = get_assignment_inner(flag_key, subject_key, eppo_attributes, expected_type);
+    let assignment = get_assignment_inner(client, flag_key, subject_key, eppo_attributes, expected_type);
     match assignment {
         Ok(Some(assignment)) => {
             let value = convert_value_term(env, assignment.value)?;
@@ -184,6 +149,7 @@ fn get_assignment<'a>(
 #[rustler::nif]
 fn get_assignment_details<'a>(
     env: Env<'a>,
+    client: ResourceArc<EppoClient>,
     flag_key: String,
     subject_key: String,
     subject_attributes: Term<'a>,
@@ -191,7 +157,7 @@ fn get_assignment_details<'a>(
 ) -> NifResult<Term<'a>> {
     let eppo_attributes = convert_attributes(subject_attributes)?;
     let assignment_with_details =
-        get_assignment_details_inner(flag_key, subject_key, eppo_attributes, expected_type);
+        get_assignment_details_inner(client, flag_key, subject_key, eppo_attributes, expected_type);
     match assignment_with_details {
         Ok((evaluation_result, assignment_event)) => {
             // Create a HashMap to store all evaluation result fields

@@ -1,7 +1,7 @@
 defmodule Eppo.ClientUFCTest do
   use ExUnit.Case
   import TestHelper
-  alias Eppo.Client
+  alias Eppo.{Client, Server}
 
   # Move setup_all outside of describe block
   setup do
@@ -13,27 +13,25 @@ defmodule Eppo.ClientUFCTest do
     # Get all JSON test files and create a test for each one
     for file <- Path.wildcard("../sdk-test-data/ufc/tests/*.json") do
       basename = Path.basename(file)
-      IO.puts("--- #{basename} ---")
 
       test "with test file #{basename}" do
         data = File.read!(unquote(file)) |> Jason.decode!()
 
+        client = Server.get_instance()
         flag_key = data["flag"]
         variation_type = data["variationType"]
         default_value = data["defaultValue"]
 
-        IO.inspect(flag_key, label: "flag_key")
         # Test each subject in the test file
         Enum.each(data["subjects"], fn subject ->
           subject_key = subject["subjectKey"]
           subject_attributes = subject["subjectAttributes"]
-          IO.inspect(subject_key, label: "subject_key")
-          IO.inspect(subject_attributes, label: "subject_attributes")
 
           result =
             case variation_type do
               "STRING" ->
                 Client.get_string_assignment(
+                  client,
                   flag_key,
                   subject_key,
                   subject_attributes,
@@ -42,6 +40,7 @@ defmodule Eppo.ClientUFCTest do
 
               "NUMERIC" ->
                 Client.get_numeric_assignment(
+                  client,
                   flag_key,
                   subject_key,
                   subject_attributes,
@@ -50,6 +49,7 @@ defmodule Eppo.ClientUFCTest do
 
               "INTEGER" ->
                 Client.get_integer_assignment(
+                  client,
                   flag_key,
                   subject_key,
                   subject_attributes,
@@ -58,6 +58,7 @@ defmodule Eppo.ClientUFCTest do
 
               "BOOLEAN" ->
                 Client.get_boolean_assignment(
+                  client,
                   flag_key,
                   subject_key,
                   subject_attributes,
@@ -66,6 +67,7 @@ defmodule Eppo.ClientUFCTest do
 
               "JSON" ->
                 Client.get_json_assignment(
+                  client,
                   flag_key,
                   subject_key,
                   subject_attributes,

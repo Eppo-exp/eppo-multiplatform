@@ -15,7 +15,7 @@ defmodule TestHelper do
         base_url: "http://127.0.0.1:8378/#{test_name}/api"
       }
 
-    start_supervised({Eppo.Client, config})
+    start_supervised({Eppo.Server, config})
 
     # Sleep to allow client to fetch config
     unless test_name == "offline" do

@@ -9,16 +9,21 @@ defmodule Eppo.Core do
               poll_jitter_seconds: 3
   end
 
-  # Client loading functions
+  @opaque client :: reference()
+
   def init(_config), do: error()
-  # def get_instance(), do: error()
-  def shutdown(), do: error()
 
-  # Feature flag evaluation functions
-  def get_assignment(_flag_key, _subject_key, _subject_attributes, _expected_type), do: error()
-
-  def get_assignment_details(_flag_key, _subject_key, _subject_attributes, _expected_type),
+  def get_assignment(_client, _flag_key, _subject_key, _subject_attributes, _expected_type),
     do: error()
+
+  def get_assignment_details(
+        _client,
+        _flag_key,
+        _subject_key,
+        _subject_attributes,
+        _expected_type
+      ),
+      do: error()
 
   # Helper function for NIF not loaded errors
   defp error, do: :erlang.nif_error(:nif_not_loaded)

@@ -1,7 +1,8 @@
 defmodule Eppo.Client do
-  use GenServer
   alias Eppo.Core
   require Logger
+
+  defstruct [:client_ref, :assignment_logger]
 
   @moduledoc """
   Configuration struct for the Eppo client.
@@ -25,15 +26,7 @@ defmodule Eppo.Client do
     ]
   end
 
-  def start_link(%Config{} = config) do
-    GenServer.start_link(__MODULE__, config, name: __MODULE__)
-  end
-
-  @doc """
-  Initializes the Eppo client with the provided configuration.
-  Returns {:ok, pid} on success or {:error, reason} on failure.
-  """
-  def init(%Config{} = config) do
+  def new(%Config{} = config) do
     case Core.init(%Core.Config{
            api_key: config.api_key,
            base_url: config.base_url,
@@ -41,12 +34,17 @@ defmodule Eppo.Client do
            poll_interval_seconds: config.poll_interval_seconds,
            poll_jitter_seconds: config.poll_jitter_seconds
          }) do
-      {:ok, _} -> {:ok, %{assignment_logger: config.assignment_logger}}
-      error -> error
+      client_ref ->
+        {:ok,
+         %__MODULE__{
+           client_ref: client_ref,
+           assignment_logger: config.assignment_logger
+         }}
+
+      error ->
+        {:error, error}
     end
   end
-
-  def shutdown, do: Core.shutdown()
 
   @doc """
   Assigns a string variant based on the provided flag configuration.
@@ -57,16 +55,28 @@ defmodule Eppo.Client do
     - subject_attributes: Optional key-value pairs for rule evaluation
     - default: Fallback value if assignment fails
   """
-  def get_string_assignment(flag_key, subject_key, subject_attributes, default) do
-    get_assignment(flag_key, subject_key, subject_attributes, default, :string)
+  def get_string_assignment(
+        %__MODULE__{} = client,
+        flag_key,
+        subject_key,
+        subject_attributes,
+        default
+      ) do
+    get_assignment(client, flag_key, subject_key, subject_attributes, default, :string)
   end
 
   @doc """
   Like get_string_assignment/4 but returns additional evaluation details.
   Returns {value, details} tuple.
   """
-  def get_string_assignment_details(flag_key, subject_key, subject_attributes, default) do
-    get_assignment_details(flag_key, subject_key, subject_attributes, default, :string)
+  def get_string_assignment_details(
+        %__MODULE__{} = client,
+        flag_key,
+        subject_key,
+        subject_attributes,
+        default
+      ) do
+    get_assignment_details(client, flag_key, subject_key, subject_attributes, default, :string)
   end
 
   @doc """
@@ -78,16 +88,28 @@ defmodule Eppo.Client do
     - subject_attributes: Optional key-value pairs for rule evaluation
     - default: Fallback value if assignment fails
   """
-  def get_boolean_assignment(flag_key, subject_key, subject_attributes, default) do
-    get_assignment(flag_key, subject_key, subject_attributes, default, :boolean)
+  def get_boolean_assignment(
+        %__MODULE__{} = client,
+        flag_key,
+        subject_key,
+        subject_attributes,
+        default
+      ) do
+    get_assignment(client, flag_key, subject_key, subject_attributes, default, :boolean)
   end
 
   @doc """
   Like get_boolean_assignment/4 but returns additional evaluation details.
   Returns {value, details} tuple.
   """
-  def get_boolean_assignment_details(flag_key, subject_key, subject_attributes, default) do
-    get_assignment_details(flag_key, subject_key, subject_attributes, default, :boolean)
+  def get_boolean_assignment_details(
+        %__MODULE__{} = client,
+        flag_key,
+        subject_key,
+        subject_attributes,
+        default
+      ) do
+    get_assignment_details(client, flag_key, subject_key, subject_attributes, default, :boolean)
   end
 
   @doc """
@@ -99,16 +121,28 @@ defmodule Eppo.Client do
     - subject_attributes: Optional key-value pairs for rule evaluation
     - default: Fallback value if assignment fails
   """
-  def get_integer_assignment(flag_key, subject_key, subject_attributes, default) do
-    get_assignment(flag_key, subject_key, subject_attributes, default, :integer)
+  def get_integer_assignment(
+        %__MODULE__{} = client,
+        flag_key,
+        subject_key,
+        subject_attributes,
+        default
+      ) do
+    get_assignment(client, flag_key, subject_key, subject_attributes, default, :integer)
   end
 
   @doc """
   Like get_integer_assignment/4 but returns additional evaluation details.
   Returns {value, details} tuple.
   """
-  def get_integer_assignment_details(flag_key, subject_key, subject_attributes, default) do
-    get_assignment_details(flag_key, subject_key, subject_attributes, default, :integer)
+  def get_integer_assignment_details(
+        %__MODULE__{} = client,
+        flag_key,
+        subject_key,
+        subject_attributes,
+        default
+      ) do
+    get_assignment_details(client, flag_key, subject_key, subject_attributes, default, :integer)
   end
 
   @doc """
@@ -120,16 +154,28 @@ defmodule Eppo.Client do
     - subject_attributes: Optional key-value pairs for rule evaluation
     - default: Fallback value if assignment fails
   """
-  def get_numeric_assignment(flag_key, subject_key, subject_attributes, default) do
-    get_assignment(flag_key, subject_key, subject_attributes, default, :numeric)
+  def get_numeric_assignment(
+        %__MODULE__{} = client,
+        flag_key,
+        subject_key,
+        subject_attributes,
+        default
+      ) do
+    get_assignment(client, flag_key, subject_key, subject_attributes, default, :numeric)
   end
 
   @doc """
   Like get_numeric_assignment/4 but returns additional evaluation details.
   Returns {value, details} tuple.
   """
-  def get_numeric_assignment_details(flag_key, subject_key, subject_attributes, default) do
-    get_assignment_details(flag_key, subject_key, subject_attributes, default, :numeric)
+  def get_numeric_assignment_details(
+        %__MODULE__{} = client,
+        flag_key,
+        subject_key,
+        subject_attributes,
+        default
+      ) do
+    get_assignment_details(client, flag_key, subject_key, subject_attributes, default, :numeric)
   end
 
   @doc """
@@ -142,9 +188,15 @@ defmodule Eppo.Client do
     - subject_attributes: Optional key-value pairs for rule evaluation
     - default: Fallback Map if assignment fails
   """
-  def get_json_assignment(flag_key, subject_key, subject_attributes, default) do
+  def get_json_assignment(
+        %__MODULE__{} = client,
+        flag_key,
+        subject_key,
+        subject_attributes,
+        default
+      ) do
     # Use default as "" to force use of default value when decoding
-    value_json = get_assignment(flag_key, subject_key, subject_attributes, "", :json)
+    value_json = get_assignment(client, flag_key, subject_key, subject_attributes, "", :json)
 
     case decode_value(value_json) do
       nil -> default
@@ -156,10 +208,16 @@ defmodule Eppo.Client do
   Like get_json_assignment/4 but returns additional evaluation details.
   Returns {value, details} tuple.
   """
-  def get_json_assignment_details(flag_key, subject_key, subject_attributes, default) do
+  def get_json_assignment_details(
+        %__MODULE__{} = client,
+        flag_key,
+        subject_key,
+        subject_attributes,
+        default
+      ) do
     # Use default as "" to force use of default value when decoding
     {value_json, details} =
-      get_assignment_details(flag_key, subject_key, subject_attributes, "", :json)
+      get_assignment_details(client, flag_key, subject_key, subject_attributes, "", :json)
 
     case decode_value(value_json) do
       nil -> {default, details}
@@ -167,11 +225,22 @@ defmodule Eppo.Client do
     end
   end
 
-  defp get_assignment(flag_key, subject_key, subject_attributes, default, expected_type) do
+  defp get_assignment(
+         %__MODULE__{} = client,
+         flag_key,
+         subject_key,
+         subject_attributes,
+         default,
+         expected_type
+       ) do
     assignment =
-      Core.get_assignment(flag_key, subject_key, subject_attributes, expected_type)
-
-    IO.inspect(assignment, label: "assignment")
+      Core.get_assignment(
+        client.client_ref,
+        flag_key,
+        subject_key,
+        subject_attributes,
+        expected_type
+      )
 
     case assignment do
       {:error, error} ->
@@ -190,15 +259,28 @@ defmodule Eppo.Client do
           value: value
         })
 
-        log_assignment(event_json)
+        log_assignment(client.assignment_logger, event_json)
 
         value
     end
   end
 
-  defp get_assignment_details(flag_key, subject_key, subject_attributes, default, expected_type) do
+  defp get_assignment_details(
+         %__MODULE__{} = client,
+         flag_key,
+         subject_key,
+         subject_attributes,
+         default,
+         expected_type
+       ) do
     assignment =
-      Core.get_assignment_details(flag_key, subject_key, subject_attributes, expected_type)
+      Core.get_assignment_details(
+        client.client_ref,
+        flag_key,
+        subject_key,
+        subject_attributes,
+        expected_type
+      )
 
     case assignment do
       :error ->
@@ -218,7 +300,7 @@ defmodule Eppo.Client do
           value: value
         })
 
-        log_assignment(event_json)
+        log_assignment(client.assignment_logger, event_json)
 
         if {:ok, details} = Jason.decode(Map.get(result, "details")),
           do: {value, details},
@@ -226,12 +308,11 @@ defmodule Eppo.Client do
     end
   end
 
-  defp log_assignment(nil), do: nil
+  defp log_assignment(_, nil), do: nil
 
-  defp log_assignment(event_json) do
+  defp log_assignment(logger, event_json) do
     case Jason.decode(event_json) do
       {:ok, event} ->
-        logger = get_logger()
         logger.log_assignment(event)
 
       {:error, _} ->
@@ -248,16 +329,5 @@ defmodule Eppo.Client do
       {:ok, value} -> value
       {:error, _} -> nil
     end
-  end
-
-  defp get_logger() do
-    # Get logger from GenServer state instead of process dictionary
-    {:ok, logger} = GenServer.call(__MODULE__, :get_logger)
-    logger
-  end
-
-  # GenServer callbacks
-  def handle_call(:get_logger, _from, state) do
-    {:reply, {:ok, state.assignment_logger}, state}
   end
 end
