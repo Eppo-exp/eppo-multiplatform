@@ -5,7 +5,21 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'ruby-sdk/**'
+      - 'eppo_core/**'
+      - 'sdk-test-data/**'
+      - 'mock-server/**'
+      - 'package-lock.json'
+      - 'package.json'
   pull_request:
+    paths:
+      - 'ruby-sdk/**'
+      - 'eppo_core/**'
+      - 'sdk-test-data/**'
+      - 'mock-server/**'
+      - 'package-lock.json'
+      - 'package.json'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
