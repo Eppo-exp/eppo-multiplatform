@@ -18,8 +18,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu, macos]
-        elixir: ['1.14', '1.15', '1.16']
-        otp: ['25.0', '26.0']
+        elixir: ['1.15', '1.16', '1.17', '1.18']
+        otp: ['26.0', '27.0']
 
     steps:
       - uses: actions/checkout@v4
