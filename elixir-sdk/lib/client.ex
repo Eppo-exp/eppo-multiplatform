@@ -64,6 +64,15 @@ defmodule Eppo.Client do
     ]
   end
 
+  @doc """
+  Creates a new Eppo client for evaluating feature flags.
+
+  Takes a Config struct and returns {:ok, client} on success or {:error, reason} on failure.
+
+  ```elixir
+  {:ok, client} = Eppo.Client.new(config)
+  ```
+  """
   def new(%Config{} = config) do
     try do
       client_ref =

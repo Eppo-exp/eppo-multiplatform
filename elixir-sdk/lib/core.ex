@@ -1,4 +1,11 @@
 defmodule Eppo.Core do
+  @moduledoc """
+  Defines the interface with the Rust core SDK for evaluating feature flags.
+
+  This module provides the core functionality for feature flag evaluation by interfacing
+  with the Rust implementation via NIFs. It handles initialization of the client and
+  assignment evaluation while abstracting away the underlying Rust implementation details.
+  """
   use Rustler, otp_app: :eppo_sdk, crate: "sdk_core"
 
   defmodule Config do

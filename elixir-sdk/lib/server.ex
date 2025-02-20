@@ -1,4 +1,43 @@
 defmodule Eppo.Server do
+  @moduledoc """
+  A GenServer that maintains a singleton Eppo SDK client instance for querying feature flags.
+
+  The server can be started directly:
+
+      config = %Eppo.Client.Config{
+        api_key: api_key,
+        assignment_logger: Eppo.AssignmentLogger,
+        is_graceful_mode: true,
+        poll_interval_seconds: 30,
+        poll_jitter_seconds: 3
+      }
+
+      {:ok, _pid} = Eppo.Server.start_link(config)
+      client = Eppo.Server.get_instance()
+
+  Or added to your application's supervision tree:
+
+      # In your application.ex
+      defmodule YourApp.Application do
+        use Application
+
+        def start(_type, _args) do
+          config = %Eppo.Client.Config{
+            api_key: System.get_env("EPPO_API_KEY"),
+            assignment_logger: YourApp.AssignmentLogger,
+            # ... other config options ...
+          }
+
+          children = [
+            # ... other children ...
+            {Eppo.Server, config}
+          ]
+
+          opts = [strategy: :one_for_one, name: YourApp.Supervisor]
+          Supervisor.start_link(children, opts)
+        end
+      end
+  """
   use GenServer
 
   def start_link(config) do
