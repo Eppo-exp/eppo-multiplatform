@@ -13,7 +13,7 @@ defmodule Eppo.Client do
 
   The client is configured using `Eppo.Client.Config`:
 
-  - api_key: API key for authentication
+  - api_key: SDK API key for authentication (Can be configured in the [Eppo SDK keys page](https://eppo.cloud/configuration/environments/keys))
   - assignment_logger: Module for logging assignments (implements Eppo.AssignmentLogger)
   - is_graceful_mode: Whether to fail gracefully on errors (default: true)
   - poll_interval_seconds: Interval between config polls in seconds (default: 30)
@@ -36,7 +36,29 @@ defmodule Eppo.Client do
   Use the client to evaluate feature flags and experiments for subjects:
 
   ```elixir
-  assignment = Eppo.Client.get_string_assignment(client, "flag-key", "user-123", %{"country" => "US", "age" => 25}, "default")
+  assignment = Eppo.Client.get_string_assignment(
+    client,
+    "flag-key",
+    "user-123",
+    %{"country" => "US", "age" => 25},
+    "default")
+  ```
+  Note that these functions will never return an error or nil value.
+  When an error occurs, the client will return the default value.
+
+  ### Debugging with get_assignment_details
+
+  To get more information about the assignment, you can use get_assignment_details functions.
+  These functions return a tuple with the assignment value and a map of additional details.
+  This is less efficient than using the get_assignment functions, and should only be used for debugging.
+
+  ```elixir
+  {value, details} = Eppo.Client.get_string_assignment_details(
+    client,
+    "flag-key",
+    "user-123",
+    %{"country" => "US", "age" => 25},
+    "default")
   ```
   """
 
@@ -103,6 +125,16 @@ defmodule Eppo.Client do
     - subject_key: Unique identifier for the subject (usually a user ID)
     - subject_attributes: Optional key-value pairs for rule evaluation
     - default: Fallback value if assignment fails
+
+
+  ```elixir
+  assignment = Eppo.Client.get_string_assignment(
+    client,
+    "flag-key",
+    "user-123",
+    %{"country" => "US", "age" => 25},
+    "default")
+  ```
   """
   def get_string_assignment(
         %__MODULE__{} = client,
@@ -116,7 +148,16 @@ defmodule Eppo.Client do
 
   @doc """
   Like get_string_assignment/4 but returns additional evaluation details.
-  Returns {value, details} tuple.
+  Returns `{value, details}` tuple.
+
+  ```elixir
+  {value, details} = Eppo.Client.get_string_assignment_details(
+    client,
+    "flag-key",
+    "user-123",
+    %{"country" => "US", "age" => 25},
+    "default")
+  ```
   """
   def get_string_assignment_details(
         %__MODULE__{} = client,
@@ -136,6 +177,15 @@ defmodule Eppo.Client do
     - subject_key: Unique identifier for the subject (usually a user ID)
     - subject_attributes: Optional key-value pairs for rule evaluation
     - default: Fallback value if assignment fails
+
+  ```elixir
+  assignment = Eppo.Client.get_boolean_assignment(
+    client,
+    "flag-key",
+    "user-123",
+    %{"country" => "US", "age" => 25},
+    false)
+  ```
   """
   def get_boolean_assignment(
         %__MODULE__{} = client,
@@ -169,6 +219,15 @@ defmodule Eppo.Client do
     - subject_key: Unique identifier for the subject (usually a user ID)
     - subject_attributes: Optional key-value pairs for rule evaluation
     - default: Fallback value if assignment fails
+
+  ```elixir
+  assignment = Eppo.Client.get_integer_assignment(
+    client,
+    "flag-key",
+    "user-123",
+    %{"country" => "US", "age" => 25},
+    10)
+  ```
   """
   def get_integer_assignment(
         %__MODULE__{} = client,
@@ -202,6 +261,15 @@ defmodule Eppo.Client do
     - subject_key: Unique identifier for the subject (usually a user ID)
     - subject_attributes: Optional key-value pairs for rule evaluation
     - default: Fallback value if assignment fails
+
+  ```elixir
+  assignment = Eppo.Client.get_numeric_assignment(
+    client,
+    "flag-key",
+    "user-123",
+    %{"country" => "US", "age" => 25},
+    3.14159)
+  ```
   """
   def get_numeric_assignment(
         %__MODULE__{} = client,
@@ -236,6 +304,16 @@ defmodule Eppo.Client do
     - subject_key: Unique identifier for the subject (usually a user ID)
     - subject_attributes: Optional key-value pairs for rule evaluation
     - default: Fallback Map if assignment fails
+
+
+  ```elixir
+  assignment = Eppo.Client.get_json_assignment(
+    client,
+    "flag-key",
+    "user-123",
+    %{"country" => "US", "age" => 25},
+    %{"default" => "value"})
+  ```
   """
   def get_json_assignment(
         %__MODULE__{} = client,
@@ -255,7 +333,7 @@ defmodule Eppo.Client do
 
   @doc """
   Like get_json_assignment/4 but returns additional evaluation details.
-  Returns {value, details} tuple.
+  Returns `{value, details}` tuple.
   """
   def get_json_assignment_details(
         %__MODULE__{} = client,
