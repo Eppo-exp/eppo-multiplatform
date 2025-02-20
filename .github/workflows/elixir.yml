@@ -27,9 +27,6 @@ jobs:
             otp: '27.0'
           - os: macos
             elixir: '1.18'
-            otp: '26.0'
-          - os: macos
-            elixir: '1.18'
             otp: '27.0'
           # Elixir 1.17 with OTP 26 and 27
           - os: ubuntu
