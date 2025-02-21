@@ -169,15 +169,28 @@ mod tests {
     use serde_json::json;
     use url::Url;
     use uuid::Uuid;
-    use wiremock::matchers::{header, method, path};
+    use wiremock::matchers::{body_json, header, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[tokio::test]
     async fn test_delivery() {
+        let uuid = Uuid::new_v4();
+        let timestamp = now();
         let mock_server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/"))
             .and(header("X-Eppo-Token", "foobar"))
+            .and(body_json(&json!({
+                "eppo_events": [{
+                    "uuid": uuid,
+                    "timestamp": timestamp.timestamp_millis(),
+                    "type": "test",
+                    "payload": {
+                        "user_id": "user123",
+                        "session_id": "session456",
+                    }
+                }]
+            })))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({"failed_events": []})))
             .expect(1)
             .mount(&mock_server)
@@ -190,8 +203,8 @@ mod tests {
         );
 
         let event = Event {
-            uuid: Uuid::new_v4(),
-            timestamp: now(),
+            uuid,
+            timestamp,
             event_type: "test".to_string(),
             payload: serde_json::json!({
                 "user_id": "user123",

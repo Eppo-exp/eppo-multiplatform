@@ -643,7 +643,7 @@ enquirer@^2.4.1:
     strip-ansi "^6.0.1"
 
 "eppo_core@file:/Users/rasen/prg/eppo/sdk-core/work/eppo_core":
-  version "8.0.0"
+  version "8.0.2"
   resolved "file:eppo_core"
 
 error-ex@^1.3.1:
@@ -1612,8 +1612,6 @@ ps-tree@1.2.0:
 "python-sdk@file:/Users/rasen/prg/eppo/sdk-core/work/python-sdk":
   version "4.2.4"
   resolved "file:python-sdk"
-  dependencies:
-    eppo_core "6.0.0"
 
 qs@^6.4.0:
   version "6.12.2"
@@ -1686,10 +1684,8 @@ reusify@^1.0.4:
   integrity sha512-U9nH88a3fc/ekCF1l0/UP1IosiuIjyTh7hBvXVMHYgVcfGvt897Xguj2UOLDeI5BG2m7/uwyaLVT6fbtCwTyzw==
 
 "ruby-sdk@file:/Users/rasen/prg/eppo/sdk-core/work/ruby-sdk":
-  version "3.4.3"
+  version "3.4.5"
   resolved "file:ruby-sdk"
-  dependencies:
-    eppo_core "6.0.0"
 
 run-parallel@^1.1.9:
   version "1.2.0"
@@ -1701,8 +1697,6 @@ run-parallel@^1.1.9:
 "rust-sdk@file:/Users/rasen/prg/eppo/sdk-core/work/rust-sdk":
   version "5.0.3"
   resolved "file:rust-sdk"
-  dependencies:
-    eppo_core "6.0.0"
 
 rxjs@^7.8.1:
   version "7.8.1"

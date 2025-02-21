@@ -647,7 +647,7 @@ dependencies = [
 
 [[package]]
 name = "eppo_core"
-version = "8.0.0"
+version = "8.0.2"
 dependencies = [
  "base64",
  "chrono",
@@ -672,7 +672,7 @@ dependencies = [
 
 [[package]]
 name = "eppo_dart"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "chrono",
  "eppo_core",

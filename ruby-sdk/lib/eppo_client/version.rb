@@ -2,5 +2,5 @@
 
 # TODO: this version and ext/eppo_client/Cargo.toml should be in sync
 module EppoClient
-  VERSION = "3.4.3"
+  VERSION = "3.4.5"
 end
