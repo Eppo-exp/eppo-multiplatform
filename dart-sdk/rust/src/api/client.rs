@@ -15,6 +15,8 @@ use eppo_core::{
     AttributeValue, Attributes, SdkMetadata, Str,
 };
 
+use crate::runtime::{get_runtime, FlutterRustBridgeRuntime};
+
 const SDK_METADATA: SdkMetadata = SdkMetadata {
     name: "dart",
     version: env!("CARGO_PKG_VERSION"),
@@ -23,7 +25,7 @@ const SDK_METADATA: SdkMetadata = SdkMetadata {
 #[frb(opaque)]
 pub struct CoreClient {
     configuration_store: Arc<ConfigurationStore>,
-    background: BackgroundRuntime,
+    background: BackgroundRuntime<FlutterRustBridgeRuntime>,
     poller: ConfigurationPoller,
     evaluator: Evaluator,
 }
@@ -40,14 +42,7 @@ impl CoreClient {
     ) -> CoreClient {
         let configuration_store = Arc::new(ConfigurationStore::new());
 
-        let handle = crate::frb_generated::FLUTTER_RUST_BRIDGE_HANDLER
-            .async_runtime()
-            .0
-             .0
-            .handle()
-            .clone();
-
-        let background = BackgroundRuntime::new(handle);
+        let background = BackgroundRuntime::new(get_runtime());
 
         let poller = start_configuration_poller(
             &background,

@@ -1,7 +1,8 @@
 use std::future::Future;
 
-use tokio::task::JoinHandle;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
+
+use super::AsyncRuntime;
 
 /// `BackgroundRuntime` has two goals:
 /// - Allow executing different background tasks concurrently on a single tokio runtime.
@@ -24,8 +25,8 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 /// shutdown.
 ///
 /// When `BackgroundRuntime` is dropped, all background activities are commanded to stop.
-pub struct BackgroundRuntime {
-    tokio_runtime: tokio::runtime::Handle,
+pub struct BackgroundRuntime<AR> {
+    pub async_runtime: AR,
     /// A cancellation token that gets cancelled when runtime needs to exit.
     cancellation_token: CancellationToken,
     /// A set of tasks that are required to exit before the tokio runtime can be safely
@@ -34,26 +35,54 @@ pub struct BackgroundRuntime {
     watched_tasks: TaskTracker,
 }
 
-impl BackgroundRuntime {
+impl<AR: AsyncRuntime> BackgroundRuntime<AR> {
     /// Creates a new `BackgroundRuntime` that runs on the given tokio `runtime`.
     ///
     /// The background runtime is active until `stop()` is called.
     #[must_use]
-    pub fn new(runtime: tokio::runtime::Handle) -> BackgroundRuntime {
+    pub fn new(runtime: AR) -> BackgroundRuntime<AR> {
         let cancellation_token = CancellationToken::new();
         let watched_tasks = TaskTracker::new();
         BackgroundRuntime {
-            tokio_runtime: runtime,
+            async_runtime: runtime,
             cancellation_token,
             watched_tasks,
         }
     }
 
-    #[must_use]
-    pub(crate) fn tokio_handle(&self) -> &tokio::runtime::Handle {
-        &self.tokio_runtime
+    /// Spawn a task that needs to perform some cleanup on shutdown.
+    ///
+    /// Most tasks shouldn't need that as Rust futures are usually safe to drop.
+    ///
+    /// The task must monitor [`BackgroundRuntime::cancellation_token()`] and exit when the token is
+    /// cancelled.
+    pub(crate) fn spawn_tracked<F>(&self, future: F)
+    where
+        F: Future + Send + 'static,
+        F::Output: Send + 'static,
+    {
+        self.async_runtime
+            .spawn(self.watched_tasks.track_future(future));
     }
 
+    /// Spawn a task that doesn't have any special shutdown requirements.
+    ///
+    /// When runtime is going to shutdown, this task will not be awaited and will be abandoned.
+    ///
+    /// If it's not OK to abandon the task, consider using `spawn_tracked()` instead.
+    pub(crate) fn spawn_untracked<F>(&self, future: F)
+    where
+        F: Future + Send + 'static,
+        F::Output: Send + 'static,
+    {
+        let cancellation_token = self.cancellation_token().clone();
+        self.async_runtime.spawn(async move {
+            cancellation_token.run_until_cancelled(future).await;
+        });
+    }
+}
+
+impl<AR> BackgroundRuntime<AR> {
     /// Returns a cancellation token that get cancelled when background runtime is going to
     /// shutdown.
     ///
@@ -65,38 +94,6 @@ impl BackgroundRuntime {
     #[must_use]
     pub(crate) fn cancellation_token(&self) -> CancellationToken {
         self.cancellation_token.child_token()
-    }
-
-    pub fn block_on<F: Future>(&self, future: F) -> F::Output {
-        self.tokio_runtime.block_on(future)
-    }
-
-    /// Spawn a task that needs to perform some cleanup on shutdown.
-    ///
-    /// Most tasks shouldn't need that as Rust futures are usually safe to drop.
-    ///
-    /// The task must monitor [`BackgroundRuntime::cancellation_token()`] and exit when the token is
-    /// cancelled.
-    pub(crate) fn spawn_tracked<F>(&self, future: F) -> JoinHandle<F::Output>
-    where
-        F: Future + Send + 'static,
-        F::Output: Send + 'static,
-    {
-        self.tokio_runtime
-            .spawn(self.watched_tasks.track_future(future))
-    }
-
-    /// Spawn a task that doesn't have any special shutdown requirements.
-    ///
-    /// When runtime is going to shutdown, this task will not be awaited and will be abandoned.
-    ///
-    /// If it's not OK to abandon the task, consider using `spawn_tracked()` instead.
-    pub(crate) fn spawn_untracked<F>(&self, future: F) -> JoinHandle<F::Output>
-    where
-        F: Future + Send + 'static,
-        F::Output: Send + 'static,
-    {
-        self.tokio_runtime.spawn(future)
     }
 
     /// Command background activities to stop and exit.
@@ -117,7 +114,7 @@ impl BackgroundRuntime {
     }
 }
 
-impl Drop for BackgroundRuntime {
+impl<AR> Drop for BackgroundRuntime<AR> {
     fn drop(&mut self) {
         self.stop();
     }

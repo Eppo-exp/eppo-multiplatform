@@ -5,7 +5,10 @@ use tokio::sync::watch;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    configuration_fetcher::ConfigurationFetcher, configuration_store::ConfigurationStore, Error,
+    background::{AsyncRuntime, BackgroundRuntime},
+    configuration_fetcher::ConfigurationFetcher,
+    configuration_store::ConfigurationStore,
+    Error,
 };
 
 /// Configuration for [`configuration_poller`].
@@ -80,24 +83,31 @@ impl ConfigurationPoller {
     }
 }
 
-pub fn start_configuration_poller(
-    runtime: &crate::background::BackgroundRuntime,
+pub fn start_configuration_poller<AR: AsyncRuntime>(
+    runtime: &BackgroundRuntime<AR>,
     fetcher: ConfigurationFetcher,
     store: Arc<ConfigurationStore>,
     config: ConfigurationPollerConfig,
 ) -> ConfigurationPoller {
-    let (status_tx, status_rx) = watch::channel(None);
-
-    let cancellation_token = runtime.cancellation_token();
     // Note: even though configuration poller listens to a cancellation token, it doesn't have any
     // special cleanup requirements, so we use `spawn_untracked()`. The cancellation token is used
     // to allow stopping the poller without stopping the rest of background runtime.
-    runtime.spawn_untracked({
+    #[cfg(not(target_arch = "wasm32"))]
+    let spawn = |f| runtime.spawn_untracked(f);
+
+    // On wasm32, reqwest is non-send, so we can't use normal spawn.
+    #[cfg(target_arch = "wasm32")]
+    let spawn = wasm_bindgen_futures::spawn_local;
+
+    let (status_tx, status_rx) = watch::channel(None);
+
+    let cancellation_token = runtime.cancellation_token();
+    spawn({
         let cancellation_token = cancellation_token.clone();
         async move {
             cancellation_token
                 .run_until_cancelled(configuration_poller(fetcher, store, config, status_tx))
-                .await
+                .await;
         }
     });
 

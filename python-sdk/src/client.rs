@@ -457,8 +457,13 @@ impl EppoClient {
     /// This method releases GIL, so other Python thread can make progress.
     fn wait_for_initialization(&self, py: Python) -> PyResult<()> {
         if let (Some(thread), Some(poller)) = (&self.background_thread, &self.poller) {
-            py.allow_threads(|| thread.runtime().block_on(poller.wait_for_configuration()))
-                .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+            py.allow_threads(|| {
+                thread
+                    .runtime()
+                    .async_runtime
+                    .block_on(poller.wait_for_configuration())
+            })
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
         } else {
             Err(PyRuntimeError::new_err("poller is disabled"))
         }

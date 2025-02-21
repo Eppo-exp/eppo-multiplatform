@@ -5,7 +5,7 @@ use super::runtime::BackgroundRuntime;
 /// When the handle is dropped, the tokio runtime is commanded to exit and the thread shuts down.
 pub struct BackgroundThread {
     join_handle: std::thread::JoinHandle<()>,
-    runtime: BackgroundRuntime,
+    runtime: BackgroundRuntime<tokio::runtime::Handle>,
 }
 
 impl BackgroundThread {
@@ -32,7 +32,7 @@ impl BackgroundThread {
         })
     }
 
-    pub fn runtime(&self) -> &BackgroundRuntime {
+    pub fn runtime(&self) -> &BackgroundRuntime<tokio::runtime::Handle> {
         &self.runtime
     }
 

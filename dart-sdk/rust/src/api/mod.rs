@@ -22,9 +22,6 @@ pub fn decode_str(raw: String) -> Str {
     raw.into()
 }
 
-// #[frb(external)]
-// impl AssignmentEvent {}
-
 #[frb(rust2dart(dart_type = "Map<String, dynamic>", dart_code = "json.decode({})"))]
 pub fn encode_assignment_event(event: AssignmentEvent) -> String {
     serde_json::to_string(&event).expect("AssignmentEvent should be serializable to JSON")
