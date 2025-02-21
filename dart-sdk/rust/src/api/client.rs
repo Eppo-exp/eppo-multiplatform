@@ -17,11 +17,6 @@ use eppo_core::{
 
 use crate::runtime::{get_runtime, FlutterRustBridgeRuntime};
 
-const SDK_METADATA: SdkMetadata = SdkMetadata {
-    name: "dart",
-    version: env!("CARGO_PKG_VERSION"),
-};
-
 #[frb(opaque)]
 pub struct CoreClient {
     configuration_store: Arc<ConfigurationStore>,
@@ -43,6 +38,11 @@ impl CoreClient {
         let configuration_store = Arc::new(ConfigurationStore::new());
 
         let background = BackgroundRuntime::new(get_runtime());
+
+        const SDK_METADATA: SdkMetadata = SdkMetadata {
+            name: "dart",
+            version: env!("CARGO_PKG_VERSION"),
+        };
 
         let poller = start_configuration_poller(
             &background,
