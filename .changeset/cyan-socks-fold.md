@@ -1,8 +1,8 @@
 ---
 "eppo_core": patch
 "python-sdk": patch
+"ruby-sdk": patch
+"rust-sdk": patch
 ---
 
-fix(python): Options that are None are also None in python
-
-None Attributes are now correctly converted to Python's `None` instead of `()` empty tuple.
+Fix `AttributeValue` serialization, so `Null` attributes are properly serialized as None instead of unit value.
