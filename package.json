@@ -17,6 +17,7 @@
     "rust-sdk",
     "python-sdk",
     "ruby-sdk",
+    "dart-sdk",
     "mock-server"
   ],
   "dependencies": {

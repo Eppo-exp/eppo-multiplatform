@@ -1,6 +1,6 @@
 [package]
 name = "eppo_dart"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 
 # Marking this cargo package as its own workspace for `cargo build` to
