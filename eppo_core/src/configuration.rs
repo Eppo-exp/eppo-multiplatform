@@ -76,13 +76,11 @@ impl Configuration {
     /// initialization.
     pub fn get_bandits_configuration(&self) -> Option<Cow<[u8]>> {
         let bandits = self.bandits.as_ref()?;
-        let json = serde_json::to_vec(bandits);
-
-        // TODO: replace with .inspect_err() once we bump MSRV to 1.76
-        if let Err(err) = &json {
-            log::warn!(target: "eppo", "failed to serialize bandits: {err:?}");
-        }
-
-        json.ok().map(Cow::Owned)
+        serde_json::to_vec(bandits)
+            .inspect_err(|err| {
+                log::warn!(target: "eppo", "failed to serialize bandits: {err:?}");
+            })
+            .ok()
+            .map(Cow::Owned)
     }
 }
