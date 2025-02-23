@@ -8,7 +8,7 @@ repository = "https://github.com/Eppo-exp/rust-sdk"
 license = "MIT"
 keywords = ["eppo", "feature-flags"]
 categories = ["config"]
-rust-version = "1.75.0"
+rust-version = "1.80.0"
 
 [dependencies]
 eppo_core = { version = "=8.0.2", path = "../eppo_core" }
