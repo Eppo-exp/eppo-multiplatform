@@ -50,7 +50,7 @@ serde-pyobject = { version = "0.5.0", optional = true }
 
 # magnus dependencies
 magnus = { version = "0.6.4", default-features = false, optional = true }
-serde_magnus = { version = "0.8.1", default-features = false, optional = true }
+serde_magnus = { version = "0.9.0", default-features = false, optional = true }
 
 # vendored dependencies
 [target.'cfg(all(target_os = "linux", target_arch = "s390x"))'.dependencies]
