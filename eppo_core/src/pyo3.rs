@@ -25,7 +25,7 @@ impl<T: TryToPyObject> TryToPyObject for Option<T> {
     fn try_to_pyobject(&self, py: Python) -> PyResult<PyObject> {
         match self {
             Some(it) => it.try_to_pyobject(py),
-            None => Ok(().to_object(py)),
+            None => Ok(py.None()),
         }
     }
 }
