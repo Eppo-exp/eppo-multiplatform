@@ -16,8 +16,10 @@ event_ingestion = ["dep:uuid", "dep:exponential-backoff"]
 pyo3 = ["dep:pyo3", "dep:serde-pyobject"]
 # Add implementation of `TryConvert`/`IntoValue` for some types.
 magnus = ["dep:magnus", "dep:serde_magnus"]
+# Add support for Elixir/Erlang NIFs via rustler
+rustler = ["dep:rustler"]
 # Vendor any external libraries that we need (OpenSSL on Linux), so we
-# don’t depend on shared libraries.
+# don't depend on shared libraries.
 #
 # See: https://github.com/PyO3/maturin-action/discussions/78
 vendored = ["reqwest/native-tls-vendored"]
@@ -53,7 +55,7 @@ magnus = { version = "0.6.4", default-features = false, optional = true }
 serde_magnus = { version = "0.8.1", default-features = false, optional = true }
 
 # elixir dependencies
-rustler = "0.36.1"
+rustler = { version = "0.36.1", optional = true }
 
 # vendored dependencies
 [target.'cfg(all(target_os = "linux", target_arch = "s390x"))'.dependencies]
