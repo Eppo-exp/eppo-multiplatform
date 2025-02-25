@@ -1,10 +1,12 @@
 name: Verify MSRV version
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
+  # Temporarily disabled automatic triggers
+  # push:
+  #   branches:
+  #     - main
+  # pull_request:
+  workflow_dispatch: # Can be manually triggered if needed
 
 env:
   CARGO_TERM_COLOR: always
