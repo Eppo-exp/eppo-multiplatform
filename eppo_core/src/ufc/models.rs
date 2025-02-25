@@ -96,7 +96,8 @@ pub(crate) struct FlagWire {
 }
 
 /// Type of the variation.
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, rustler::NifUnitEnum)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "rustler", derive(rustler::NifUnitEnum))]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[allow(missing_docs)]
 pub enum VariationType {
