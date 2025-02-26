@@ -7,6 +7,15 @@ publish_to: none
 environment:
   sdk: '>=3.3.0 <4.0.0'
 
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: cloud.eppo.eppo_sdk
+        pluginClass: EppoSdkPlugin
+      ios:
+        pluginClass: EppoSdkPlugin
+
 dependencies:
   lints: ^5.1.1
   flutter_rust_bridge: 2.8.0
