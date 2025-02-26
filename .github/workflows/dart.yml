@@ -1,0 +1,51 @@
+name: Dart SDK
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'dart-sdk/**'
+      - 'eppo_core/**'
+      - 'sdk-test-data'
+      - 'mock-server/**'
+      - 'package-lock.json'
+      - 'package.json'
+  release:
+    types: [published]
+  pull_request:
+    paths:
+      - 'dart-sdk/**'
+      - 'eppo_core/**'
+      - 'sdk-test-data'
+      - 'mock-server/**'
+      - 'package-lock.json'
+      - 'package.json'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Dart build & test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: dart-lang/setup-dart@v1
+      - run: rustup update stable && rustup default stable
+      - run: npm ci
+
+      - name: Override eppo_core for testing
+        run: |
+          mkdir -p "${CARGO_HOME:-$HOME/.cargo}"
+          echo "[patch.crates-io.eppo_core]" >> "${CARGO_HOME:-$HOME/.cargo}/config.toml"
+          echo "path = '$PWD/eppo_core'" >> "${CARGO_HOME:-$HOME/.cargo}/config.toml"
+
+      - run: npm run with-server test:dart
+
+      - name: Install web dependencies
+        run: cargo install flutter_rust_bridge@=2.8.0 wasm-pack wasm-bindgen-cli
+      - name: Build web
+        run: flutter_rust_bridge_codegen build-web --wasm-pack-rustflags '--cfg getrandom_backend="wasm_js" -C target-feature=+atomics,+bulk-memory,+mutable-globals'

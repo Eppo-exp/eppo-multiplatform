@@ -47,8 +47,8 @@ final class EppoClient {
         this._core = core.CoreClient(
           sdkKey: sdkKey,
           baseUrl: baseUrl.toString(),
-          pollInterval: pollInterval,
-          pollJitter: pollJitter,
+          pollIntervalMs: pollInterval.inMilliseconds,
+          pollJitterMs: pollJitter.inMilliseconds,
         );
     });
   }
