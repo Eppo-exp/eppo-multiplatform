@@ -2,6 +2,9 @@ rust_input: crate::api
 dart_output: lib/src/rust
 c_output: frb_generated.h
 
+# use int instead of bigint
+type_64bit_int: true
+
 rust_preamble: |
   use eppo_core::{Str, AttributeValue};
 

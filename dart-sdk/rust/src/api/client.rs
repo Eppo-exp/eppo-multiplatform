@@ -30,10 +30,8 @@ impl CoreClient {
     pub fn new(
         sdk_key: String,
         #[frb(default = "https://fscdn.eppo.cloud/api")] base_url: String,
-        // flutter_rust_bridge doesn't seem to support std::time::Duration, so we're converting
-        // through chrono.
-        #[frb(default = "const Duration(seconds: 30)")] poll_interval: chrono::Duration,
-        #[frb(default = "const Duration(seconds: 3)")] poll_jitter: chrono::Duration,
+        #[frb(default = "30000")] poll_interval_ms: u64,
+        #[frb(default = "3000")] poll_jitter_ms: u64,
     ) -> CoreClient {
         let configuration_store = Arc::new(ConfigurationStore::new());
 
@@ -53,8 +51,8 @@ impl CoreClient {
             }),
             configuration_store.clone(),
             ConfigurationPollerConfig {
-                interval: Duration::from_secs(30),
-                jitter: Duration::from_secs(3),
+                interval: Duration::from_millis(poll_interval_ms),
+                jitter: Duration::from_millis(poll_jitter_ms),
             },
         );
 
