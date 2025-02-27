@@ -672,7 +672,7 @@ dependencies = [
 
 [[package]]
 name = "eppo_dart"
-version = "1.0.0"
+version = "0.1.0"
 dependencies = [
  "chrono",
  "eppo_core",
