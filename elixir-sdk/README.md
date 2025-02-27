@@ -37,7 +37,7 @@ defmodule YourApp.Application do
   use Application
 
   def start(_type, _args) do
-    config = %Eppo.Client.Config{
+    config = %EppoSdk.Client.Config{
       api_key: System.get_env("EPPO_API_KEY"),
       assignment_logger: YourApp.AssignmentLogger,
       # ... other config options ...
@@ -78,7 +78,7 @@ Once the server is started, you can access the client instance anywhere in your 
 client = Eppo.Server.get_instance()
 
 # Use the client to evaluate feature flags
-assignment = Eppo.Client.get_string_assignment(
+assignment = EppoSdk.Client.get_string_assignment(
   client,
   "flag-key",
   "user-123",
@@ -91,19 +91,19 @@ assignment = Eppo.Client.get_string_assignment(
 If you need to start the server manually (not recommended for production):
 
 ```elixir
-config = %Eppo.Client.Config{api_key: "your-api-key", assignment_logger: YourApp.AssignmentLogger}
-{:ok, _pid} = Eppo.Server.start_link(config)
+config = %EppoSdk.Client.Config{api_key: "your-api-key", assignment_logger: YourApp.AssignmentLogger}
+{:ok, _pid} = EppoSdk.Server.start_link(config)
 
 # When testing locally, wait for the client to initialize
 Process.sleep(1000)
 
 # Then use as normal
-client = Eppo.Server.get_instance()
+client = EppoSdk.Server.get_instance()
 ```
 
 Or you can use the client directly:
 ```elixir
-{:ok, client} = Eppo.Client.new(config)
+{:ok, client} = EppoSdk.Client.new(config)
 
 # When testing locally, wait for the client to initialize
 Process.sleep(1000)
