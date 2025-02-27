@@ -648,8 +648,6 @@ dependencies = [
 [[package]]
 name = "eppo_core"
 version = "8.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77805899f1ef8ea65fe81ae927d454e0a35dfbf14aa6df028fe99ea58699b5bc"
 dependencies = [
  "base64",
  "chrono",
@@ -669,6 +667,7 @@ dependencies = [
  "tokio",
  "tokio-util",
  "url",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -3069,7 +3068,7 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
