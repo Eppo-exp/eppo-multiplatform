@@ -379,7 +379,7 @@ defmodule EppoSdk.Client do
         default
 
       {value, event_json} ->
-        Logger.info("Assignment", %{
+        Logger.debug("Assignment", %{
           flag: flag_key,
           subject: subject_key,
           value: value
@@ -421,7 +421,7 @@ defmodule EppoSdk.Client do
         # If no variation is found, use the default value
         value = Map.get(result, "variation") || default
 
-        Logger.info("Assignment details", %{
+        Logger.debug("Assignment details", %{
           flag: flag_key,
           subject: subject_key,
           value: value
