@@ -3,9 +3,8 @@ import 'package:meta/meta.dart' show internal;
 
 import './rust/frb_generated.dart' as core;
 import './rust/api/client.dart' as core;
-import './rust/api/attributes.dart' as core;
 
-import './subject.dart' show Subject, AttributeKind;
+import './subject.dart' show Subject;
 import './attributes.dart' show Attributes;
 import './logger.dart' show AssignmentLogger;
 

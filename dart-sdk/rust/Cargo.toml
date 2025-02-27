@@ -1,6 +1,6 @@
 [package]
 name = "eppo_dart"
-version = "1.0.0"
+version = "0.1.0"
 edition = "2021"
 
 # Marking this cargo package as its own workspace for `cargo build` to
@@ -21,7 +21,7 @@ openssl-sys = { version = "0.9.105", features = ["vendored"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # Enable wasm_js backend: https://docs.rs/getrandom/latest/getrandom/#webassembly-support
-getrandom = { version = "*", features = ["wasm_js"] }
+getrandom = { version = "^0.3.0", features = ["wasm_js"] }
 
 [build-dependencies]
 flutter_rust_bridge_codegen = "=2.8.0"
