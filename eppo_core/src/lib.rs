@@ -80,5 +80,6 @@ pub use attributes::{
 pub use configuration::Configuration;
 pub use error::{Error, EvaluationError, Result};
 #[cfg(feature = "event_ingestion")]
+pub use event_ingestion::ContextValue;
 pub use sdk_key::SdkKey;
 pub use sdk_metadata::SdkMetadata;
