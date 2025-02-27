@@ -13,9 +13,23 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'python-sdk/**'
+      - 'eppo_core/**'
+      - 'sdk-test-data/**'
+      - 'mock-server/**'
+      - 'package-lock.json'
+      - 'package.json'
   release:
     types: [published]
   pull_request:
+    paths:
+      - 'python-sdk/**'
+      - 'eppo_core/**'
+      - 'sdk-test-data/**'
+      - 'mock-server/**'
+      - 'package-lock.json'
+      - 'package.json'
   workflow_dispatch:
 
 permissions:

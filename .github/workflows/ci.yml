@@ -4,7 +4,21 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'rust-sdk/**'
+      - 'eppo_core/**'
+      - 'sdk-test-data/**'
+      - 'mock-server/**'
+      - 'package-lock.json'
+      - 'package.json'
   pull_request:
+    paths:
+      - 'rust-sdk/**'
+      - 'eppo_core/**'
+      - 'sdk-test-data/**'
+      - 'mock-server/**'
+      - 'package-lock.json'
+      - 'package.json'
   workflow_call:
     inputs:
       test_data_branch:
