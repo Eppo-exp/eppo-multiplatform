@@ -29,16 +29,23 @@ jobs:
         platform:
           - runner: ubuntu-latest
             target: x86_64
+            manylinux: auto
           - runner: ubuntu-latest
             target: x86
+            manylinux: auto
           - runner: ubuntu-latest
             target: aarch64
+            # https://github.com/PyO3/maturin-action/issues/222
+            manylinux: "2_28"
           - runner: ubuntu-latest
             target: armv7
+            manylinux: auto
           - runner: ubuntu-latest
             target: s390x
+            manylinux: auto
           - runner: ubuntu-latest
             target: ppc64le
+            manylinux: auto
     steps:
       - uses: actions/checkout@v4
         with:
@@ -53,8 +60,8 @@ jobs:
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter --manifest-path ./python-sdk/Cargo.toml
-          sccache: 'true'
-          manylinux: auto
+          sccache: "true"
+          manylinux: ${{ matrix.platform.manylinux }}
           before-script-linux: |
             yum install -y perl-IPC-Cmd devtoolset-10-libatomic-devel
       - name: Build wheels
@@ -63,8 +70,8 @@ jobs:
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter --manifest-path ./python-sdk/Cargo.toml
-          sccache: 'true'
-          manylinux: auto
+          sccache: "true"
+          manylinux: ${{ matrix.platform.manylinux }}
           before-script-linux: |
             apt-get update
             apt-get install --no-install-recommends -y libssl-dev
@@ -128,7 +135,7 @@ jobs:
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter --manifest-path ./python-sdk/Cargo.toml
-          sccache: 'true'
+          sccache: "true"
           manylinux: musllinux_1_2
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -193,7 +200,7 @@ jobs:
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter --manifest-path ./python-sdk/Cargo.toml
-          sccache: 'true'
+          sccache: "true"
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
@@ -233,7 +240,7 @@ jobs:
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --interpreter ${{ matrix.python-version }} --manifest-path ./python-sdk/Cargo.toml
-          sccache: 'true'
+          sccache: "true"
 
       - name: List dist directory
         run: ls -l dist
