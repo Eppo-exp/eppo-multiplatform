@@ -55,3 +55,8 @@ jobs:
       - name: Build web
         run: flutter_rust_bridge_codegen build-web --wasm-pack-rustflags '--cfg getrandom_backend="wasm_js" -C target-feature=+atomics,+bulk-memory,+mutable-globals'
         working-directory: dart-sdk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-files
+          path: dart-sdk/web/pkg/
