@@ -4,15 +4,15 @@ use flutter_rust_bridge::frb;
 
 use eppo_core::{
     background::BackgroundRuntime,
-    configuration_fetcher::{ConfigurationFetcher, ConfigurationFetcherConfig},
+    configuration_fetcher::{ConfigurationFetcher, ConfigurationFetcherConfig, DEFAULT_BASE_URL},
     configuration_poller::{
         start_configuration_poller, ConfigurationPoller, ConfigurationPollerConfig,
     },
     configuration_store::ConfigurationStore,
     eval::{BanditResult, Evaluator, EvaluatorConfig},
-    events::AssignmentEvent,
+    events::{AssignmentEvent, BanditEvent},
     ufc::{Assignment, AssignmentValue, VariationType},
-    AttributeValue, SdkMetadata, Str,
+    AttributeValue, Attributes, SdkMetadata, Str,
 };
 
 use crate::runtime::{get_runtime, FlutterRustBridgeRuntime};
