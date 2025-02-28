@@ -16,6 +16,9 @@ event_ingestion = ["dep:uuid", "dep:exponential-backoff"]
 pyo3 = ["dep:pyo3", "dep:serde-pyobject"]
 # Add implementation of `TryConvert`/`IntoValue` for some types.
 magnus = ["dep:magnus", "dep:serde_magnus"]
+# Vendor any external libraries that we need, so we
+# don’t depend on shared libraries.
+vendored = []
 
 [dependencies]
 base64 = "0.22.1"
