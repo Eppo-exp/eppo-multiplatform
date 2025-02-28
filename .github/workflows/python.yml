@@ -71,7 +71,7 @@ jobs:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter --manifest-path ./python-sdk/Cargo.toml
           sccache: "true"
-          manylinux: auto
+          manylinux: ${{ matrix.platform.manylinux }}
           before-script-linux: |
             apt-get update
             apt-get install --no-install-recommends -y libssl-dev
