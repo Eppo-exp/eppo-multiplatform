@@ -1,4 +1,4 @@
-name: Android Build
+name: dart-sdk Android Build
 
 on:
   push:
@@ -67,14 +67,14 @@ jobs:
       - name: Build for ${{ matrix.target }}
         run: |
           cd dart-sdk/rust
-          cross build --release --target ${{ matrix.target }} -p eppo_sdk
+          cross build --release --target ${{ matrix.target }} -p eppo_dart
 
       - name: Create output directory
         run: mkdir -p android-libs/${{ matrix.android_abi }}
 
       - name: Copy library to output directory
         run: |
-          cp dart-sdk/rust/target/${{ matrix.target }}/release/libeppo_sdk.so android-libs/${{ matrix.android_abi }}/
+          cp dart-sdk/rust/target/${{ matrix.target }}/release/libeppo_dart.so android-libs/${{ matrix.android_abi }}/
 
       - name: Upload Android libraries
         uses: actions/upload-artifact@v4
