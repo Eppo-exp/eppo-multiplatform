@@ -1,6 +1,6 @@
 name: eppo_sdk
 description: Eppo SDK for Dart
-version: '0.1.0-alpha'
+version: '0.1.0-alpha.3'
 repository: https://github.com/Eppo-exp/eppo-multiplatform
 
 environment:

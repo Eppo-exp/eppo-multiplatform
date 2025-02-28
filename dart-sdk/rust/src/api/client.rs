@@ -33,6 +33,8 @@ impl CoreClient {
         #[frb(default = "30000")] poll_interval_ms: u64,
         #[frb(default = "3000")] poll_jitter_ms: u64,
     ) -> CoreClient {
+        log::set_max_level(log::LevelFilter::Info);
+
         let base_url = base_url.unwrap_or_else(|| DEFAULT_BASE_URL.to_owned());
 
         let configuration_store = Arc::new(ConfigurationStore::new());
