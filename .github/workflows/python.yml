@@ -46,6 +46,7 @@ jobs:
       CC_aarch64_unknown_linux_gnu: clang
       AR_aarch64_unknown_linux_gnu: llvm-ar
       CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS: "-Clinker=clang"
+      CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: "clang-14 -target aarch64-unknown-linux-gnu"
     steps:
       - uses: actions/checkout@v4
         with:
