@@ -54,7 +54,7 @@ jobs:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter --manifest-path ./python-sdk/Cargo.toml
           sccache: "true"
-          manylinux: auto
+          manylinux: "2_28"
           before-script-linux: |
             yum install -y perl-IPC-Cmd devtoolset-10-libatomic-devel
       - name: Build wheels
@@ -64,7 +64,7 @@ jobs:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter --manifest-path ./python-sdk/Cargo.toml
           sccache: "true"
-          manylinux: auto
+          manylinux: "2_28"
           before-script-linux: |
             apt-get update
             apt-get install --no-install-recommends -y libssl-dev
