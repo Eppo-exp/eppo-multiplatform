@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'dart-sdk-*'
     paths:
       - 'dart-sdk/**'
       - 'eppo_core/**'
@@ -11,8 +13,6 @@ on:
       - 'mock-server/**'
       - 'package-lock.json'
       - 'package.json'
-  release:
-    types: [published]
   pull_request:
     paths:
       - 'dart-sdk/**'
