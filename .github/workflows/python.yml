@@ -43,6 +43,9 @@ jobs:
       CC_aarch64_unknown_linux_musl: clang
       AR_aarch64_unknown_linux_musl: llvm-ar
       CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS: "-Clink-self-contained=yes -Clinker=rust-lld"
+      CC_aarch64_unknown_linux_gnu: clang
+      AR_aarch64_unknown_linux_gnu: llvm-ar
+      CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS: "-Clinker=clang"
     steps:
       - uses: actions/checkout@v4
         with:
