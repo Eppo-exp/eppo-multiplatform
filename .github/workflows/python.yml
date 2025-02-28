@@ -29,28 +29,20 @@ jobs:
         platform:
           - runner: ubuntu-latest
             target: x86_64
-            triple: x86_64-unknown-linux-gnu
           - runner: ubuntu-latest
             target: x86
-            triple: x86_64-unknown-linux-gnu
           - runner: ubuntu-latest
             target: aarch64
-            triple: aarch64-unknown-linux-gnu
           - runner: ubuntu-latest
             target: armv7
-            triple: armv7-unknown-linux-gnueabihf
           - runner: ubuntu-latest
             target: s390x
-            triple: s390x-unknown-linux-gnu
           - runner: ubuntu-latest
             target: ppc64le
-            triple: powerpc64le-unknown-linux-gnu
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: true
-      - name: Install cross
-        run: cargo install cross
       - uses: actions/setup-python@v5
         with:
           python-version: 3.13
@@ -65,12 +57,17 @@ jobs:
           manylinux: auto
           before-script-linux: |
             yum install -y perl-IPC-Cmd devtoolset-10-libatomic-devel
-
-      - name: Install maturin
-        run: cross run --target ${{ matrix.platform.triple }} -- cargo install maturin
-
-      - name: Build wheels with maturin
-        run: cross run --target ${{ matrix.platform.triple }} -- maturin build --release --out dist --find-interpreter --manifest-path ./python-sdk/Cargo.toml
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        if: ${{ !startsWith(matrix.platform.target, 'x86') }}
+        with:
+          target: ${{ matrix.platform.target }}
+          args: --release --out dist --find-interpreter --manifest-path ./python-sdk/Cargo.toml
+          sccache: "true"
+          manylinux: auto
+          before-script-linux: |
+            apt-get update
+            apt-get install --no-install-recommends -y libssl-dev
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
