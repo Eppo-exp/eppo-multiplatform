@@ -52,6 +52,7 @@ serde_magnus = { version = "0.8.1", default-features = false, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = "0.4.18"
+wasmtimer = "0.4.1"
 
 # vendored dependencies
 [target.'cfg(all(target_os = "linux", target_arch = "s390x"))'.dependencies]

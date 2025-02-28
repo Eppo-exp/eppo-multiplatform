@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'dart-sdk-*'
     paths:
       - 'dart-sdk/**'
       - 'eppo_core/**'
@@ -11,8 +13,6 @@ on:
       - 'mock-server/**'
       - 'package-lock.json'
       - 'package.json'
-  release:
-    types: [published]
   pull_request:
     paths:
       - 'dart-sdk/**'
@@ -24,9 +24,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
-    name: Dart build & test
+  dart:
+    name: Dart SDK
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required for authentication using OIDC
 
     steps:
       - uses: actions/checkout@v4
@@ -54,4 +56,27 @@ jobs:
         run: cargo install flutter_rust_bridge_codegen@=2.8.0 wasm-pack wasm-bindgen-cli
       - name: Build web
         run: flutter_rust_bridge_codegen build-web --wasm-pack-rustflags '--cfg getrandom_backend="wasm_js" -C target-feature=+atomics,+bulk-memory,+mutable-globals'
+        working-directory: dart-sdk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dart-sdk-web-files
+          path: |
+            dart-sdk/web/pkg/eppo_sdk.js
+            dart-sdk/web/pkg/eppo_sdk_bg.wasm
+
+      - name: Publish - dry run
+        if: "!startsWith(github.ref, 'refs/tags/dart-sdk-')"
+        run: dart pub publish --dry-run || true
+        working-directory: dart-sdk
+
+      - name: Refresh dart auth token
+        if: "startsWith(github.ref, 'refs/tags/dart-sdk-')"
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.6
+
+      - name: Publish
+        if: "startsWith(github.ref, 'refs/tags/dart-sdk-')"
+        run: dart pub publish --force
         working-directory: dart-sdk
