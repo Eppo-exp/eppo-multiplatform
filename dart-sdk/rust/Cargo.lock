@@ -668,10 +668,11 @@ dependencies = [
  "tokio-util",
  "url",
  "wasm-bindgen-futures",
+ "wasmtimer",
 ]
 
 [[package]]
-name = "eppo_dart"
+name = "eppo_sdk"
 version = "0.1.0"
 dependencies = [
  "chrono",
@@ -679,6 +680,7 @@ dependencies = [
  "flutter_rust_bridge",
  "flutter_rust_bridge_codegen",
  "getrandom 0.3.1",
+ "log",
  "serde_json",
  "tokio",
 ]
@@ -1540,9 +1542,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.25"
+version = "0.4.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04cbf5b083de1c7e0222a7a51dbfdba1cbe1c6ab0b15e29fff3f6c077fd9cd9f"
+checksum = "30bde2b3dc3671ae49d8e2e9f044c7c005836e7a023ee57cffa25ab82764bb9e"
 dependencies = [
  "serde",
  "value-bag",
@@ -3024,6 +3026,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a05d73b933a847d6cccdda8f838a22ff101ad9bf93e33684f39c1f5f0eece3d"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "wasmtimer"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0048ad49a55b9deb3953841fa1fc5858f0efbcb7a18868c899a360269fac1b23"
+dependencies = [
+ "futures",
+ "js-sys",
+ "parking_lot",
+ "pin-utils",
+ "slab",
+ "wasm-bindgen",
 ]
 
 [[package]]
