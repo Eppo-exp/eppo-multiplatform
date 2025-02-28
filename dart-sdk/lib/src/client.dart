@@ -45,7 +45,7 @@ final class EppoClient {
     this._initialized = globalInit().then((_) async {
         this._core = core.CoreClient(
           sdkKey: sdkKey,
-          baseUrl: baseUrl.toString(),
+          baseUrl: baseUrl?.toString(),
           pollIntervalMs: pollInterval.inMilliseconds,
           pollJitterMs: pollJitter.inMilliseconds,
         );
