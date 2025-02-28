@@ -4,6 +4,11 @@ use rand::{thread_rng, Rng};
 use tokio::sync::watch;
 use tokio_util::sync::CancellationToken;
 
+#[cfg(not(target_arch = "wasm32"))]
+use tokio::time::sleep;
+#[cfg(target_arch = "wasm32")]
+use wasmtimer::tokio::sleep;
+
 use crate::{
     background::{AsyncRuntime, BackgroundRuntime},
     configuration_fetcher::ConfigurationFetcher,
@@ -102,6 +107,7 @@ pub fn start_configuration_poller<AR: AsyncRuntime>(
     let (status_tx, status_rx) = watch::channel(None);
 
     let cancellation_token = runtime.cancellation_token();
+    log::info!(target: "eppo", "starting configuration poller");
     spawn({
         let cancellation_token = cancellation_token.clone();
         async move {
@@ -159,7 +165,7 @@ async fn configuration_poller(
 
         let timeout = jitter(config.interval, config.jitter);
 
-        tokio::time::sleep(timeout).await;
+        sleep(timeout).await;
     }
 }
 
