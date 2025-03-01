@@ -64,10 +64,55 @@ jobs:
       - name: Setup Docker
         uses: docker/setup-buildx-action@v3
 
+      - name: Create logs directory
+        run: mkdir -p dart-sdk/rust/logs
+
+      - name: Create Cross.toml
+        run: |
+          cat > Cross.toml << 'EOF'
+          [build]
+          xargo = false
+
+          [target.${{ matrix.target }}]
+          image = "ghcr.io/cross-rs/${{ matrix.target }}:main"
+
+          [target.${{ matrix.target }}.env]
+          passthrough = [
+            "RUST_BACKTRACE",
+            "RUST_LOG",
+            "RING_PREGENERATE_ASM",
+            "FRB_CODEGEN_SKIP"
+          ]
+
+          # Mount the flutter_rust_bridge.yaml file into the container
+          [target.${{ matrix.target }}.mount]
+          type = "bind"
+          source = "${PWD}/dart-sdk/flutter_rust_bridge.yaml"
+          destination = "/target/dart-sdk/flutter_rust_bridge.yaml"
+          EOF
+          cat Cross.toml
+
+      - name: Prepare for build
+        run: |
+          # Create a simplified version of the build.rs file that skips code generation
+          cat > dart-sdk/rust/build.rs.new << 'EOF'
+          fn main() {
+              // Skip code generation during cross-compilation
+              println!("cargo:warning=Skipping Flutter Rust Bridge code generation during cross-compilation");
+          }
+          EOF
+          mv dart-sdk/rust/build.rs.new dart-sdk/rust/build.rs
+          cat dart-sdk/rust/build.rs
+
       - name: Build for ${{ matrix.target }}
+        env:
+          RING_PREGENERATE_ASM: "1"
+          CARGO_BUILD_TARGET: ${{ matrix.target }}
+          FRB_CODEGEN_SKIP: "1"
+          RUST_BACKTRACE: "1"
         run: |
           cd dart-sdk/rust
-          cross build --release --target ${{ matrix.target }} -p eppo_sdk
+          cross build --release --target ${{ matrix.target }} -p eppo_sdk -vv
 
       - name: Create output directory
         run: mkdir -p android-libs/${{ matrix.android_abi }}
