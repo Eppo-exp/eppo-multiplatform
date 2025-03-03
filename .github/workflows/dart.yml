@@ -48,17 +48,17 @@ jobs:
           echo "[patch.crates-io.eppo_core]" >> "${CARGO_HOME:-$HOME/.cargo}/config.toml"
           echo "path = '$PWD/eppo_core'" >> "${CARGO_HOME:-$HOME/.cargo}/config.toml"
 
-      - run: npm run with-server test:dart
-
-      - name: Install toolchain for wasm build
-        run: rustup toolchain install nightly -c rust-src
-
       - name: Install dependencies
         run: cargo install flutter_rust_bridge_codegen@=2.8.0 wasm-pack wasm-bindgen-cli
 
       - name: Run flutter codegen
         working-directory: dart-sdk
         run: flutter_rust_bridge_codegen generate --config-file flutter_rust_bridge.yaml
+
+      - run: npm run with-server test:dart
+
+      - name: Install toolchain for wasm build
+        run: rustup toolchain install nightly -c rust-src
 
       - name: Build web
         run: flutter_rust_bridge_codegen build-web --wasm-pack-rustflags '--cfg getrandom_backend="wasm_js" -C target-feature=+atomics,+bulk-memory,+mutable-globals'
