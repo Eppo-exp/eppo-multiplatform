@@ -93,6 +93,7 @@ jobs:
         env:
           RING_PREGENERATE_ASM: "1"
           CARGO_BUILD_TARGET: ${{ matrix.target }}
+          CI: "true"
         working-directory: dart-sdk/rust
         run: cross build --release --target ${{ matrix.target }} -p eppo_sdk
 
