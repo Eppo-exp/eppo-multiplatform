@@ -55,7 +55,7 @@ jobs:
           python-version: 3.13
 
       - name: Build wheels
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@49453e0a6599125b2698abe070e181399fbcc9ab
         if: ${{ startsWith(matrix.platform.target, 'x86') }}
         with:
           target: ${{ matrix.platform.target }}

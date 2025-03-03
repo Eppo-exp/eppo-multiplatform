@@ -33,7 +33,7 @@ fn main() {
     } else {
         // In normal environment, look in the dart-sdk directory
         let dart_sdk_dir = current_dir.parent().unwrap();
-        dart_sdk_dir.join("flutter_rust_bridge.yaml")
+        &dart_sdk_dir.join("flutter_rust_bridge.yaml")
     };
 
     println!("cargo:warning=Looking for config file at: {:?}", config_path);
