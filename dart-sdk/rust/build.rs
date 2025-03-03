@@ -17,17 +17,21 @@ fn main() {
     configure_opinionated_logging("./logs/", true).unwrap();
 
     // Print current working directory for debugging
-    println!("cargo:warning=Current working directory: {:?}", std::env::current_dir().unwrap());
+    let current_dir = std::env::current_dir().unwrap();
+    println!("cargo:warning=Current working directory: {:?}", current_dir);
 
-    let config_path = Path::new("../flutter_rust_bridge.yaml");
+    // Try to find the config file in the dart-sdk directory
+    let dart_sdk_dir = current_dir.parent().unwrap();
+    let config_path = dart_sdk_dir.join("flutter_rust_bridge.yaml");
+
+    println!("cargo:warning=Dart SDK directory: {:?}", dart_sdk_dir);
     println!("cargo:warning=Looking for config file at: {:?}", config_path);
     println!("cargo:warning=Config file exists: {}", config_path.exists());
 
     // Execute code generator with auto-detected config
-    let config = match Config::from_config_file("../flutter_rust_bridge.yaml") {
+    let config = match Config::from_config_file(config_path.to_str().unwrap()) {
         Ok(Some(config)) => config,
         Ok(None) => {
-            println!("cargo:warning=Config file was found but no configuration was loaded");
             panic!("Failed to load configuration from flutter_rust_bridge.yaml");
         }
         Err(e) => {

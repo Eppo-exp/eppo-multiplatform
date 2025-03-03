@@ -63,7 +63,7 @@ jobs:
           sccache: "true"
           manylinux: ${{ matrix.platform.manylinux }}
           before-script-linux: |
-            yum install -y perl-IPC-Cmd devtoolset-10-libatomic-devel
+            yum install -y perl-IPC-Cmd devtoolset-10-libatomic-devel libatomic
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         if: ${{ !startsWith(matrix.platform.target, 'x86') }}
@@ -74,7 +74,7 @@ jobs:
           manylinux: ${{ matrix.platform.manylinux }}
           before-script-linux: |
             apt-get update
-            apt-get install --no-install-recommends -y libssl-dev
+            apt-get install --no-install-recommends -y libssl-dev libatomic1
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
