@@ -56,14 +56,14 @@ jobs:
 
       - name: Build wheels
         uses: Eppo-exp/maturin-action@b5b756799fca5bc57e02608fa66dc497461201da
-        if: ${{ startsWith(matrix.platform.target, 'x86') }}
+        if: ${{ startsWith(matrix.platform.target, 'i686') }}
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter --manifest-path ./python-sdk/Cargo.toml
           sccache: "true"
           manylinux: ${{ matrix.platform.manylinux }}
           before-script-linux: |
-            yum install -y perl-IPC-Cmd devtoolset-10-libatomic-devel libatomic
+            yum install -y perl-IPC-Cmd devtoolset-10-libatomic-devel
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         if: ${{ !startsWith(matrix.platform.target, 'x86') }}
