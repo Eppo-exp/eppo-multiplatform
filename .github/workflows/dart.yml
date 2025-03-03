@@ -49,7 +49,7 @@ jobs:
           echo "path = '$PWD/eppo_core'" >> "${CARGO_HOME:-$HOME/.cargo}/config.toml"
 
       - name: Install dependencies
-        run: cargo install flutter_rust_bridge_codegen@=2.8.0 wasm-pack wasm-bindgen-cli
+        run: cargo install flutter_rust_bridge_codegen@=2.8.0 wasm-pack wasm-bindgen-cli cargo-expand
 
       - name: Run flutter codegen
         working-directory: dart-sdk

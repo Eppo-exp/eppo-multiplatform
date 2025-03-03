@@ -17,19 +17,19 @@ image = "ghcr.io/cross-rs/armv7-linux-androideabi:main"
 passthrough = [
   "RUST_BACKTRACE",
   "RUST_LOG",
-  "RING_PREGENERATE_ASM=1"
+  # "RING_PREGENERATE_ASM=1"
 ]
 
 [target.x86_64-linux-android.env]
 passthrough = [
   "RUST_BACKTRACE",
   "RUST_LOG",
-  "RING_PREGENERATE_ASM=1"
+  # "RING_PREGENERATE_ASM=1"
 ]
 
 [target.armv7-linux-androideabi.env]
 passthrough = [
   "RUST_BACKTRACE",
   "RUST_LOG",
-  "RING_PREGENERATE_ASM=1"
+  # "RING_PREGENERATE_ASM=1"
 ]

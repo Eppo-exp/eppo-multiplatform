@@ -75,7 +75,7 @@ jobs:
         run: mkdir -p dart-sdk/rust/logs
 
       - name: Install flutter_rust_bridge_codegen
-        run: cargo install flutter_rust_bridge_codegen
+        run: cargo install flutter_rust_bridge_codegen@=2.8.0 cargo-expand
 
       - name: Run flutter codegen
         working-directory: dart-sdk
