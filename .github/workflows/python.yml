@@ -55,7 +55,7 @@ jobs:
           python-version: 3.13
 
       - name: Build wheels
-        uses: Eppo-exp/maturin-action@dcf071ef4dc48a3250b822ce9cb7fe187f7ac0b8
+        uses: Eppo-exp/maturin-action@b5b756799fca5bc57e02608fa66dc497461201da
         if: ${{ startsWith(matrix.platform.target, 'x86') }}
         with:
           target: ${{ matrix.platform.target }}
