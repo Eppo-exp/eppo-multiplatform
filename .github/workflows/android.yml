@@ -70,6 +70,13 @@ jobs:
       - name: Create logs directory
         run: mkdir -p dart-sdk/rust/logs
 
+      - name: Install flutter_rust_bridge_codegen
+        run: cargo install flutter_rust_bridge_codegen
+
+      - name: Run flutter codegen
+        working-directory: dart-sdk
+        run: flutter_rust_bridge_codegen generate --config-file flutter_rust_bridge.yaml
+
       - name: Build for ${{ matrix.target }}
         env:
           RING_PREGENERATE_ASM: "1"

@@ -1,7 +1,6 @@
 rust_input: crate::api
-dart_output: ../lib/src/rust
+dart_output: lib/src/rust
 c_output: frb_generated.h
-rust_root: ../
 
 # use int instead of bigint
 type_64bit_int: true

@@ -1,15 +1,5 @@
 [build]
 xargo = false
-pre-build = [
-    "apt-get update",
-    "apt-get install -y curl gnupg2 apt-transport-https unzip build-essential",
-    "mkdir -p /usr/local/dart-sdk",
-    "curl -fsSL https://storage.googleapis.com/dart-archive/channels/stable/release/3.6.0/sdk/dartsdk-linux-x64-release.zip -o dart-sdk.zip",
-    "unzip dart-sdk.zip -d /usr/local",
-    "echo 'export PATH=\"/usr/local/dart-sdk/bin:$PATH\"' >> /etc/profile",
-    "ln -s /usr/local/dart-sdk/bin/dart /usr/local/bin/dart",
-    "ln -s /usr/local/dart-sdk/bin/dartaotruntime /usr/local/bin/dartaotruntime"
-]
 
 [build.env]
 volumes = [ "SDK_DIR=../", ]
@@ -27,19 +17,19 @@ image = "ghcr.io/cross-rs/armv7-linux-androideabi:main"
 passthrough = [
   "RUST_BACKTRACE",
   "RUST_LOG",
-  # "RING_PREGENERATE_ASM=1"
+  "RING_PREGENERATE_ASM=1"
 ]
 
 [target.x86_64-linux-android.env]
 passthrough = [
   "RUST_BACKTRACE",
   "RUST_LOG",
-  # "RING_PREGENERATE_ASM=1"
+  "RING_PREGENERATE_ASM=1"
 ]
 
 [target.armv7-linux-androideabi.env]
 passthrough = [
   "RUST_BACKTRACE",
   "RUST_LOG",
-  # "RING_PREGENERATE_ASM=1"
+  "RING_PREGENERATE_ASM=1"
 ]
