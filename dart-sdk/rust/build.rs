@@ -17,7 +17,7 @@ fn main() {
 
     // Execute code generator with auto-detected config
     codegen::generate(
-        Config::from_config_file("dart-sdk/flutter_rust_bridge.yaml")
+        Config::from_config_file("../flutter_rust_bridge.yaml")
             .unwrap()
             .unwrap(),
         Default::default(),

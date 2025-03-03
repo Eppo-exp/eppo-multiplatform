@@ -89,9 +89,8 @@ jobs:
         env:
           RING_PREGENERATE_ASM: "1"
           CARGO_BUILD_TARGET: ${{ matrix.target }}
-        run: |
-          cd dart-sdk/rust
-          cross build --release --target ${{ matrix.target }} -p eppo_sdk
+        working-directory: dart-sdk/rust
+        run: cross build --release --target ${{ matrix.target }} -p eppo_sdk
 
       - name: Create output directory
         run: mkdir -p android-libs/${{ matrix.android_abi }}
