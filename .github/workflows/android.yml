@@ -20,6 +20,9 @@ on:
 permissions:
   contents: read
 
+env:
+  CI: true
+
 jobs:
   build-android:
     name: Build Android (${{ matrix.target }})

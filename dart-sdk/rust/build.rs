@@ -21,9 +21,7 @@ fn main() {
     let current_dir = std::env::current_dir().unwrap();
     println!("cargo:warning=Current working directory: {:?}", current_dir);
 
-    // Check if we're running in cross-rs environment by looking at the path
-    // In cross-rs, the path will contain /target/cross/
-    let is_cross = current_dir.to_string_lossy().contains("/target/cross/");
+    let is_cross = env::var("CI").is_ok();
     println!("cargo:warning=Running in cross-rs environment: {}", is_cross);
 
     // Try to find the config file
