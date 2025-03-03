@@ -21,20 +21,7 @@ fn main() {
     let current_dir = std::env::current_dir().unwrap();
     println!("cargo:warning=Current working directory: {:?}", current_dir);
 
-    let is_cross = env::var("CI").is_ok();
-    println!("cargo:warning=Running in cross-rs environment: {}", is_cross);
-
-    // Try to find the config file
-    let config_path = if is_cross {
-        // In cross-rs environment, the file should be in the current directory
-        // as cross-rs mounts the source directory
-        Path::new("flutter_rust_bridge.yaml")
-    } else {
-        // In normal environment, look in the dart-sdk directory
-        let dart_sdk_dir = current_dir.parent().unwrap();
-        &dart_sdk_dir.join("flutter_rust_bridge.yaml")
-    };
-
+    let config_path = Path::new("flutter_rust_bridge.yaml");
     println!("cargo:warning=Looking for config file at: {:?}", config_path);
     println!("cargo:warning=Config file exists: {}", config_path.exists());
 
@@ -42,7 +29,6 @@ fn main() {
     let config = match Config::from_config_file(config_path.to_str().unwrap()) {
         Ok(Some(config)) => config,
         Ok(None) => {
-            println!("cargo:warning=Config file was found but no configuration was loaded");
             panic!("Failed to load configuration from flutter_rust_bridge.yaml");
         }
         Err(e) => {
