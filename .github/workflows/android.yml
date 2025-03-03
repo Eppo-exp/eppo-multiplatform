@@ -39,6 +39,8 @@ jobs:
             android_abi: x86_64
           - target: armv7-linux-androideabi
             android_abi: armeabi-v7a
+          - target: i686-linux-android
+            android_abi: x86
 
     steps:
       - uses: actions/checkout@v4
