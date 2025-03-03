@@ -5,22 +5,22 @@ on:
     branches:
       - main
     tags:
-      - 'dart-sdk-*'
+      - "dart-sdk-*"
     paths:
-      - 'dart-sdk/**'
-      - 'eppo_core/**'
-      - 'sdk-test-data'
-      - 'mock-server/**'
-      - 'package-lock.json'
-      - 'package.json'
+      - "dart-sdk/**"
+      - "eppo_core/**"
+      - "sdk-test-data"
+      - "mock-server/**"
+      - "package-lock.json"
+      - "package.json"
   pull_request:
     paths:
-      - 'dart-sdk/**'
-      - 'eppo_core/**'
-      - 'sdk-test-data'
-      - 'mock-server/**'
-      - 'package-lock.json'
-      - 'package.json'
+      - "dart-sdk/**"
+      - "eppo_core/**"
+      - "sdk-test-data"
+      - "mock-server/**"
+      - "package-lock.json"
+      - "package.json"
   workflow_dispatch:
 
 jobs:
@@ -47,6 +47,10 @@ jobs:
           mkdir -p "${CARGO_HOME:-$HOME/.cargo}"
           echo "[patch.crates-io.eppo_core]" >> "${CARGO_HOME:-$HOME/.cargo}/config.toml"
           echo "path = '$PWD/eppo_core'" >> "${CARGO_HOME:-$HOME/.cargo}/config.toml"
+
+      - name: Run flutter codegen
+        working-directory: dart-sdk
+        run: flutter_rust_bridge_codegen generate --config-file flutter_rust_bridge.yaml
 
       - run: npm run with-server test:dart
 

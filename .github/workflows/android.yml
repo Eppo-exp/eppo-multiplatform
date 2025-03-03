@@ -45,6 +45,10 @@ jobs:
         with:
           submodules: true
 
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.6
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
