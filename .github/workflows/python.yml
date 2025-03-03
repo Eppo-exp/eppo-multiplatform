@@ -55,6 +55,7 @@ jobs:
           python-version: 3.13
 
       - name: Build wheels
+        # Revert back to the original maturin-action once https://github.com/PyO3/maturin-action/pull/330 is merged
         uses: Eppo-exp/maturin-action@eb3d86ba17ee4c103d3965fcbf688c2a7af46a6d
         if: ${{ startsWith(matrix.platform.target, 'x86') || startsWith(matrix.platform.target, 'i686') }}
         with:
@@ -94,7 +95,7 @@ jobs:
           npm ci
           npm run with-server test:python
       - name: pytest
-        if: ${{ !startsWith(matrix.platform.target, 'x86') && matrix.platform.target != 'ppc64' }}
+        if: ${{ !startsWith(matrix.platform.target, 'x86') && !startsWith(matrix.platform.target, 'i686') && matrix.platform.target != 'ppc64' }}
         uses: uraimo/run-on-arch-action@v2
         with:
           arch: ${{ matrix.platform.target }}
