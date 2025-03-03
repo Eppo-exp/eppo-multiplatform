@@ -55,7 +55,7 @@ jobs:
       - name: Install web dependencies
         run: cargo install flutter_rust_bridge_codegen@=2.8.0 wasm-pack wasm-bindgen-cli
       - name: Build web
-        run: flutter_rust_bridge_codegen build-web --wasm-pack-rustflags '--cfg getrandom_backend="wasm_js" -C target-feature=+atomics,+bulk-memory,+mutable-globals'
+        run: flutter_rust_bridge_codegen build-web --release --wasm-pack-rustflags '--cfg getrandom_backend="wasm_js" -C target-feature=+atomics,+bulk-memory,+mutable-globals'
         working-directory: dart-sdk
 
       - uses: actions/upload-artifact@v4
