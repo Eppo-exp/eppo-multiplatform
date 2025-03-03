@@ -83,7 +83,8 @@ jobs:
           passthrough = [
             "RUST_BACKTRACE",
             "RUST_LOG",
-            "RING_PREGENERATE_ASM=1"
+            "RING_PREGENERATE_ASM=1",
+            "CI"
           ]
           EOF
           cat Cross.toml
