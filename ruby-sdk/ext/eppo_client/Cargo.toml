@@ -1,7 +1,7 @@
 [package]
 name = "eppo_client"
 # TODO: this version and lib/eppo_client/version.rb should be in sync
-version = "3.4.6"
+version = "3.5.0"
 edition = "2021"
 license = "MIT"
 publish = false
@@ -12,7 +12,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 env_logger = { version = "0.11.3", features = ["unstable-kv"] }
-eppo_core = { version = "=8.0.3", features = ["magnus", "event_ingestion"] }
+eppo_core = { version = "=9.0.0", features = ["magnus", "event_ingestion"] }
 log = { version = "0.4.21", features = ["kv_serde"] }
 magnus = { version = "0.6.4" }
 serde = { version = "1.0.203", features = ["derive"] }
