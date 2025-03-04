@@ -1,5 +1,11 @@
 # rust-sdk
 
+## 5.1.0
+
+### Minor Changes
+
+- [#197](https://github.com/Eppo-exp/eppo-multiplatform/pull/197) [`a4da91f`](https://github.com/Eppo-exp/eppo-multiplatform/commit/a4da91f1a962708924063f3f076d3064441c2f76) Thanks [@rasendubi](https://github.com/rasendubi)! - Change TLS implementation from openssl to rustls.
+
 ## 5.0.4
 
 ### Patch Changes
