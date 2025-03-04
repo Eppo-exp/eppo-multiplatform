@@ -41,7 +41,7 @@ final class EppoClient {
       Uri? baseUrl,
       Duration pollInterval = const Duration(seconds: 30),
       Duration pollJitter = const Duration(seconds: 3),
-      String? logLevel,
+      String? logLevel = const String.fromEnvironment('EPPO_LOG', defaultValue: 'debug'),
   }) : _logger = logger {
     this._initialized = globalInit().then((_) async {
         this._core = core.CoreClient(
