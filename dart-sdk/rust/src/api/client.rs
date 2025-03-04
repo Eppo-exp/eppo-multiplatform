@@ -32,20 +32,33 @@ impl CoreClient {
         base_url: Option<String>,
         #[frb(default = "30000")] poll_interval_ms: u64,
         #[frb(default = "3000")] poll_jitter_ms: u64,
+        log_level: Option<String>,
     ) -> CoreClient {
-        log::set_max_level(log::LevelFilter::Info);
+        log::set_max_level(log::LevelFilter::Debug);
+
+        {
+            let mut builder = env_logger::Builder::from_env(
+                env_logger::Env::new()
+                    .filter_or("EPPO_LOG", "eppo=debug")
+                    .write_style("EPPO_LOG_STYLE"),
+            );
+
+            if let Some(log_level) = log_level {
+                builder.filter_module("eppo", log_level.parse().unwrap());
+            }
+
+            // Logger can only be set once, so we ignore the initialization error here if client is
+            // re-initialized.
+            let _ = builder.try_init();
+        };
 
         let base_url = base_url.unwrap_or_else(|| DEFAULT_BASE_URL.to_owned());
-
         let configuration_store = Arc::new(ConfigurationStore::new());
-
         let background = BackgroundRuntime::new(get_runtime());
-
         const SDK_METADATA: SdkMetadata = SdkMetadata {
             name: "dart",
             version: env!("CARGO_PKG_VERSION"),
         };
-
         let poller = start_configuration_poller(
             &background,
             ConfigurationFetcher::new(ConfigurationFetcherConfig {

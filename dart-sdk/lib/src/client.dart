@@ -41,6 +41,7 @@ final class EppoClient {
       Uri? baseUrl,
       Duration pollInterval = const Duration(seconds: 30),
       Duration pollJitter = const Duration(seconds: 3),
+      String? logLevel,
   }) : _logger = logger {
     this._initialized = globalInit().then((_) async {
         this._core = core.CoreClient(
@@ -48,6 +49,7 @@ final class EppoClient {
           baseUrl: baseUrl?.toString(),
           pollIntervalMs: pollInterval.inMilliseconds,
           pollJitterMs: pollJitter.inMilliseconds,
+          logLevel: logLevel,
         );
     });
   }

@@ -12,6 +12,7 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
+env_logger = { version = "0.11.3", features = ["unstable-kv"] }
 flutter_rust_bridge = "=2.8.0"
 eppo_core = "=8.0.3"
 chrono = { version = "0.4.39", default-features = false, features = ["std"] }
