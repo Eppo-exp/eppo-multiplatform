@@ -29,7 +29,11 @@ pub struct ConfigurationFetcher {
 
 impl ConfigurationFetcher {
     pub fn new(config: ConfigurationFetcherConfig) -> ConfigurationFetcher {
-        let client = reqwest::Client::new();
+        let builder = reqwest::Client::builder();
+        let client = match builder.build() {
+            Err(e) => { panic!("Reqwest client build failed {:?}", e); }
+            Ok(client) => client
+        };
 
         ConfigurationFetcher {
             client,
@@ -65,7 +69,10 @@ impl ConfigurationFetcher {
                 ("coreVersion", env!("CARGO_PKG_VERSION")),
             ],
         )
-        .map_err(|err| Error::InvalidBaseUrl(err))?;
+        .map_err(|err| {
+            log::warn!(target: "eppo", "failed to parse flags configuration URL: {err:?}");
+            Error::InvalidBaseUrl(err)
+        })?;
 
         log::debug!(target: "eppo", "fetching UFC flags configuration");
         let response = self.client.get(url).send().await?;
@@ -102,7 +109,10 @@ impl ConfigurationFetcher {
                 ("coreVersion", env!("CARGO_PKG_VERSION")),
             ],
         )
-        .map_err(|err| Error::InvalidBaseUrl(err))?;
+        .map_err(|err| {
+            log::warn!(target: "eppo", "failed to parse bandits configuration URL: {err:?}");
+            Error::InvalidBaseUrl(err)
+        })?;
 
         log::debug!(target: "eppo", "fetching UFC bandits configuration");
         let response = self.client.get(url).send().await?;

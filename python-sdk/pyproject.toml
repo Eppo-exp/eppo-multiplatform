@@ -27,6 +27,6 @@ test = [
 ]
 
 [tool.maturin]
-features = ["pyo3/extension-module"]
+features = ["pyo3/extension-module", "pyo3/generate-import-lib"]
 python-source = "python"
 module-name = "eppo_client._eppo_client"
