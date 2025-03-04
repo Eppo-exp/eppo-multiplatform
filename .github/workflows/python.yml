@@ -55,8 +55,7 @@ jobs:
           python-version: 3.13
 
       - name: Build wheels
-        # Revert back to main once https://github.com/PyO3/maturin-action/pull/330 has been released
-        uses: PyO3/maturin-action@6b6a375ca31155d8b27d43e27f8f99b94078c996
+        uses: PyO3/maturin-action@v1
         if: ${{ startsWith(matrix.platform.target, 'x86') || startsWith(matrix.platform.target, 'i686') }}
         with:
           target: ${{ matrix.platform.target }}
