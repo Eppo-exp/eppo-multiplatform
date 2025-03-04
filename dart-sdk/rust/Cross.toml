@@ -1,0 +1,29 @@
+[build]
+xargo = false
+
+[build.env]
+volumes = [ "SDK_DIR=../", ]
+
+[target.aarch64-linux-android.env]
+passthrough = [
+  "RUST_BACKTRACE",
+  "RUST_LOG",
+  # if hitting build failures with `ring`, try uncommenting this
+  # "RING_PREGENERATE_ASM=1"
+]
+
+[target.x86_64-linux-android.env]
+passthrough = [
+  "RUST_BACKTRACE",
+  "RUST_LOG",
+  # if hitting build failures with `ring`, try uncommenting this
+  # "RING_PREGENERATE_ASM=1"
+]
+
+[target.armv7-linux-androideabi.env]
+passthrough = [
+  "RUST_BACKTRACE",
+  "RUST_LOG",
+  # if hitting build failures with `ring`, try uncommenting this
+  # "RING_PREGENERATE_ASM=1"
+]
