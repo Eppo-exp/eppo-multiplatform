@@ -32,7 +32,7 @@ impl CoreClient {
         base_url: Option<String>,
         #[frb(default = "30000")] poll_interval_ms: u64,
         #[frb(default = "3000")] poll_jitter_ms: u64,
-        #[frb(default = "debug")] log_level: String,
+        #[frb(default = "info")] log_level: String,
     ) -> CoreClient {
         log::set_max_level(log::LevelFilter::Debug);
 
