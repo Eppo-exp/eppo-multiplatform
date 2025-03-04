@@ -32,19 +32,17 @@ impl CoreClient {
         base_url: Option<String>,
         #[frb(default = "30000")] poll_interval_ms: u64,
         #[frb(default = "3000")] poll_jitter_ms: u64,
-        log_level: Option<String>,
+        #[frb(default = "debug")] log_level: String,
     ) -> CoreClient {
         log::set_max_level(log::LevelFilter::Debug);
 
         {
             let mut builder = env_logger::Builder::from_env(
-                env_logger::Env::new()
-                    .filter_or("EPPO_LOG", "eppo=debug")
-                    .write_style("EPPO_LOG_STYLE"),
+                env_logger::Env::new().write_style("EPPO_LOG_STYLE"),
             );
 
-            if let Some(log_level) = log_level {
-                builder.filter_module("eppo", log_level.parse().unwrap());
+            if let Ok(log_level) = log_level.parse() {
+                builder.filter_level(log_level);
             }
 
             // Logger can only be set once, so we ignore the initialization error here if client is
