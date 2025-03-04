@@ -4,19 +4,11 @@ xargo = false
 [build.env]
 volumes = [ "SDK_DIR=../", ]
 
-[target.aarch64-linux-android]
-image = "ghcr.io/cross-rs/aarch64-linux-android:main"
-
-[target.x86_64-linux-android]
-image = "ghcr.io/cross-rs/x86_64-linux-android:main"
-
-[target.armv7-linux-androideabi]
-image = "ghcr.io/cross-rs/armv7-linux-androideabi:main"
-
 [target.aarch64-linux-android.env]
 passthrough = [
   "RUST_BACKTRACE",
   "RUST_LOG",
+  # if hitting build failures with `ring`, try uncommenting this
   # "RING_PREGENERATE_ASM=1"
 ]
 
@@ -24,6 +16,7 @@ passthrough = [
 passthrough = [
   "RUST_BACKTRACE",
   "RUST_LOG",
+  # if hitting build failures with `ring`, try uncommenting this
   # "RING_PREGENERATE_ASM=1"
 ]
 
@@ -31,5 +24,6 @@ passthrough = [
 passthrough = [
   "RUST_BACKTRACE",
   "RUST_LOG",
+  # if hitting build failures with `ring`, try uncommenting this
   # "RING_PREGENERATE_ASM=1"
 ]
