@@ -43,6 +43,8 @@ jobs:
       - run: npm ci
 
       - name: Override eppo_core for testing
+        # Released version should be built against published eppo_core
+        if: "!startsWith(github.ref, 'refs/tags/dart-sdk-')"
         run: |
           mkdir -p "${CARGO_HOME:-$HOME/.cargo}"
           echo "[patch.crates-io.eppo_core]" >> "${CARGO_HOME:-$HOME/.cargo}/config.toml"
