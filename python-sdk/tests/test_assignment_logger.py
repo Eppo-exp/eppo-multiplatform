@@ -41,7 +41,7 @@ def test_event_format():
 
     client = init("ufc", assignment_logger=MyAssignmentLogger())
     result = client.get_string_assignment(
-        "regex-flag", "alice", {"email": "alice@example.com"}, "default"
+        "regex-flag", "alice", {"email": "alice@example.com", "empty": None}, "default"
     )
     assert result == "partial-example"
 
@@ -49,3 +49,5 @@ def test_event_format():
     assert event["featureFlag"] == "regex-flag"
     assert event["experiment"] == "regex-flag-partial-example"
     assert event["metaData"]["sdkName"] == "python"
+    assert event["subjectAttributes"]["email"] == "alice@example.com"
+    assert event["subjectAttributes"]["empty"] is None

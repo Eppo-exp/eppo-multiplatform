@@ -1,0 +1,27 @@
+[package]
+name = "eppo_sdk"
+version = "0.1.0"
+edition = "2021"
+
+# Marking this cargo package as its own workspace for `cargo build` to
+# put built library to the expect location (./target relative to
+# here).
+[workspace]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+flutter_rust_bridge = "=2.8.0"
+eppo_core = "=9.0.0"
+chrono = { version = "0.4.39", default-features = false, features = ["std"] }
+serde_json = "1.0.138"
+tokio = { version = "1.43.0", default-features = false, features = ["rt"] }
+log = "0.4.26"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# Enable wasm_js backend: https://docs.rs/getrandom/latest/getrandom/#webassembly-support
+getrandom = { version = "^0.3.0", features = ["wasm_js"] }
+
+[build-dependencies]
+flutter_rust_bridge_codegen = "=2.8.0"

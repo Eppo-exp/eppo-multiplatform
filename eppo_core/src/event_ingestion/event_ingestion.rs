@@ -4,7 +4,10 @@ use tokio::sync::mpsc;
 use url::Url;
 use uuid::Uuid;
 
-use crate::{background::BackgroundRuntime, sdk_key::SdkKey};
+use crate::{
+    background::{AsyncRuntime, BackgroundRuntime},
+    sdk_key::SdkKey,
+};
 
 use super::{
     auto_flusher, batcher,
@@ -52,7 +55,7 @@ impl EventIngestionConfig {
         Some(config)
     }
 
-    pub fn spawn(&self, runtime: &BackgroundRuntime) -> EventIngestion {
+    pub fn spawn<AR: AsyncRuntime>(&self, runtime: &BackgroundRuntime<AR>) -> EventIngestion {
         EventIngestion::spawn(runtime, self)
     }
 }
@@ -64,7 +67,10 @@ pub struct EventIngestion {
 
 impl EventIngestion {
     /// Starts the event ingestion subsystem on the given background runtime.
-    pub fn spawn(runtime: &BackgroundRuntime, config: &EventIngestionConfig) -> EventIngestion {
+    pub fn spawn<AR: AsyncRuntime>(
+        runtime: &BackgroundRuntime<AR>,
+        config: &EventIngestionConfig,
+    ) -> EventIngestion {
         let event_delivery = EventDelivery::new(
             reqwest::Client::new(),
             config.sdk_key.clone(),

@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "name": "dart-sdk",
+  "version": "0.1.0",
+  "dependencies": {},
+  "devDependencies": {},
+  "scripts": {
+    "postversion": "./postversion.sh"
+  }
+}

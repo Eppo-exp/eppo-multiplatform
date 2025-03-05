@@ -92,6 +92,7 @@ impl PollerThread {
     pub fn wait_for_configuration(&self) -> Result<()> {
         self.thread
             .runtime()
+            .async_runtime
             .block_on(self.poller.wait_for_configuration())
     }
 

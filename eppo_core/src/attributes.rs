@@ -1,6 +1,5 @@
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
-use derive_more::From;
 use serde::{Deserialize, Serialize};
 
 use crate::Str;
@@ -35,7 +34,7 @@ pub type Attributes = HashMap<Str, AttributeValue>;
 #[derive(Debug, Clone, PartialEq, PartialOrd, derive_more::From, Serialize, Deserialize)]
 #[from(NumericAttribute, CategoricalAttribute, f64, bool, Str, String, &str, Arc<str>, Arc<String>, Cow<'_, str>)]
 pub struct AttributeValue(AttributeValueImpl);
-#[derive(Debug, Clone, PartialEq, PartialOrd, derive_more::From, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, derive_more::From, Deserialize)]
 #[serde(untagged)]
 enum AttributeValueImpl {
     #[from(NumericAttribute, f64)]
@@ -44,6 +43,23 @@ enum AttributeValueImpl {
     Categorical(CategoricalAttribute),
     #[from(ignore)]
     Null,
+}
+
+impl serde::Serialize for AttributeValueImpl {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            AttributeValueImpl::Numeric(numeric_attribute) => {
+                numeric_attribute.serialize(serializer)
+            }
+            AttributeValueImpl::Categorical(categorical_attribute) => {
+                categorical_attribute.serialize(serializer)
+            }
+            AttributeValueImpl::Null => serializer.serialize_none(),
+        }
+    }
 }
 
 impl AttributeValue {
