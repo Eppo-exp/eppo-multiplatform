@@ -55,8 +55,8 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
 
-  update_ruby_lockfile:
-    name: Update Ruby SDK lockfile
+  update_lockfiles:
+    name: Update SDK lockfiles
     runs-on: ubuntu-latest
     if: ${{ startsWith(github.ref_name, 'eppo_core@') }}
     needs: publish
@@ -65,11 +65,13 @@ jobs:
       - run: rustup update stable && rustup default stable
       - run: cargo update eppo_core
         working-directory: ruby-sdk
+      - run: cargo update eppo_core
+        working-directory: dart-sdk/rust
       - name: Open pull request
         uses: peter-evans/create-pull-request@v7
         with:
-          commit-message: 'chore(ruby): update lockfile'
-          title: 'chore(ruby): update lockfile'
+          commit-message: 'chore: update lockfiles'
+          title: 'chore: update lockfiles'
           branch: create-pull-request/ruby-lockfile
           base: main
 
