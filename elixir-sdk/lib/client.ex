@@ -359,18 +359,7 @@ defmodule EppoSdk.Client do
          default,
          expected_type
        ) do
-    subject_attributes =
-      if not is_map(subject_attributes) do
-        Logger.warning("Invalid subject attributes: must be a map", %{
-          flag: flag_key,
-          subject: subject_key,
-          attributes: subject_attributes
-        })
-
-        %{}
-      else
-        subject_attributes
-      end
+    subject_attributes = validate_subject_attributes(subject_attributes)
 
     assignment =
       EppoSdk.Core.get_assignment(
@@ -412,6 +401,8 @@ defmodule EppoSdk.Client do
          default,
          expected_type
        ) do
+    subject_attributes = validate_subject_attributes(subject_attributes)
+
     assignment =
       EppoSdk.Core.get_assignment_details(
         client.client_ref,
@@ -422,7 +413,7 @@ defmodule EppoSdk.Client do
       )
 
     case assignment do
-      :error ->
+      {:error, _} ->
         Logger.error("Error getting assignment details", %{
           flag: flag_key,
           subject: subject_key
@@ -460,6 +451,18 @@ defmodule EppoSdk.Client do
     case Jason.decode(value_json) do
       {:ok, value} -> value
       {:error, _} -> nil
+    end
+  end
+
+  defp validate_subject_attributes(subject_attributes) do
+    if not is_map(subject_attributes) do
+      Logger.warning("Invalid subject attributes: must be a map", %{
+        subject: subject_attributes
+      })
+
+      %{}
+    else
+      subject_attributes
     end
   end
 end
