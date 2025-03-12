@@ -1,4 +1,4 @@
-use rustler::{Encoder, Env, NifResult, Term};
+use rustler::{Encoder, Env, NifResult, Term, SerdeTerm};
 use std::collections::HashMap;
 use std::sync::Arc;
 use eppo_core::{AttributeValue, Str, events::AssignmentEvent, ufc::AssignmentValue};
@@ -47,9 +47,7 @@ pub fn convert_value_term<'a>(env: Env<'a>, value: AssignmentValue) -> NifResult
 
 pub fn convert_event_term<'a>(env: Env<'a>, event: Option<AssignmentEvent>) -> NifResult<Term<'a>> {
     if let Some(event) = event {
-        let json_value = serde_json::to_value(&event)
-            .map_err(|e| rustler::Error::Term(Box::new(format!("Failed to serialize event: {:?}", e))))?;
-        Ok(json_value.to_string().encode(env))
+        Ok(SerdeTerm(&event).encode(env))
     } else {
         Ok(atom::nil().encode(env))
     }

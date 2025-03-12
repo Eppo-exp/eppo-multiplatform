@@ -378,14 +378,14 @@ defmodule EppoSdk.Client do
 
         default
 
-      {value, event_json} ->
+      {value, event} ->
         Logger.debug("Assignment", %{
           flag: flag_key,
           subject: subject_key,
           value: value
         })
 
-        log_assignment(client.assignment_logger, event_json)
+        log_assignment(client.assignment_logger, event)
 
         value
     end
@@ -417,7 +417,7 @@ defmodule EppoSdk.Client do
 
         {default, nil}
 
-      {result, event_json} ->
+      {result, event} ->
         # If no variation is found, use the default value
         value = Map.get(result, "variation") || default
 
@@ -427,7 +427,7 @@ defmodule EppoSdk.Client do
           value: value
         })
 
-        log_assignment(client.assignment_logger, event_json)
+        log_assignment(client.assignment_logger, event)
 
         if {:ok, details} = Jason.decode(Map.get(result, "details")),
           do: {value, details},
@@ -437,16 +437,8 @@ defmodule EppoSdk.Client do
 
   defp log_assignment(_, nil), do: nil
 
-  defp log_assignment(logger, event_json) do
-    case Jason.decode(event_json) do
-      {:ok, event} ->
-        logger.log_assignment(event)
-
-      {:error, _} ->
-        Logger.error("Failed to decode assignment event #{event_json}", %{
-          event_json: event_json
-        })
-    end
+  defp log_assignment(logger, event) do
+    logger.log_assignment(event)
   end
 
   defp decode_value(nil), do: nil
