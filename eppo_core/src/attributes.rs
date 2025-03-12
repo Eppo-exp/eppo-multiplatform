@@ -360,3 +360,55 @@ mod magnus_impl {
         }
     }
 }
+
+#[cfg(feature = "rustler")]
+mod rustler_impl {
+    use rustler::{Decoder, Encoder, Env, NifResult, Term};
+    use super::*;
+
+    impl Encoder for AttributeValue {
+        fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
+            match &self.0 {
+                AttributeValueImpl::Numeric(n) => n.0.encode(env),
+                AttributeValueImpl::Categorical(c) => match &c.0 {
+                    CategoricalAttributeImpl::String(s) => s.encode(env),
+                    CategoricalAttributeImpl::Number(n) => n.encode(env),
+                    CategoricalAttributeImpl::Boolean(b) => b.encode(env),
+                },
+                AttributeValueImpl::Null => rustler::types::atom::nil().encode(env),
+            }
+        }
+    }
+
+    impl<'a> Decoder<'a> for AttributeValue {
+        fn decode(term: Term<'a>) -> NifResult<Self> {
+            if let Ok(b) = bool::decode(term) {
+                return Ok(AttributeValue::categorical(b));
+            }
+            if let Ok(i) = i64::decode(term) {
+                return Ok(AttributeValue::numeric(i as f64));
+            }
+            if let Ok(f) = f64::decode(term) {
+                return Ok(AttributeValue::numeric(f));
+            }
+            if let Ok(s) = String::decode(term) {
+                return Ok(AttributeValue::categorical(s));
+            }
+            Ok(AttributeValue::null())
+        }
+    }
+
+    impl Encoder for Str {
+        fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
+            let s: &str = self.as_ref();
+            s.encode(env)
+        }
+    }
+
+    impl<'a> Decoder<'a> for Str {
+        fn decode(term: Term<'a>) -> NifResult<Self> {
+            let s: String = term.decode()?;
+            Ok(Str::new(s))
+        }
+    }
+}

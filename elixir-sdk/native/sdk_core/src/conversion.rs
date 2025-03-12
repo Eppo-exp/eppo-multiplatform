@@ -6,32 +6,8 @@ use rustler::types::atom;
 
 
 pub fn convert_attributes(subject_attributes: Term) -> NifResult<Arc<HashMap<Str, AttributeValue>>> {
-    // Obtain an iterator over the map's key-value pairs.
-    let mut attributes = HashMap::new();
-
-    // Decode the Term into a MapIterator
-    let iterator: MapIterator = subject_attributes.decode()?;
-    for (key, value_term) in iterator {
-        // Try to decode the value as one of the supported types.
-        let attr_value = if let Ok(b) = value_term.decode::<bool>() {
-            // Booleans are stored as categorical attributes.
-            AttributeValue::categorical(b)
-        } else if let Ok(i) = value_term.decode::<i64>() {
-            // Integers are converted to f64 and stored as numeric.
-            AttributeValue::numeric(i as f64)
-        } else if let Ok(f) = value_term.decode::<f64>() {
-            AttributeValue::numeric(f)
-        } else if let Ok(s) = value_term.decode::<&str>() {
-            // Strings are stored as categorical attributes.
-            AttributeValue::categorical(s)
-        } else {
-            // If none of the supported types matched, return a null attribute.
-            AttributeValue::null()
-        };
-
-        let key_str: &str = key.decode()?;
-        attributes.insert(Str::new(key_str), attr_value);
-    }
+    // Directly decode the Term into our target type
+    let attributes: HashMap<Str, AttributeValue> = subject_attributes.decode()?;
     Ok(Arc::new(attributes))
 }
 
