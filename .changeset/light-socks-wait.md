@@ -1,5 +1,5 @@
 ---
-"eppo_core": patch
+"eppo_core": minor
 ---
 
 Adds elixir support for VariationType
