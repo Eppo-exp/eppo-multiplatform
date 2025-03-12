@@ -1,4 +1,4 @@
-use rustler::{Encoder, Env, NifResult, Term, SerdeTerm};
+use rustler::{Encoder, Env, NifResult, Term, SerdeTerm, types::map::MapIterator};
 use std::collections::HashMap;
 use std::sync::Arc;
 use eppo_core::{AttributeValue, Str, events::AssignmentEvent, ufc::AssignmentValue};
@@ -7,10 +7,11 @@ use rustler::types::atom;
 
 pub fn convert_attributes(subject_attributes: Term) -> NifResult<Arc<HashMap<Str, AttributeValue>>> {
     // Obtain an iterator over the map's key-value pairs.
-    let map: HashMap<String, Term> = subject_attributes.decode()?;
-    let mut attributes = HashMap::with_capacity(map.len());
+    let mut attributes = HashMap::new();
 
-    for (key, value_term) in map {
+    // Decode the Term into a MapIterator
+    let iterator: MapIterator = subject_attributes.decode()?;
+    for (key, value_term) in iterator {
         // Try to decode the value as one of the supported types.
         let attr_value = if let Ok(b) = value_term.decode::<bool>() {
             // Booleans are stored as categorical attributes.
@@ -28,9 +29,8 @@ pub fn convert_attributes(subject_attributes: Term) -> NifResult<Arc<HashMap<Str
             AttributeValue::null()
         };
 
-        // Insert the converted key and attribute value into the HashMap.
-        // Here we assume that `Str` implements conversion from String.
-        attributes.insert(key.into(), attr_value);
+        let key_str: &str = key.decode()?;
+        attributes.insert(Str::new(key_str), attr_value);
     }
     Ok(Arc::new(attributes))
 }
