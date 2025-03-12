@@ -5,6 +5,7 @@
     "changeset": "changeset",
     "version": "changeset version && npm run --workspaces --if-present postversion",
     "test": "npm run with-server 'npm-run-all test:*'",
+    "test:elixir": "cd elixir-sdk && mix test",
     "test:rust": "cargo test",
     "test:python": "cd python-sdk && pytest",
     "test:ruby": "cd ruby-sdk && bundle exec rake build && bundle exec rspec",
@@ -13,6 +14,7 @@
     "start-mock-server": "npm start --prefix ./mock-server"
   },
   "workspaces": [
+    "elixir-sdk",
     "eppo_core",
     "rust-sdk",
     "python-sdk",

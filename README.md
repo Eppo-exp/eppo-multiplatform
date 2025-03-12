@@ -23,6 +23,7 @@ Eppo is a modular flagging and experimentation analysis tool. Eppo's SDKs are bu
 
 1. Install [rustup](https://rustup.rs/).
 2. Install Ruby using your preferred package manager.
+3. To run tests, load the `sdk-test-data` submodule: `git submodule update --init --recursive`
 
 ### Release process
 
