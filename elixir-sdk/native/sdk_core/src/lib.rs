@@ -1,19 +1,18 @@
 mod config;
 mod conversion;
+mod assignment;
 
 use crate::config::Config;
 use crate::conversion::{convert_attributes, convert_value_term, convert_event_term};
+use crate::assignment::{get_assignment_inner, get_assignment_details_inner};
 use eppo_core::{
     configuration_fetcher::{ConfigurationFetcher, ConfigurationFetcherConfig},
     configuration_poller::{start_configuration_poller, ConfigurationPollerConfig},
     configuration_store::ConfigurationStore,
     eval::{Evaluator, EvaluatorConfig},
-    eval::eval_details::EvaluationResultWithDetails,
-    {Str, AttributeValue},
-    ufc::{VariationType, Assignment, AssignmentValue},
+    ufc::VariationType,
     SdkMetadata,
     background::BackgroundThread,
-    events::AssignmentEvent,
 };
 use std::panic::{RefUnwindSafe, UnwindSafe};
 
@@ -40,11 +39,7 @@ impl UnwindSafe for EppoClient {}
 
 #[rustler::nif]
 fn init(config: Config) -> NifResult<ResourceArc<EppoClient>> {
-    if config.api_key.is_empty() {
-        return Err(rustler::Error::Term(Box::new(
-            "Invalid value for api_key: cannot be blank"
-        )));
-    }
+    config.validate().map_err(|e| rustler::Error::Term(Box::new(e)))?;
 
     let store = Arc::new(ConfigurationStore::new());
     
@@ -88,43 +83,6 @@ fn init(config: Config) -> NifResult<ResourceArc<EppoClient>> {
     Ok(client)
 }
 
-fn get_assignment_inner(
-    client: ResourceArc<EppoClient>,
-    flag_key: String,
-    subject_key: String,
-    eppo_attributes: Arc<HashMap<Str, AttributeValue>>,
-    expected_type: VariationType,
-) -> Result<Option<Assignment>, String> {
-    // Get assignment
-    let assignment = client.evaluator.get_assignment(
-        &Str::new(flag_key),
-        &Str::new(subject_key),
-        &eppo_attributes,
-        Some(expected_type)
-    ).map_err(|e| format!("Failed to get assignment: {:?}", e))?;
-
-    Ok(assignment)
-}
-
-fn get_assignment_details_inner(
-    client: ResourceArc<EppoClient>,
-    flag_key: String,
-    subject_key: String,
-    eppo_attributes: Arc<HashMap<Str, AttributeValue>>,
-    expected_type: VariationType,
-) -> Result<(
-    EvaluationResultWithDetails<AssignmentValue>,
-    Option<AssignmentEvent>,
-), String> {
-    let assignment_with_details = client.evaluator.get_assignment_details(
-        &Str::new(flag_key),
-        &Str::new(subject_key),
-        &eppo_attributes,
-        Some(expected_type)
-    );
-
-    Ok(assignment_with_details)
-}
 #[rustler::nif]
 fn get_assignment<'a>(
     env: Env<'a>,

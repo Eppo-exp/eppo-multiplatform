@@ -1,4 +1,4 @@
-use rustler::{Encoder, Env, NifResult, Term, SerdeTerm, types::map::MapIterator};
+use rustler::{Encoder, Env, NifResult, Term, SerdeTerm};
 use std::collections::HashMap;
 use std::sync::Arc;
 use eppo_core::{AttributeValue, Str, events::AssignmentEvent, ufc::AssignmentValue};
