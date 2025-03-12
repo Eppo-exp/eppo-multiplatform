@@ -20,7 +20,7 @@ pub fn convert_attributes(subject_attributes: Term) -> NifResult<Arc<HashMap<Str
             AttributeValue::numeric(i as f64)
         } else if let Ok(f) = value_term.decode::<f64>() {
             AttributeValue::numeric(f)
-        } else if let Ok(s) = value_term.decode::<String>() {
+        } else if let Ok(s) = value_term.decode::<&str>() {
             // Strings are stored as categorical attributes.
             AttributeValue::categorical(s)
         } else {
