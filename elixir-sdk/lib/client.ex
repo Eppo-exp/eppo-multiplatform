@@ -359,6 +359,19 @@ defmodule EppoSdk.Client do
          default,
          expected_type
        ) do
+    subject_attributes =
+      if not is_map(subject_attributes) do
+        Logger.warning("Invalid subject attributes: must be a map", %{
+          flag: flag_key,
+          subject: subject_key,
+          attributes: subject_attributes
+        })
+
+        %{}
+      else
+        subject_attributes
+      end
+
     assignment =
       EppoSdk.Core.get_assignment(
         client.client_ref,
