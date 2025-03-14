@@ -363,8 +363,8 @@ mod magnus_impl {
 
 #[cfg(feature = "rustler")]
 mod rustler_impl {
-    use rustler::{Decoder, Encoder, Env, NifResult, Term};
     use super::*;
+    use rustler::{Decoder, Encoder, Env, NifResult, Term};
 
     impl Encoder for AttributeValue {
         fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
@@ -407,7 +407,7 @@ mod rustler_impl {
 
     impl<'a> Decoder<'a> for Str {
         fn decode(term: Term<'a>) -> NifResult<Self> {
-            let s: String = term.decode()?;
+            let s: &str = term.decode()?;
             Ok(Str::new(s))
         }
     }
