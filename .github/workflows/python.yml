@@ -16,7 +16,7 @@ on:
     paths:
       - 'python-sdk/**'
       - 'eppo_core/**'
-      - 'sdk-test-data/**'
+      - 'sdk-test-data'
       - 'mock-server/**'
       - 'package-lock.json'
       - 'package.json'
@@ -26,7 +26,7 @@ on:
     paths:
       - 'python-sdk/**'
       - 'eppo_core/**'
-      - 'sdk-test-data/**'
+      - 'sdk-test-data'
       - 'mock-server/**'
       - 'package-lock.json'
       - 'package.json'
