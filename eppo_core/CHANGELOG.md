@@ -1,5 +1,17 @@
 # eppo_core
 
+## 9.1.0
+
+### Minor Changes
+
+- [#208](https://github.com/Eppo-exp/eppo-multiplatform/pull/208) [`f236e42`](https://github.com/Eppo-exp/eppo-multiplatform/commit/f236e424c01c162fe9a1c01210cb71928b9fab97) Thanks [@schmit](https://github.com/schmit)! - Add rustler (Elixir) `Encoder`/`Decoder` support for core types
+
+### Patch Changes
+
+- [#94](https://github.com/Eppo-exp/eppo-multiplatform/pull/94) [`30a0062`](https://github.com/Eppo-exp/eppo-multiplatform/commit/30a0062169f030edb6c7b6280850af7c618aae65) Thanks [@dependabot](https://github.com/apps/dependabot)! - Update magnus from 0.6.4 to 0.7.1
+
+- [#94](https://github.com/Eppo-exp/eppo-multiplatform/pull/94) [`30a0062`](https://github.com/Eppo-exp/eppo-multiplatform/commit/30a0062169f030edb6c7b6280850af7c618aae65) Thanks [@dependabot](https://github.com/apps/dependabot)! - Update serde_magnus from 0.8.1 to 0.9.0
+
 ## 9.0.0
 
 ### Major Changes

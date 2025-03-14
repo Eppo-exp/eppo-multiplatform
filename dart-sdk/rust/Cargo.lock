@@ -629,6 +629,8 @@ dependencies = [
 [[package]]
 name = "eppo_core"
 version = "9.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee2039d401f5024160e81c990cd101cadd3a030d0829df4afaf1f143a4a330f6"
 dependencies = [
  "base64",
  "chrono",
