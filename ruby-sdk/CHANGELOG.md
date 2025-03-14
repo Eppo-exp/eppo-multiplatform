@@ -1,5 +1,15 @@
 # ruby-sdk
 
+## 3.5.1
+
+### Patch Changes
+
+- [#94](https://github.com/Eppo-exp/eppo-multiplatform/pull/94) [`30a0062`](https://github.com/Eppo-exp/eppo-multiplatform/commit/30a0062169f030edb6c7b6280850af7c618aae65) Thanks [@dependabot](https://github.com/apps/dependabot)! - Update magnus from 0.6.4 to 0.7.1
+
+- [#94](https://github.com/Eppo-exp/eppo-multiplatform/pull/94) [`30a0062`](https://github.com/Eppo-exp/eppo-multiplatform/commit/30a0062169f030edb6c7b6280850af7c618aae65) Thanks [@dependabot](https://github.com/apps/dependabot)! - Update serde_magnus from 0.8.1 to 0.9.0
+
+- [#223](https://github.com/Eppo-exp/eppo-multiplatform/pull/223) [`9504e92`](https://github.com/Eppo-exp/eppo-multiplatform/commit/9504e928c37f82147e65fe25aab558cad3bbac2a) Thanks [@dependabot](https://github.com/apps/dependabot)! - chore(deps): bump rb_sys from 0.9.110 to 0.9.111
+
 ## 3.5.0
 
 ### Minor Changes
