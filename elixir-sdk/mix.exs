@@ -7,6 +7,8 @@ defmodule EppoSdk.MixProject do
       version: "0.1.0",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
+      description: "Elixir SDK for Eppo's feature flagging and experimentation platform",
+      package: package(),
       deps: deps(),
 
       # Docs
@@ -15,8 +17,8 @@ defmodule EppoSdk.MixProject do
       homepage_url: "http://www.geteppo.com",
       docs: [
         # The main page in the docs
-        main: "EppoSdk",
-        extras: ["README.md"]
+        main: "readme",
+        extras: ["README.md", "../LICENSE"]
       ]
     ]
   end
@@ -36,6 +38,18 @@ defmodule EppoSdk.MixProject do
       {:rustler, "~> 0.30.0"},
       {:jason, "~> 1.4.4"},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false}
+    ]
+  end
+
+  defp package do
+    [
+      name: "eppo_sdk",
+      licenses: ["MIT"],
+      links: %{
+        "GitHub" => "https://github.com/Eppo-exp/eppo-multiplatform/tree/main/elixir-sdk",
+        "Eppo" => "https://www.geteppo.com",
+        "Documentation" => "https://docs.geteppo.com/sdks/server-sdks/"
+      }
     ]
   end
 end
