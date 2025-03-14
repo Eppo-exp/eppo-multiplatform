@@ -2,4 +2,4 @@
 "dart-sdk": patch
 ---
 
-Web artifacts for Dart SDK are not built in release mode, which reduces the size of wasm file from 12M down to 2M.
+Web artifacts for Dart SDK are now built in release mode, which reduces the size of wasm file from 12M down to 2M.
