@@ -2,4 +2,4 @@
 "eppo_core": minor
 ---
 
-Adds elixir support for VariationType
+Add rustler (Elixir) `Encoder`/`Decoder` support for core types
