@@ -8,9 +8,7 @@ def init_client_for(test_name)
   else
     config = EppoClient::Config.new("test-api-key", base_url: "http://127.0.0.1:8378/#{test_name}/api")
     EppoClient::Client.instance.init(config)
-
-    # Sleep to allow the client to fetch config
-    sleep(0.050)
+    EppoClient::Client.instance.wait_for_initialization()
   end
 end
 

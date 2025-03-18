@@ -238,6 +238,33 @@ impl Client {
         serde_magnus::serialize(&result)
     }
 
+    pub fn wait_for_initialization(&self, timeout_secs: f64) {
+        log::info!(target: "eppo", "waiting for initialization");
+        let thread = self.background_thread.borrow();
+        let Some(thread) = thread.as_ref() else {
+            log::warn!(target: "eppo", "failed to wait for initialization: background thread is not running");
+            return;
+        };
+        let Some(poller) = &self.configuration_poller else {
+            log::warn!(target: "eppo", "failed to wait for initialization: configuration poller has not been started");
+            return;
+        };
+
+        let _ = thread
+            .runtime()
+            .async_runtime
+            .block_on(async {
+                tokio::time::timeout(
+                    Duration::from_secs_f64(timeout_secs),
+                    poller.wait_for_configuration(),
+                )
+                .await
+            })
+            .inspect_err(|err| {
+                log::warn!(target: "eppo", "failed to wait for initialization: {err:?}");
+            });
+    }
+
     pub fn get_configuration(&self) -> Option<Configuration> {
         self.configuration_store
             .get_configuration()
