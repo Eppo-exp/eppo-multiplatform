@@ -17,9 +17,10 @@ defmodule TestHelper do
 
     start_supervised({EppoSdk.Server, config})
 
-    # Sleep to allow client to fetch config
+    # Wait for initialization to complete
     unless test_name == "offline" do
-      :timer.sleep(100)
+      client = EppoSdk.Server.get_instance()
+      EppoSdk.Client.wait_for_initialization(client)
     end
   end
 end
