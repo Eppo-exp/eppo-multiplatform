@@ -31,6 +31,8 @@ defmodule EppoSdk.Core do
         _expected_type
       ),
       do: error()
+      
+  def wait_for_initialization(_client, _timeout_secs \\ 1.0), do: error()
 
   # Helper function for NIF not loaded errors
   defp error, do: :erlang.nif_error(:nif_not_loaded)

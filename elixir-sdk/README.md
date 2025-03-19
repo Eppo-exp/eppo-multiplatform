@@ -95,7 +95,8 @@ config = %EppoSdk.Client.Config{api_key: "your-api-key", assignment_logger: Your
 {:ok, _pid} = EppoSdk.Server.start_link(config)
 
 # When testing locally, wait for the client to initialize
-Process.sleep(1000)
+client = EppoSdk.Server.get_instance()
+EppoSdk.Client.wait_for_initialization(client)
 
 # Then use as normal
 client = EppoSdk.Server.get_instance()
@@ -106,7 +107,7 @@ Or you can use the client directly:
 {:ok, client} = EppoSdk.Client.new(config)
 
 # When testing locally, wait for the client to initialize
-Process.sleep(1000)
+EppoSdk.Client.wait_for_initialization(client)
 ```
 
 ## Development

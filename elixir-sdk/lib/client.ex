@@ -115,6 +115,26 @@ defmodule EppoSdk.Client do
         {:error, Exception.message(e)}
     end
   end
+  
+  @doc """
+  Waits for client to fetch configuration and get ready to serve
+  assignments.
+
+  This method blocks the current thread until configuration is
+  successfully fetched or `timeout_seconds` passes.
+
+  ## Parameters
+    - timeout_seconds: Timeout in seconds (default: 1.0)
+
+  ## Usage
+  ```elixir
+  EppoSdk.Client.wait_for_initialization(client, 2.0)
+  ```
+  """
+  def wait_for_initialization(%__MODULE__{} = client, timeout_seconds \\ 1.0) do
+    EppoSdk.Core.wait_for_initialization(client.client_ref, timeout_seconds)
+    :ok
+  end
 
   @doc """
   Assigns a string variant based on the provided flag configuration.

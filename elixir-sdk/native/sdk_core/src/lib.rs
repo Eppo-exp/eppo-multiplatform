@@ -7,7 +7,7 @@ use crate::conversion::{convert_attributes, convert_value_term, convert_event_te
 use crate::assignment::{get_assignment_inner, get_assignment_details_inner};
 use eppo_core::{
     configuration_fetcher::{ConfigurationFetcher, ConfigurationFetcherConfig},
-    configuration_poller::{start_configuration_poller, ConfigurationPollerConfig},
+    configuration_poller::{start_configuration_poller, ConfigurationPollerConfig, ConfigurationPoller},
     configuration_store::ConfigurationStore,
     eval::{Evaluator, EvaluatorConfig},
     ufc::VariationType,
@@ -15,6 +15,7 @@ use eppo_core::{
     background::BackgroundThread,
 };
 use std::panic::{RefUnwindSafe, UnwindSafe};
+use std::time::Duration;
 
 use rustler::{Encoder, Env, NifResult, ResourceArc, Term};
 use rustler::types::atom;
@@ -27,8 +28,9 @@ const SDK_METADATA: SdkMetadata = SdkMetadata {
 };
 
 pub struct EppoClient {
-    pub evaluator: Evaluator,
-    pub background_thread: BackgroundThread,
+    evaluator: Evaluator,
+    background_thread: BackgroundThread,
+    configuration_poller: ConfigurationPoller,
 }
 
 #[rustler::resource_impl]
@@ -62,7 +64,7 @@ fn init(config: Config) -> NifResult<ResourceArc<EppoClient>> {
         ))
         .with_jitter(std::time::Duration::from_secs(config.poll_jitter_seconds));
 
-    let _poller = start_configuration_poller(
+    let poller = start_configuration_poller(
         background_thread.runtime(),
         fetcher,
         store.clone(),
@@ -78,6 +80,7 @@ fn init(config: Config) -> NifResult<ResourceArc<EppoClient>> {
     let client = ResourceArc::new(EppoClient {
         evaluator,
         background_thread,
+        configuration_poller: poller,
     });
 
     Ok(client)
@@ -149,6 +152,31 @@ fn get_assignment_details<'a>(
         }
         Err(err) => Err(rustler::Error::Term(Box::new(err))),
     }
+}
+
+#[rustler::nif]
+fn wait_for_initialization(
+    client: ResourceArc<EppoClient>,
+    timeout_secs: f64,
+) -> NifResult<()> {
+    log::info!(target: "eppo", "waiting for initialization");
+    
+    let _ = client
+        .background_thread
+        .runtime()
+        .async_runtime
+        .block_on(async {
+                tokio::time::timeout(
+                    Duration::from_secs_f64(timeout_secs),
+                    client.configuration_poller.wait_for_configuration(),
+                )
+                .await
+            })
+            .inspect_err(|err| {
+                log::warn!(target: "eppo", "failed to wait for initialization: {:?}", err);
+            });
+    
+    Ok(())
 }
 
 rustler::init!("Elixir.EppoSdk.Core"); 
