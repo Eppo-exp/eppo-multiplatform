@@ -28,9 +28,9 @@ const SDK_METADATA: SdkMetadata = SdkMetadata {
 };
 
 pub struct EppoClient {
-    pub evaluator: Evaluator,
-    pub background_thread: BackgroundThread,
-    pub configuration_poller: ConfigurationPoller,
+    evaluator: Evaluator,
+    background_thread: BackgroundThread,
+    configuration_poller: ConfigurationPoller,
 }
 
 #[rustler::resource_impl]
