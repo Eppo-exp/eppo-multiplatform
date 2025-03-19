@@ -30,7 +30,7 @@ const SDK_METADATA: SdkMetadata = SdkMetadata {
 pub struct EppoClient {
     pub evaluator: Evaluator,
     pub background_thread: BackgroundThread,
-    pub configuration_poller: Option<ConfigurationPoller>,
+    pub configuration_poller: ConfigurationPoller,
 }
 
 #[rustler::resource_impl]
@@ -80,7 +80,7 @@ fn init(config: Config) -> NifResult<ResourceArc<EppoClient>> {
     let client = ResourceArc::new(EppoClient {
         evaluator,
         background_thread,
-        configuration_poller: Some(poller),
+        configuration_poller: poller,
     });
 
     Ok(client)
@@ -161,24 +161,20 @@ fn wait_for_initialization(
 ) -> NifResult<()> {
     log::info!(target: "eppo", "waiting for initialization");
     
-    if let Some(poller) = &client.configuration_poller {
-        let _ = client
-            .background_thread
-            .runtime()
-            .async_runtime
-            .block_on(async {
+    let _ = client
+        .background_thread
+        .runtime()
+        .async_runtime
+        .block_on(async {
                 tokio::time::timeout(
                     Duration::from_secs_f64(timeout_secs),
-                    poller.wait_for_configuration(),
+                    client.configuration_poller.wait_for_configuration(),
                 )
                 .await
             })
             .inspect_err(|err| {
                 log::warn!(target: "eppo", "failed to wait for initialization: {:?}", err);
             });
-    } else {
-        log::warn!(target: "eppo", "failed to wait for initialization: configuration poller has not been started");
-    }
     
     Ok(())
 }
