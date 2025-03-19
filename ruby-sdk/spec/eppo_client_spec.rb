@@ -7,6 +7,46 @@ RSpec.describe EppoClient do
     expect(EppoClient::VERSION).not_to be nil
   end
 
+  describe "wait_for_initialization()" do
+    before :each do
+      EppoClient::Client.instance.init(EppoClient::Config.new("test-api-key", base_url: "http://127.0.0.1:8378/ufc/api"))
+      @client = EppoClient::Client.instance
+    end
+
+    it "has default timeout" do
+      @client.wait_for_initialization()
+
+      expect(@client.configuration).not_to be_nil
+    end
+
+    it "allows 0 timeout" do
+      @client.wait_for_initialization(0)
+
+      # Local configuration fetching is so fast that sometimes it
+      # succeeds before we call wait_for_initialization(). Therefore,
+      # we treat absense of errors as a sign of success here.
+    end
+
+    it "allows fractional timeout" do
+      @client.wait_for_initialization(0.5)
+
+      expect(@client.configuration).not_to be_nil
+    end
+
+    it "timeouts with bad URL" do
+      EppoClient::Client.instance.init(EppoClient::Config.new("test-api-key", base_url: "http://127.0.0.1:8378/undefined/api"))
+      @client = EppoClient::Client.instance
+
+      start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      @client.wait_for_initialization(0.2)
+      stop = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+      expect(@client.configuration).to be_nil
+      # shall wait at least for timeout
+      expect(stop - start).to be >= 0.2
+    end
+  end
+
   describe "configuration()" do
     it "allows getting configuration" do
       init_client_for "ufc"

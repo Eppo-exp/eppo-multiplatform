@@ -31,6 +31,20 @@ module EppoClient
       @core = EppoClient::Core::Client.new(config)
     end
 
+    ##
+    # Waits for client to fetch configuration and get ready to serve
+    # assignments.
+    #
+    # This method blocks the current thread until configuration is
+    # successfully fetched or +timeout+ seconds passed.
+    #
+    # Note: this method returns immediately if configuration poller
+    # has been disabled.
+    def wait_for_initialization(timeout=1)
+      return unless @core
+      @core.wait_for_initialization(timeout)
+    end
+
     def configuration
       @core.configuration
     end
