@@ -1,5 +1,11 @@
 # eppo_core
 
+## 9.1.1
+
+### Patch Changes
+
+- [#245](https://github.com/Eppo-exp/eppo-multiplatform/pull/245) [`2ba0c55`](https://github.com/Eppo-exp/eppo-multiplatform/commit/2ba0c55d6281f2a716f7b8e49c3427397741cf8d) Thanks [@dependabot](https://github.com/apps/dependabot)! - chore(deps): update serde-pyobject requirement from 0.5.0 to 0.6.0
+
 ## 9.1.0
 
 ### Minor Changes
