@@ -1,5 +1,11 @@
 # ruby-sdk
 
+## 3.6.0
+
+### Minor Changes
+
+- [#247](https://github.com/Eppo-exp/eppo-multiplatform/pull/247) [`2e3bf09`](https://github.com/Eppo-exp/eppo-multiplatform/commit/2e3bf093d23a2b63f55f3e5336662489ed689a09) Thanks [@rasendubi](https://github.com/rasendubi)! - Add `wait_for_initialization()` method.
+
 ## 3.5.1
 
 ### Patch Changes
