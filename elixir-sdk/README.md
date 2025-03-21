@@ -121,7 +121,7 @@ When developing the Elixir SDK alongside eppo_core, you can configure Cargo to u
    cp .cargo/config.toml.template .cargo/config.toml
    ```
 
-2. This will configure Cargo to use the local eppo_core package located at `../../eppo_core` relative to the elixir-sdk directory.
+2. This will configure Cargo to use the local eppo_core package located at `../eppo_core` relative to the elixir-sdk directory.
 
 3. Compile the SDK to use your local eppo_core version:
    ```bash
