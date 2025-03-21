@@ -110,9 +110,34 @@ Or you can use the client directly:
 EppoSdk.Client.wait_for_initialization(client)
 ```
 
-## Development
+
+
+### Local Development with eppo_core
+
+When developing the Elixir SDK alongside eppo_core, you can configure Cargo to use the local eppo_core package instead of the published version:
+
+1. Copy the template configuration file:
+   ```bash
+   cp .cargo/config.toml.template .cargo/config.toml
+   ```
+
+2. This will configure Cargo to use the local eppo_core package located at `../../eppo_core` relative to the elixir-sdk directory.
+
+3. Compile the SDK to use your local eppo_core version:
+   ```bash
+   mix compile
+   ```
+
+4. Any changes to the local eppo_core package will now be reflected when you recompile the Elixir SDK.
+
+For publishing releases, make sure to:
+1. Test with the published eppo_core version (remove the .cargo/config.toml)
+2. Ensure the version in native/sdk_core/Cargo.toml matches the published eppo_core version
+
+### Testing
 
 To run the tests:
 ```bash
 mix test
 ```
+

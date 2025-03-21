@@ -1,0 +1,11 @@
+# Copy this file to .cargo/config.toml (without the .template extension)
+# to use the local eppo_core package during development.
+
+[target.'cfg(target_os = "macos")']
+rustflags = [
+    "-C", "link-arg=-undefined",
+    "-C", "link-arg=dynamic_lookup",
+]
+
+[patch.crates-io]
+eppo_core = { path = "../../eppo_core" } 
