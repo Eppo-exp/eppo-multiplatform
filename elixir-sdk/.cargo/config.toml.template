@@ -8,4 +8,4 @@ rustflags = [
 ]
 
 [patch.crates-io]
-eppo_core = { path = "../../eppo_core" } 
+eppo_core = { path = "../eppo_core" } 
