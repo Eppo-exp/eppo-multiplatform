@@ -1,5 +1,11 @@
 # elixir-sdk
 
+## 0.2.2
+
+### Patch Changes
+
+- [#257](https://github.com/Eppo-exp/eppo-multiplatform/pull/257) [`d805868`](https://github.com/Eppo-exp/eppo-multiplatform/commit/d8058688cdbf3d273d688d8993ee377aab53e267) Thanks [@schmit](https://github.com/schmit)! - Add native/core_sdk to package.files
+
 ## 0.2.1
 
 ### Patch Changes
