@@ -27,7 +27,3 @@ eppo_sdk-*.tar
 
 # Rust binary artifacts
 /target/
-
-# .cargo/config.toml should be used for testing with local version of
-# eppo_core but it should not be committed.
-/.cargo/config.toml
