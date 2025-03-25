@@ -1,5 +1,11 @@
 # elixir-sdk
 
+## 0.2.3
+
+### Patch Changes
+
+- [#259](https://github.com/Eppo-exp/eppo-multiplatform/pull/259) [`d316fd3`](https://github.com/Eppo-exp/eppo-multiplatform/commit/d316fd34e1b4ebf4d058ede3c76b853cb7222799) Thanks [@schmit](https://github.com/schmit)! - Fix cargo configuration
+
 ## 0.2.2
 
 ### Patch Changes
