@@ -4,7 +4,7 @@ defmodule EppoSdk.MixProject do
   def project do
     [
       app: :eppo_sdk,
-      version: "0.2.2",
+      version: "0.2.3",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
       description: "Elixir SDK for Eppo's feature flagging and experimentation platform",
