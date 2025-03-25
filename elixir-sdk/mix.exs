@@ -50,7 +50,7 @@ defmodule EppoSdk.MixProject do
         "Eppo" => "https://www.geteppo.com",
         "Documentation" => "https://docs.geteppo.com/sdks/server-sdks/"
       },
-      files: ~w(lib native/sdk_core mix.exs README.md LICENSE)
+      files: ~w(lib native/sdk_core mix.exs README.md)
     ]
   end
 end

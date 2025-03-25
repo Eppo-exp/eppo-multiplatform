@@ -7,4 +7,4 @@ rustflags = [
 # Copy this file to .cargo/config.toml (without the .template extension)
 # to use the local eppo_core package during development.
 [patch.crates-io]
-eppo_core = { path = "../eppo_core" } 
+eppo_core = { path = "../../../eppo_core" } 

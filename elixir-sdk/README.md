@@ -45,7 +45,7 @@ defmodule YourApp.Application do
 
     children = [
       # ... other children ...
-      {Eppo.Server, config}
+      {EppoSdk.Server, config}
     ]
 
     opts = [strategy: :one_for_one, name: YourApp.Supervisor]
@@ -56,11 +56,11 @@ end
 
 ### Implementing an Assignment Logger
 
-The assignment logger is used to track experiment assignments for analytics. Implement the `Eppo.AssignmentLogger` behaviour in your application:
+The assignment logger is used to track experiment assignments for analytics. Implement the `EppoSdk.AssignmentLogger` behaviour in your application:
 
 ```elixir
 defmodule YourApp.AssignmentLogger do
-  @behaviour Eppo.AssignmentLogger
+  @behaviour EppoSdk.AssignmentLogger
 
   @impl true
   def log_assignment(event) do
@@ -75,7 +75,7 @@ Once the server is started, you can access the client instance anywhere in your 
 
 ```elixir
 # Get the client instance
-client = Eppo.Server.get_instance()
+client = EppoSdk.Server.get_instance()
 
 # Use the client to evaluate feature flags
 assignment = EppoSdk.Client.get_string_assignment(
