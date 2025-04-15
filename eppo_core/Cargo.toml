@@ -46,7 +46,7 @@ uuid = { version = "1.11.0", features = ["v4", "serde"], optional = true }
 exponential-backoff = { version = "2.0.0", optional = true }
 
 # pyo3 dependencies
-pyo3 = { version = "0.23.0", optional = true, default-features = false }
+pyo3 = { version = "0.24.1", optional = true, default-features = false }
 serde-pyobject = { version = "0.6.0", optional = true }
 
 # magnus dependencies
