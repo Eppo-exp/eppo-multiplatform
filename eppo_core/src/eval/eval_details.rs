@@ -282,7 +282,7 @@ mod magnus_impl {
             let _ = hash.aset(handle.sym_new("variation"), self.variation);
             let _ = hash.aset(handle.sym_new("action"), self.action);
             let _ = hash.aset(
-                handle.sym_new("evaluation_details"),
+                handle.sym_new("evaluationDetails"),
                 self.evaluation_details.as_ref(),
             );
             hash.as_value()

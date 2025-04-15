@@ -6,6 +6,9 @@
 
 - [#247](https://github.com/Eppo-exp/eppo-multiplatform/pull/247) [`2e3bf09`](https://github.com/Eppo-exp/eppo-multiplatform/commit/2e3bf093d23a2b63f55f3e5336662489ed689a09) Thanks [@rasendubi](https://github.com/rasendubi)! - Add `wait_for_initialization()` method.
 
+### Known Issues
+- Starting with v3.4.0, in result of evaluation details methods, the name of `evaluationDetails` key is spelled as `evaluation_details`. This is fixed in 3.7.0.
+
 ## 3.5.1
 
 ### Patch Changes
@@ -16,11 +19,17 @@
 
 - [#223](https://github.com/Eppo-exp/eppo-multiplatform/pull/223) [`9504e92`](https://github.com/Eppo-exp/eppo-multiplatform/commit/9504e928c37f82147e65fe25aab558cad3bbac2a) Thanks [@dependabot](https://github.com/apps/dependabot)! - chore(deps): bump rb_sys from 0.9.110 to 0.9.111
 
+### Known Issues
+- Starting with v3.4.0, in result of evaluation details methods, the name of `evaluationDetails` key is spelled as `evaluation_details`. This is fixed in 3.7.0.
+
 ## 3.5.0
 
 ### Minor Changes
 
 - [#197](https://github.com/Eppo-exp/eppo-multiplatform/pull/197) [`a4da91f`](https://github.com/Eppo-exp/eppo-multiplatform/commit/a4da91f1a962708924063f3f076d3064441c2f76) Thanks [@rasendubi](https://github.com/rasendubi)! - Change TLS implementation from openssl to rustls.
+
+### Known Issues
+- Starting with v3.4.0, in result of evaluation details methods, the name of `evaluationDetails` key is spelled as `evaluation_details`. This is fixed in 3.7.0.
 
 ## 3.4.6
 
@@ -32,17 +41,26 @@
 
 - [#213](https://github.com/Eppo-exp/eppo-multiplatform/pull/213) [`9ea7865`](https://github.com/Eppo-exp/eppo-multiplatform/commit/9ea78657dbbfe8fb733dd67fb71357872db9f8b2) Thanks [@rasendubi](https://github.com/rasendubi)! - Bump Minimum Supported Rust Version (MSRV) to 1.80.0.
 
+### Known Issues
+- Starting with v3.4.0, in result of evaluation details methods, the name of `evaluationDetails` key is spelled as `evaluation_details`. This is fixed in 3.7.0.
+
 ## 3.4.5
 
 ### Patch Changes
 
 - [#201](https://github.com/Eppo-exp/eppo-multiplatform/pull/201) [`1d310c7`](https://github.com/Eppo-exp/eppo-multiplatform/commit/1d310c7019dde1aa5a965e064eab15187b064d96) Thanks [@felipecsl](https://github.com/felipecsl)! - [Unstable] Event Ingestion: Fix JSON serialization of Event timestamp field
 
+### Known Issues
+- Starting with v3.4.0, in result of evaluation details methods, the name of `evaluationDetails` key is spelled as `evaluation_details`. This is fixed in 3.7.0.
+
 ## 3.4.4
 
 ### Patch Changes
 
 - [#198](https://github.com/Eppo-exp/eppo-multiplatform/pull/198) [`9c6990e`](https://github.com/Eppo-exp/eppo-multiplatform/commit/9c6990ec77dc3ffe8f1b6384f92fcc24db94916f) Thanks [@felipecsl](https://github.com/felipecsl)! - [unstable] Event Ingestion: Fix JSON serialization of Event type field
+
+### Known Issues
+- Starting with v3.4.0, in result of evaluation details methods, the name of `evaluationDetails` key is spelled as `evaluation_details`. This is fixed in 3.7.0.
 
 ## 3.4.3
 
@@ -56,6 +74,9 @@
 
   This changes API of the core but should be invisible for SDKs. The only noticeable difference is that client should be more responsive to graceful shutdown requests.
 
+### Known Issues
+- Starting with v3.4.0, in result of evaluation details methods, the name of `evaluationDetails` key is spelled as `evaluation_details`. This is fixed in 3.7.0.
+
 ## 3.4.2
 
 ### Patch Changes
@@ -63,12 +84,18 @@
 - Updated dependencies [[`aa0ca89`](https://github.com/Eppo-exp/eppo-multiplatform/commit/aa0ca8912bab269613d3da25c06f81b1f19ffb36)]:
   - eppo_core@7.0.2
 
+### Known Issues
+- Starting with v3.4.0, in result of evaluation details methods, the name of `evaluationDetails` key is spelled as `evaluation_details`. This is fixed in 3.7.0.
+
 ## 3.4.1
 
 ### Patch Changes
 
 - Updated dependencies [[`82d05ae`](https://github.com/Eppo-exp/eppo-multiplatform/commit/82d05aea0263639be56ba5667500f6940b4832ab)]:
   - eppo_core@7.0.1
+
+### Known Issues
+- Starting with v3.4.0, in result of evaluation details methods, the name of `evaluationDetails` key is spelled as `evaluation_details`. This is fixed in 3.7.0.
 
 ## 3.4.0
 
@@ -115,3 +142,6 @@
 
 - Updated dependencies [[`3a18f95`](https://github.com/Eppo-exp/eppo-multiplatform/commit/3a18f95f0aa25030aeba6676b76e20862a5fcead)]:
   - eppo_core@7.0.0
+
+### Known Issues
+- Starting with v3.4.0, in result of evaluation details methods, the name of `evaluationDetails` key is spelled as `evaluation_details`. This is fixed in 3.7.0.

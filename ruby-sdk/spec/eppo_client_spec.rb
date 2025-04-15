@@ -153,6 +153,10 @@ RSpec.describe EppoClient do
               end
 
             expect(result[:variation]).to eq(subject["assignment"])
+            expect(result[:action]).to be_nil
+
+            expect(result[:evaluationDetails][:flagKey]).to eq(flag_key)
+            expect(result[:evaluationDetails][:subjectKey]).to eq(subject_key)
           end
         end
       end

@@ -452,7 +452,7 @@ impl EppoClient {
         config.is_some()
     }
 
-    /// Wait for configuration to get fetches.
+    /// Wait for configuration to get fetched.
     ///
     /// This method releases GIL, so other Python thread can make progress.
     fn wait_for_initialization(&self, py: Python) -> PyResult<()> {
