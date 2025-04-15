@@ -1,5 +1,15 @@
 # eppo_core
 
+## 9.2.0
+
+### Minor Changes
+
+- [#268](https://github.com/Eppo-exp/eppo-multiplatform/pull/268) [`2ec98c6`](https://github.com/Eppo-exp/eppo-multiplatform/commit/2ec98c6f006d9e86c186fc99a903188d9837d653) Thanks [@rasendubi](https://github.com/rasendubi)! - Fix casing of `evaluationDetails`.
+
+  In Ruby SDK v3.4.0, the name of `evaluationDetails` was inadvertently changed to `evaluation_details`. This was a bug that caused backward incompatibility in a minor release.
+
+  This release fixes the casing back to `evaluationDetails`.
+
 ## 9.1.1
 
 ### Patch Changes
