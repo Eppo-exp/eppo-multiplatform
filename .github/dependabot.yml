@@ -11,10 +11,14 @@ updates:
       interval: "daily"
 
   - package-ecosystem: cargo
-    directory: "/"
+    directories:
+      - "/eppo_core"
+      - "/rust-sdk"
+      - "/python-sdk"
+      - "/ruby-sdk"
+      - "/elixir-sdk"
     schedule:
       interval: "weekly"
-
 
   - package-ecosystem: pip
     directory: "/python-sdk"
