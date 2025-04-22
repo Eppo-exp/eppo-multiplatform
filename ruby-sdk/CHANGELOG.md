@@ -1,5 +1,11 @@
 # ruby-sdk
 
+## 3.7.1
+
+### Patch Changes
+
+- [#274](https://github.com/Eppo-exp/eppo-multiplatform/pull/274) [`161fb42`](https://github.com/Eppo-exp/eppo-multiplatform/commit/161fb422301bd59c57d4a725a661d3b820c6c5ee) Thanks [@rasendubi](https://github.com/rasendubi)! - Bump rb_sys to support Ruby 3.4. Also adds prebuilt libraries for Ruby 3.4.
+
 ## 3.7.0
 
 ### Minor Changes

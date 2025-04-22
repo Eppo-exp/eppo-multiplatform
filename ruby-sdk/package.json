@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "ruby-sdk",
-  "version": "3.7.0",
+  "version": "3.7.1",
   "dependencies": {},
   "devDependencies": {},
   "scripts": {
