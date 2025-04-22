@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - ruby-test
     paths:
       - 'ruby-sdk/**'
       - 'eppo_core/**'
