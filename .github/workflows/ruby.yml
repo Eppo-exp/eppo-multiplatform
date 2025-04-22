@@ -1,4 +1,3 @@
----
 name: Ruby SDK
 
 on:
@@ -12,6 +11,7 @@ on:
       - 'mock-server/**'
       - 'package-lock.json'
       - 'package.json'
+      - '.github/workflows/ruby.yml'
   pull_request:
     paths:
       - 'ruby-sdk/**'
@@ -20,6 +20,7 @@ on:
       - 'mock-server/**'
       - 'package-lock.json'
       - 'package.json'
+      - '.github/workflows/ruby.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -32,7 +33,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu, macos]
-        ruby: ["3.0", "3.1", "3.2", "3.3"]
+        ruby:
+          - "3.0"
+          - "3.1"
+          - "3.2"
+          - "3.3"
+          - "3.4"
 
     steps:
       - uses: actions/checkout@v4
