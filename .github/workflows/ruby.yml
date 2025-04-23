@@ -33,6 +33,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu, macos]
+        # NOTE: these versions are only affecting CI check for
+        # PRs. For prebuilt libraries in release, see publish.yml.
         ruby:
           - "3.0"
           - "3.1"
