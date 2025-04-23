@@ -1,5 +1,11 @@
 # ruby-sdk
 
+## 3.7.2
+
+### Patch Changes
+
+- [#287](https://github.com/Eppo-exp/eppo-multiplatform/pull/287) [`6271dd9`](https://github.com/Eppo-exp/eppo-multiplatform/commit/6271dd98731ea37bd092967729ed2c14b1fa8589) Thanks [@rasendubi](https://github.com/rasendubi)! - Add prebuilt libraries for Ruby 3.4.
+
 ## 3.7.1
 
 ### Patch Changes
