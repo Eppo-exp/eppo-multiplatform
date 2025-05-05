@@ -148,7 +148,9 @@ async fn configuration_poller(
     };
 
     loop {
-        match fetcher.fetch_configuration().await {
+        match fetcher.fetch_configuration().await.inspect_err(|err| {
+            log::warn!("Failed to fetch configuration: {err:?}");
+        }) {
             Ok(configuration) => {
                 store.set_configuration(Arc::new(configuration));
                 update_status(Ok(()));
