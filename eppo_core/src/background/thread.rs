@@ -1,10 +1,12 @@
+use std::sync::Mutex;
+
 use super::runtime::BackgroundRuntime;
 
 /// An owning handle to a background thread running tokio runtime.
 ///
 /// When the handle is dropped, the tokio runtime is commanded to exit and the thread shuts down.
 pub struct BackgroundThread {
-    join_handle: std::thread::JoinHandle<()>,
+    join_handle: Mutex<Option<std::thread::JoinHandle<()>>>,
     runtime: BackgroundRuntime<tokio::runtime::Handle>,
 }
 
@@ -23,11 +25,13 @@ impl BackgroundThread {
         let join_handle = std::thread::Builder::new()
             .name("eppo-background".to_owned())
             .spawn(move || {
+                log::info!(target: "eppo", "BackgroundThread: started");
                 runtime.block_on(wait);
+                log::info!(target: "eppo", "BackgroundThread: exiting");
             })?;
 
         Ok(BackgroundThread {
-            join_handle,
+            join_handle: Mutex::new(Some(join_handle)),
             runtime: background_runtime,
         })
     }
@@ -38,16 +42,32 @@ impl BackgroundThread {
 
     /// Command the associated background thread to exit (without waiting for it to complete).
     ///
-    /// Prefer `graceful_shutdown()` if you have the time to wait.
+    /// Prefer `shutdown()` if you have the time to wait.
     pub fn kill(&self) {
         self.runtime.stop();
     }
 
     /// Command background activities to stop and wait for thread to terminate.
-    pub fn graceful_shutdown(self) {
+    pub fn shutdown(&self) {
         self.runtime.stop();
 
-        let _ = self.join_handle.join();
+        let join_handle = {
+            // scope to keep mutex lock short
+            let Ok(mut join_handle) = self.join_handle.lock() else {
+                return;
+            };
+            join_handle.take()
+        };
+
+        if let Some(join_handle) = join_handle {
+            let _ = join_handle.join();
+        }
+    }
+
+    /// Command background activities to stop and wait for thread to terminate.
+    #[deprecated]
+    pub fn graceful_shutdown(self) {
+        self.shutdown();
     }
 }
 
@@ -69,6 +89,6 @@ mod tests {
 
         assert_eq!(received, true);
 
-        background_thread.graceful_shutdown();
+        background_thread.shutdown();
     }
 }
