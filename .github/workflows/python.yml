@@ -20,6 +20,7 @@ on:
       - 'mock-server/**'
       - 'package-lock.json'
       - 'package.json'
+      - '.github/workflows/python.yml'
   release:
     types: [published]
   pull_request:
@@ -30,6 +31,7 @@ on:
       - 'mock-server/**'
       - 'package-lock.json'
       - 'package.json'
+      - '.github/workflows/python.yml'
   workflow_dispatch:
 
 permissions:
@@ -197,9 +199,12 @@ jobs:
     strategy:
       matrix:
         platform:
-          - runner: windows-latest
+          # Pinning to windows-2022 as start-server-and-test fails on
+          # windows-2025:
+          # https://github.com/bahmutov/start-server-and-test/issues/398
+          - runner: windows-2022
             target: x64
-          - runner: windows-latest
+          - runner: windows-2022
             target: x86
     steps:
       - uses: actions/checkout@v4
