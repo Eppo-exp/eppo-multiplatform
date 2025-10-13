@@ -35,7 +35,7 @@ pub fn init(config: Bound<ClientConfig>) -> PyResult<Py<EppoClient>> {
         std::mem::replace(&mut *instance, Some(client))
     };
     if let Some(existing) = existing {
-        existing.get().shutdown();
+        existing.get().shutdown(py);
         existing.drop_ref(py);
     }
 
