@@ -31,8 +31,10 @@ impl ConfigurationFetcher {
     pub fn new(config: ConfigurationFetcherConfig) -> ConfigurationFetcher {
         let builder = reqwest::Client::builder();
         let client = match builder.build() {
-            Err(e) => { panic!("Reqwest client build failed {:?}", e); }
-            Ok(client) => client
+            Err(e) => {
+                panic!("Reqwest client build failed {:?}", e);
+            }
+            Ok(client) => client,
         };
 
         ConfigurationFetcher {

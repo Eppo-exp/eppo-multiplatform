@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 pub fn main() -> eppo::Result<()> {
     // Configure env_logger to see Eppo SDK logs.
@@ -17,7 +17,7 @@ pub fn main() -> eppo::Result<()> {
 
     // Block waiting for configuration. Until this call returns, the client will return None for all
     // assignments.
-    if let Err(err) = poller.wait_for_configuration() {
+    if let Err(err) = poller.wait_for_configuration_timeout(Duration::from_secs(5)) {
         println!("error requesting configuration: {:?}", err);
     }
 

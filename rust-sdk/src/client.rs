@@ -21,7 +21,8 @@ use eppo_core::{
 ///
 /// Before calling `Client::get_assignment()`, you should start the poller thread by calling
 /// [`Client::start_poller_thread()`], ensuring that the configuration is fetched. It's also
-/// recommended to call [`PollerThread::wait_for_configuration`] before calling `get_assignment()`.
+/// recommended to call [`PollerThread::wait_for_configuration_timeout()`] before calling
+/// `get_assignment()`.
 ///
 /// The reason the poller thread is not started automatically is to allow SDK extension to support
 /// `async` configuration fetching in the future (using async Rust runtimes).
@@ -73,7 +74,7 @@ impl<'a> Client<'a> {
     /// `get_assignment()`. Otherwise, the client will always return `None`.
     ///
     /// It is recommended to wait for the Eppo configuration to get fetched with
-    /// [`PollerThread::wait_for_configuration()`].
+    /// [`PollerThread::wait_for_configuration_timeout()`].
     ///
     /// # Typed versions
     ///
@@ -127,7 +128,7 @@ impl<'a> Client<'a> {
     /// `get_string_assignment()`. Otherwise, the client will always return `None`.
     ///
     /// It is recommended to wait for the Eppo configuration to get fetched with
-    /// [`PollerThread::wait_for_configuration()`].
+    /// [`PollerThread::wait_for_configuration_timeout()`].
     ///
     /// # Examples
     ///
@@ -170,7 +171,7 @@ impl<'a> Client<'a> {
     /// `get_integer_assignment()`. Otherwise, the client will always return `None`.
     ///
     /// It is recommended to wait for the Eppo configuration to get fetched with
-    /// [`PollerThread::wait_for_configuration()`].
+    /// [`PollerThread::wait_for_configuration_timeout()`].
     ///
     /// # Examples
     ///
@@ -213,7 +214,7 @@ impl<'a> Client<'a> {
     /// `get_numeric_assignment()`. Otherwise, the client will always return `None`.
     ///
     /// It is recommended to wait for the Eppo configuration to get fetched with
-    /// [`PollerThread::wait_for_configuration()`].
+    /// [`PollerThread::wait_for_configuration_timeout()`].
     ///
     /// # Examples
     ///
@@ -256,7 +257,7 @@ impl<'a> Client<'a> {
     /// `get_boolean_assignment()`. Otherwise, the client will always return `None`.
     ///
     /// It is recommended to wait for the Eppo configuration to get fetched with
-    /// [`PollerThread::wait_for_configuration()`].
+    /// [`PollerThread::wait_for_configuration_timeout()`].
     ///
     /// # Examples
     ///
@@ -299,7 +300,7 @@ impl<'a> Client<'a> {
     /// `get_json_assignment()`. Otherwise, the client will always return `None`.
     ///
     /// It is recommended to wait for the Eppo configuration to get fetched with
-    /// [`PollerThread::wait_for_configuration()`].
+    /// [`PollerThread::wait_for_configuration_timeout()`].
     ///
     /// # Examples
     ///

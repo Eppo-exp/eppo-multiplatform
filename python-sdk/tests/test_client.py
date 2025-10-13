@@ -24,6 +24,15 @@ def test_wait_for_initialization():
     assert client.is_initialized() == True
 
 
+@pytest.mark.rust_only
+def test_shutdown():
+    client = init("ufc", wait_for_init=False)
+
+    client.shutdown()
+    # safe to call multiple times:
+    client.shutdown()
+
+
 def test_get_flag_keys_none():
     client = init("ufc", wait_for_init=False)
     assert client.get_flag_keys() == set()

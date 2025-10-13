@@ -469,6 +469,23 @@ impl EppoClient {
         }
     }
 
+    /// Shutdown the client and wait for the background thread to exit.
+    ///
+    /// It is recommended to call this method before exiting the program so the background thread
+    /// has a chance to cleanup its resources and avoid getting killed, producing scary (but
+    /// harmless) panic backtrace.
+    pub fn shutdown(&self, py: Python) {
+        log::info!(target: "eppo", "shutting down client");
+        // Release python GIL before we try blocking and waiting for the background thread to
+        // join. This is required because pyo3_log in background thread might attempt acquiring GIL,
+        // which would result in deadlock as GIL is held by the current thread which is waiting for
+        // background thread to exit.
+        py.allow_threads(|| {
+            if let Some(thread) = &self.background_thread {
+                thread.shutdown();
+            }
+        })
+    }
     /// Returns a set of all flag keys that have been initialized.
     /// This can be useful to debug the initialization process.
     ///
@@ -699,18 +716,12 @@ impl EppoClient {
             .call_method1(py, intern!(py, "log_bandit_action"), (event,))?;
         Ok(())
     }
-
-    pub fn shutdown(&self) {
-        if let Some(thread) = &self.background_thread {
-            // Using `.kill()` instead of `.shutdown()` here because we don't need to wait for the
-            // poller thread to exit.
-            thread.kill();
-        }
-    }
 }
 
 impl Drop for EppoClient {
     fn drop(&mut self) {
-        self.shutdown();
+        if let Some(thread) = &self.background_thread {
+            thread.kill();
+        }
     }
 }
