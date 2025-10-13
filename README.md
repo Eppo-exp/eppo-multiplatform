@@ -38,7 +38,6 @@ To release new versions:
      - `rust-sdk@x.y.z`
      - `python-sdk@x.y.z`
      - `ruby-sdk@x.y.z`
-     - `dart-sdk-x.y.z` — note the `-` instead of `@`
    - Copy release notes from `CHANGELOG.md` file.
    - Publish release.
    - CI will automatically push a new release out to package registries.

@@ -34,7 +34,7 @@ jobs:
           submodules: true
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
       - run: npm ci
       - name: Install Rust toolchain
         run: rustup update stable && rustup default stable
@@ -65,13 +65,11 @@ jobs:
       - run: rustup update stable && rustup default stable
       - run: cargo update eppo_core
         working-directory: ruby-sdk
-      - run: cargo update eppo_core
-        working-directory: dart-sdk/rust
       - name: Open pull request
         uses: peter-evans/create-pull-request@v7
         with:
-          commit-message: 'chore: update lockfiles'
-          title: 'chore: update lockfiles'
+          commit-message: "chore: update lockfiles"
+          title: "chore: update lockfiles"
           branch: create-pull-request/ruby-lockfile
           base: main
 
@@ -229,12 +227,12 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.3'
+          ruby-version: "3.3"
 
       - name: Download the cross-compiled gems
         uses: actions/download-artifact@v4
