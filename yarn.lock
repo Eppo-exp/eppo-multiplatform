@@ -539,10 +539,6 @@ cross-spawn@^7.0.3, cross-spawn@^7.0.5:
     shebang-command "^2.0.0"
     which "^2.0.1"
 
-"dart-sdk@file:/Users/rasen/prg/eppo/sdk-core/work/dart-sdk":
-  version "0.1.0"
-  resolved "file:dart-sdk"
-
 data-view-buffer@^1.0.1:
   version "1.0.1"
   resolved "https://registry.npmjs.org/data-view-buffer/-/data-view-buffer-1.0.1.tgz"
