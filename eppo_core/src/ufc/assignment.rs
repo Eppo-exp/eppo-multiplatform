@@ -359,12 +359,7 @@ mod pyo3_impl {
                 AssignmentValue::Integer(i) => i.to_object(py),
                 AssignmentValue::Numeric(n) => n.to_object(py),
                 AssignmentValue::Boolean(b) => b.to_object(py),
-                AssignmentValue::Json { raw: _, parsed } => {
-                    match serde_pyobject::to_pyobject(py, parsed) {
-                        Ok(it) => it.unbind(),
-                        Err(err) => return Err(err.0),
-                    }
-                }
+                AssignmentValue::Json { raw: _, parsed } => parsed.try_to_pyobject(py)?,
             };
             Ok(obj)
         }
