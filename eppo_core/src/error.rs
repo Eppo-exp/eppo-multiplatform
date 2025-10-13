@@ -41,6 +41,9 @@ pub enum Error {
     /// Network error.
     #[error(transparent)]
     Network(Arc<reqwest::Error>),
+
+    #[error("timed out waiting for operation")]
+    Timeout,
 }
 
 impl From<std::io::Error> for Error {

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use eppo::AttributeValue;
 
@@ -19,7 +19,7 @@ pub fn main() -> eppo::Result<()> {
 
     // Block waiting for configuration. Until this call returns, the client will return None for all
     // assignments.
-    if let Err(err) = poller.wait_for_configuration() {
+    if let Err(err) = poller.wait_for_configuration_timeout(Duration::from_secs(5)) {
         println!("error requesting configuration: {:?}", err);
     }
 

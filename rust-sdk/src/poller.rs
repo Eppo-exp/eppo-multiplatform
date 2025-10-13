@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use crate::{Result, SDK_METADATA};
 use eppo_core::background::BackgroundThread;
@@ -66,6 +67,11 @@ impl PollerThread {
     ///
     /// This method blocks until the poller thread has fetched the configuration.
     ///
+    /// # Note
+    ///
+    /// This function may block indefinitely. It is recommended to use
+    /// [`PollerThread::wait_for_configuration_timeout`] instead.
+    ///
     /// # Returns
     ///
     /// Returns `Result<()>` where `Ok(())` indicates successful configuration fetch and any
@@ -89,11 +95,49 @@ impl PollerThread {
     /// }
     /// # }
     /// ```
+    #[deprecated]
     pub fn wait_for_configuration(&self) -> Result<()> {
         self.thread
             .runtime()
             .async_runtime
             .block_on(self.poller.wait_for_configuration())
+    }
+
+    /// Waits for the configuration to be fetched (or timed out).
+    ///
+    /// This method blocks until the poller thread has fetched the configuration or timeout occurs.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Result<()>` where `Ok(())` indicates successful configuration fetch and any
+    /// error that occurred during the process.
+    ///
+    /// # Errors
+    ///
+    /// This method can fail with the following errors:
+    ///
+    /// - [`Error::PollerThreadPanicked`]: If the poller thread panicked while waiting for
+    ///   configuration.
+    /// - [`Error::Timeout`]: If timeout reached without producing configuration.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::time::Duration;
+    /// # fn test(mut client: eppo::Client) {
+    /// let poller = client.start_poller_thread().unwrap();
+    /// match poller.wait_for_configuration_timeout(Duration::from_secs(5)) {
+    ///     Ok(()) => println!("Configuration fetched successfully."),
+    ///     Err(err) => eprintln!("Error fetching configuration: {:?}", err),
+    /// }
+    /// # }
+    /// ```
+    pub fn wait_for_configuration_timeout(&self, duration: Duration) -> Result<()> {
+        self.thread.runtime().async_runtime.block_on(async move {
+            tokio::time::timeout(duration, self.poller.wait_for_configuration())
+                .await
+                .map_err(|_| crate::Error::Timeout)?
+        })
     }
 
     /// Stop the poller thread.

@@ -38,7 +38,9 @@ Initialize an instance of Eppo's client. Once initialized, the client can be use
 use eppo::ClientConfig;
 
 let mut client = ClientConfig::from_api_key("api-key").to_client();
-client.start_poller_thread();
+let thread = client.start_poller_thread();
+
+thread.wait_for_configuration_timeout(std::time::Duration::from_secs(5));
 ```
 
 ### Assign Anywhere
