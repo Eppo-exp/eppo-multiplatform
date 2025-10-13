@@ -1,5 +1,15 @@
 # python-sdk
 
+## 4.4.0
+
+### Minor Changes
+
+- [#338](https://github.com/Eppo-exp/eppo-multiplatform/pull/338) [`3211582`](https://github.com/Eppo-exp/eppo-multiplatform/commit/3211582621f173482c93295ffb25cdf40e9fe324) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - Add shutdown() method for graceful client shutdown.
+
+### Patch Changes
+
+- [#344](https://github.com/Eppo-exp/eppo-multiplatform/pull/344) [`084fe1f`](https://github.com/Eppo-exp/eppo-multiplatform/commit/084fe1f4d2a261bec8276ac3794b3f0d140ec728) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - fix(python): serialize null values as None instead of empty tuple.
+
 ## 4.3.1
 
 ### Patch Changes

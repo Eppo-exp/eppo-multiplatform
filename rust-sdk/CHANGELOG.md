@@ -1,5 +1,13 @@
 # rust-sdk
 
+## 5.2.0
+
+### Minor Changes
+
+- [#339](https://github.com/Eppo-exp/eppo-multiplatform/pull/339) [`9a4d2a5`](https://github.com/Eppo-exp/eppo-multiplatform/commit/9a4d2a53b4477c55f3a4b254aef612d8006d8ae0) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - Add `wait_for_configuration_timeout()` method.
+
+  In poor network conditions, `wait_for_configuration()` may block waiting on configuration indefinitely which may be undesired. Add a new `wait_for_configuration_timeout()` which allows specifying a timeout for waiting.
+
 ## 5.1.0
 
 ### Minor Changes

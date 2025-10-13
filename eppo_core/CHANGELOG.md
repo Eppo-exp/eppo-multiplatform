@@ -1,5 +1,19 @@
 # eppo_core
 
+## 9.3.0
+
+### Minor Changes
+
+- [#338](https://github.com/Eppo-exp/eppo-multiplatform/pull/338) [`3211582`](https://github.com/Eppo-exp/eppo-multiplatform/commit/3211582621f173482c93295ffb25cdf40e9fe324) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - Add by-ref graceful shutdown for BackgroundThread.
+
+- [#339](https://github.com/Eppo-exp/eppo-multiplatform/pull/339) [`9a4d2a5`](https://github.com/Eppo-exp/eppo-multiplatform/commit/9a4d2a53b4477c55f3a4b254aef612d8006d8ae0) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - Add `wait_for_configuration_timeout()` method.
+
+  In poor network conditions, `wait_for_configuration()` may block waiting on configuration indefinitely which may be undesired. Add a new `wait_for_configuration_timeout()` which allows specifying a timeout for waiting.
+
+### Patch Changes
+
+- [#344](https://github.com/Eppo-exp/eppo-multiplatform/pull/344) [`084fe1f`](https://github.com/Eppo-exp/eppo-multiplatform/commit/084fe1f4d2a261bec8276ac3794b3f0d140ec728) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - fix(python): serialize null values as None instead of empty tuple.
+
 ## 9.2.0
 
 ### Minor Changes
