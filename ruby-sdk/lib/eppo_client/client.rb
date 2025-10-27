@@ -303,7 +303,7 @@ module EppoClient
       result, event = @core.get_assignment_details(flag_key, subject_key, subject_attributes, expected_type)
       log_assignment(event)
 
-      if !result[:variation]
+      if result[:variation].nil?
         result[:variation] = default_value
       end
 
