@@ -50,6 +50,13 @@ Build native extension:
 bundle exec rake build
 ```
 
+Run the `mock-server`:
+```sh
+cd ../mock-server
+npm run prestart
+npm run start
+```
+
 Run tests:
 ```sh
 bundle exec rspec
