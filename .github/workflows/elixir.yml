@@ -56,7 +56,7 @@ jobs:
             otp: '26.0'
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           submodules: true
 
