@@ -1,8 +1,8 @@
 PATH
   remote: .
   specs:
-    eppo-server-sdk (3.6.0)
-      rb_sys (~> 0.9.102)
+    eppo-server-sdk (3.7.2)
+      rb_sys (~> 0.9.105)
 
 GEM
   remote: https://rubygems.org/
