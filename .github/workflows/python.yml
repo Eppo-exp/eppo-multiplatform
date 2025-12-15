@@ -300,7 +300,7 @@ jobs:
     if: "startsWith(github.ref, 'refs/tags/python-sdk@')"
     needs: [linux, musllinux, windows, macos, sdist]
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v7
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
         env:

@@ -227,7 +227,7 @@ jobs:
           ruby-version: "3.4"
 
       - name: Download the cross-compiled gems
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           pattern: cross-gem-*
           merge-multiple: true
