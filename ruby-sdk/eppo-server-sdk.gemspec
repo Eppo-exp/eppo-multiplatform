@@ -32,8 +32,10 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
   spec.extensions = ["ext/eppo_client/extconf.rb"]
 
-  # 0.9.105 added Ruby 3.4 to the list of supported version
-  spec.add_dependency "rb_sys", "~> 0.9.105"
+  # 0.9.120 added Ruby 4.0 to the list of supported version
+  spec.add_dependency "rb_sys", "~> 0.9.120"
+
+  spec.add_dependency "logger", "~> 1.6"
 
   # For more information and examples about making a new gem, check out our
   # guide at: https://bundler.io/guides/creating_gem.html

@@ -16,7 +16,7 @@ pub(crate) const SDK_METADATA: SdkMetadata = SdkMetadata {
 fn init(ruby: &Ruby) -> Result<(), Error> {
     let eppo_client = ruby.define_module("EppoClient")?;
     let core = eppo_client.define_module("Core")?;
-    let core_client = core.define_class("Client", magnus::class::object())?;
+    let core_client = core.define_class("Client", ruby.class_object())?;
     core_client.define_singleton_method("new", function!(Client::new, 1))?;
     core_client.define_method("get_assignment", method!(Client::get_assignment, 4))?;
     core_client.define_method(
