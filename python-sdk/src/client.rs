@@ -13,7 +13,7 @@ use pyo3::{
     intern,
     prelude::*,
     types::{PyBool, PyFloat, PyInt, PySet, PyString},
-    PyTraverseError, PyVisit,
+    BoundObject, PyTraverseError, PyVisit,
 };
 
 use eppo_core::{
@@ -28,7 +28,6 @@ use eppo_core::{
         BanditResult, Evaluator, EvaluatorConfig,
     },
     events::{AssignmentEvent, BanditEvent},
-    pyo3::TryToPyObject,
     ufc::VariationType,
     Attributes, ContextAttributes, Str,
 };
@@ -74,30 +73,37 @@ impl EvaluationResult {
     fn __repr__<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         use pyo3::types::PyList;
 
-        let pieces = PyList::new_bound(
+        let pieces = PyList::new(
             py,
-            [
-                intern!(py, "EvaluationResult(variation=").clone(),
-                self.variation.bind(py).repr()?,
-                intern!(py, ", action=").clone(),
-                self.action.to_object(py).into_bound(py).repr()?,
-                intern!(py, ", evaluation_details=").clone(),
+            &[
+                intern!(py, "EvaluationResult(variation=")
+                    .clone()
+                    .into_any(),
+                self.variation.bind(py).repr()?.into_any(),
+                intern!(py, ", action=").clone().into_any(),
+                self.action.as_ref().into_pyobject(py)?.repr()?.into_any(),
+                intern!(py, ", evaluation_details=").clone().into_any(),
                 self.evaluation_details
-                    .to_object(py)
-                    .into_bound(py)
-                    .repr()?,
-                intern!(py, ")").clone(),
+                    .as_ref()
+                    .into_pyobject(py)?
+                    .repr()?
+                    .into_any(),
+                intern!(py, ")").clone().into_any(),
             ],
-        );
+        )?;
         intern!(py, "").call_method1(intern!(py, "join"), (pieces,))
     }
 }
 impl EvaluationResult {
-    fn from_details<T: TryToPyObject>(
-        py: Python,
+    fn from_details<'py, T>(
+        py: Python<'py>,
         result: EvaluationResultWithDetails<T>,
         default: Py<PyAny>,
-    ) -> PyResult<EvaluationResult> {
+    ) -> PyResult<EvaluationResult>
+    where
+        T: IntoPyObject<'py>,
+        pyo3::PyErr: From<<T as IntoPyObject<'py>>::Error>,
+    {
         let EvaluationResultWithDetails {
             variation,
             action,
@@ -105,15 +111,15 @@ impl EvaluationResult {
         } = result;
 
         let variation = if let Some(variation) = variation {
-            variation.try_to_pyobject(py)?
+            variation.into_pyobject(py)?.into_any().unbind()
         } else {
             default
         };
 
         Ok(EvaluationResult {
             variation,
-            action: action.map(|it| PyString::new_bound(py, &it).unbind()),
-            evaluation_details: Some(evaluation_details.try_to_pyobject(py)?),
+            action: action.map(|it| PyString::new(py, &it).unbind()),
+            evaluation_details: Some((&evaluation_details).into_pyobject(py)?.into_any().unbind()),
         })
     }
 
@@ -122,13 +128,11 @@ impl EvaluationResult {
         result: BanditResult,
         details: Option<EvaluationDetails>,
     ) -> PyResult<EvaluationResult> {
-        let variation = result.variation.into_py(py);
-        let action = result
-            .action
-            .map(|it| PyString::new_bound(py, &it).unbind());
+        let variation = result.variation.into_pyobject(py)?.into_any().unbind();
+        let action = result.action.map(|it| PyString::new(py, &it).unbind());
 
         let evaluation_details = if let Some(details) = details {
-            Some(details.try_to_pyobject(py)?)
+            Some(details.into_pyobject(py)?.into_any().unbind())
         } else {
             None
         };
@@ -159,7 +163,7 @@ impl EppoClient {
         subject_key: Str,
         subject_attributes: Attributes,
         default: Py<PyString>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         slf.get().get_assignment(
             slf.py(),
             flag_key,
@@ -175,7 +179,7 @@ impl EppoClient {
         subject_key: Str,
         subject_attributes: Attributes,
         default: Py<PyInt>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         slf.get().get_assignment(
             slf.py(),
             flag_key,
@@ -191,7 +195,7 @@ impl EppoClient {
         subject_key: Str,
         subject_attributes: Attributes,
         default: Py<PyFloat>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         slf.get().get_assignment(
             slf.py(),
             flag_key,
@@ -207,7 +211,7 @@ impl EppoClient {
         subject_key: Str,
         subject_attributes: Attributes,
         default: Py<PyBool>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         slf.get().get_assignment(
             slf.py(),
             flag_key,
@@ -222,8 +226,8 @@ impl EppoClient {
         flag_key: &str,
         subject_key: Str,
         subject_attributes: Attributes,
-        default: PyObject,
-    ) -> PyResult<PyObject> {
+        default: Py<PyAny>,
+    ) -> PyResult<Py<PyAny>> {
         slf.get().get_assignment(
             slf.py(),
             flag_key,
@@ -368,11 +372,11 @@ impl EppoClient {
         slf: &Bound<EppoClient>,
         flag_key: &str,
         subject_key: Str,
-        #[pyo3(from_py_with = "context_attributes_from_py")] subject_context: RefOrOwned<
+        #[pyo3(from_py_with = context_attributes_from_py)] subject_context: RefOrOwned<
             ContextAttributes,
             PyRef<ContextAttributes>,
         >,
-        #[pyo3(from_py_with = "actions_from_py")] actions: HashMap<Str, ContextAttributes>,
+        #[pyo3(from_py_with = actions_from_py)] actions: HashMap<Str, ContextAttributes>,
         default: Str,
     ) -> PyResult<EvaluationResult> {
         let py = slf.py();
@@ -401,11 +405,11 @@ impl EppoClient {
         slf: &Bound<EppoClient>,
         flag_key: &str,
         subject_key: Str,
-        #[pyo3(from_py_with = "context_attributes_from_py")] subject_context: RefOrOwned<
+        #[pyo3(from_py_with = context_attributes_from_py)] subject_context: RefOrOwned<
             ContextAttributes,
             PyRef<ContextAttributes>,
         >,
-        #[pyo3(from_py_with = "actions_from_py")] actions: HashMap<Str, ContextAttributes>,
+        #[pyo3(from_py_with = actions_from_py)] actions: HashMap<Str, ContextAttributes>,
         default: Str,
     ) -> PyResult<EvaluationResult> {
         let py = slf.py();
@@ -457,7 +461,7 @@ impl EppoClient {
     /// This method releases GIL, so other Python thread can make progress.
     fn wait_for_initialization(&self, py: Python) -> PyResult<()> {
         if let (Some(thread), Some(poller)) = (&self.background_thread, &self.poller) {
-            py.allow_threads(|| {
+            py.detach(|| {
                 thread
                     .runtime()
                     .async_runtime
@@ -480,7 +484,7 @@ impl EppoClient {
         // join. This is required because pyo3_log in background thread might attempt acquiring GIL,
         // which would result in deadlock as GIL is held by the current thread which is waiting for
         // background thread to exit.
-        py.allow_threads(|| {
+        py.detach(|| {
             if let Some(thread) = &self.background_thread {
                 thread.shutdown();
             }
@@ -490,11 +494,11 @@ impl EppoClient {
     /// This can be useful to debug the initialization process.
     ///
     /// Deprecated. Use EppoClient.get_configuration() instead.
-    fn get_flag_keys<'py>(&'py self, py: Python<'py>) -> PyResult<Bound<PySet>> {
+    fn get_flag_keys<'py>(&'py self, py: Python<'py>) -> PyResult<Bound<'py, PySet>> {
         let config = self.configuration_store.get_configuration();
         match config {
-            Some(config) => PySet::new_bound(py, config.flag_keys()),
-            None => PySet::empty_bound(py),
+            Some(config) => PySet::new(py, config.flag_keys()),
+            None => PySet::empty(py),
         }
     }
 
@@ -502,11 +506,11 @@ impl EppoClient {
     /// This can be useful to debug the initialization process.
     ///
     /// Deprecated. Use EppoClient.get_configuration() instead.
-    fn get_bandit_keys<'py>(&'py self, py: Python<'py>) -> PyResult<Bound<PySet>> {
+    fn get_bandit_keys<'py>(&'py self, py: Python<'py>) -> PyResult<Bound<'py, PySet>> {
         let config = self.configuration_store.get_configuration();
         match config {
-            Some(config) => PySet::new_bound(py, config.bandit_keys()),
-            None => PySet::empty_bound(py),
+            Some(config) => PySet::new(py, config.bandit_keys()),
+            None => PySet::empty(py),
         }
     }
 
@@ -547,10 +551,10 @@ where
 fn context_attributes_from_py<'py>(
     obj: &'py Bound<'py, PyAny>,
 ) -> PyResult<RefOrOwned<ContextAttributes, PyRef<'py, ContextAttributes>>> {
-    if let Ok(attrs) = obj.downcast::<ContextAttributes>() {
+    if let Ok(attrs) = obj.cast::<ContextAttributes>() {
         return Ok(RefOrOwned::Ref(attrs.borrow()));
     }
-    if let Ok(attrs) = Attributes::extract_bound(obj) {
+    if let Ok(attrs) = obj.extract::<Attributes>() {
         return Ok(RefOrOwned::Owned(attrs.into()));
     }
     Err(PyTypeError::new_err(format!(
@@ -559,11 +563,11 @@ fn context_attributes_from_py<'py>(
 }
 
 fn actions_from_py(obj: &Bound<PyAny>) -> PyResult<HashMap<Str, ContextAttributes>> {
-    if let Ok(result) = FromPyObject::extract_bound(&obj) {
+    if let Ok(result) = obj.extract::<HashMap<Str, ContextAttributes>>() {
         return Ok(result);
     }
 
-    if let Ok(result) = HashMap::<Str, Attributes>::extract_bound(&obj) {
+    if let Ok(result) = obj.extract::<HashMap<Str, Attributes>>() {
         let result = result
             .into_iter()
             .map(|(name, attrs)| (name, ContextAttributes::from(attrs)))
@@ -644,10 +648,10 @@ impl EppoClient {
         subject_attributes: Attributes,
         expected_type: Option<VariationType>,
         default: Py<PyAny>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let result = self.evaluator.get_assignment(
-            &flag_key,
-            &subject_key.into(),
+            flag_key,
+            &subject_key,
             &subject_attributes.into(),
             expected_type,
         );
@@ -670,7 +674,7 @@ impl EppoClient {
                 }
             }
 
-            Ok(assignment.value.try_to_pyobject(py)?)
+            Ok(assignment.value.into_pyobject(py)?.into_any().unbind())
         } else {
             Ok(default)
         }
@@ -686,8 +690,8 @@ impl EppoClient {
         default: Py<PyAny>,
     ) -> PyResult<EvaluationResult> {
         let (result, event) = self.evaluator.get_assignment_details(
-            &flag_key,
-            &subject_key.into(),
+            flag_key,
+            &subject_key,
             &subject_attributes.into(),
             expected_type,
         );
@@ -703,7 +707,7 @@ impl EppoClient {
 
     /// Try to log assignment event using `self.assignment_logger`.
     pub fn log_assignment_event(&self, py: Python, event: AssignmentEvent) -> PyResult<()> {
-        let event = event.try_to_pyobject(py)?;
+        let event = event.into_pyobject(py)?.into_any().unbind();
         self.assignment_logger
             .call_method1(py, intern!(py, "log_assignment"), (event,))?;
         Ok(())
@@ -711,7 +715,7 @@ impl EppoClient {
 
     /// Try to log bandit event using `self.assignment_logger`.
     pub fn log_bandit_event(&self, py: Python, event: BanditEvent) -> PyResult<()> {
-        let event = event.try_to_pyobject(py)?;
+        let event = event.into_pyobject(py)?.into_any().unbind();
         self.assignment_logger
             .call_method1(py, intern!(py, "log_bandit_action"), (event,))?;
         Ok(())

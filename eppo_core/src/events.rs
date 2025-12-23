@@ -101,25 +101,27 @@ impl From<&SdkMetadata> for EventMetaData {
 
 #[cfg(feature = "pyo3")]
 mod pyo3_impl {
-    use pyo3::{PyObject, PyResult, Python};
-
-    use crate::pyo3::TryToPyObject;
+    use pyo3::prelude::*;
 
     use super::{AssignmentEvent, BanditEvent};
 
-    impl TryToPyObject for AssignmentEvent {
-        fn try_to_pyobject(&self, py: Python) -> PyResult<PyObject> {
-            serde_pyobject::to_pyobject(py, self)
-                .map(|it| it.unbind())
-                .map_err(|err| err.0)
+    impl<'py> IntoPyObject<'py> for &AssignmentEvent {
+        type Target = PyAny;
+        type Output = Bound<'py, Self::Target>;
+        type Error = PyErr;
+
+        fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+            serde_pyobject::to_pyobject(py, self).map_err(|err| err.0)
         }
     }
 
-    impl TryToPyObject for BanditEvent {
-        fn try_to_pyobject(&self, py: Python) -> PyResult<PyObject> {
-            serde_pyobject::to_pyobject(py, self)
-                .map(|it| it.unbind())
-                .map_err(|err| err.0)
+    impl<'py> IntoPyObject<'py> for &BanditEvent {
+        type Target = PyAny;
+        type Output = Bound<'py, Self::Target>;
+        type Error = PyErr;
+
+        fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+            serde_pyobject::to_pyobject(py, self).map_err(|err| err.0)
         }
     }
 }

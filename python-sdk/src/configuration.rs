@@ -2,11 +2,7 @@
 // backend to pass on configuration when initializing the frontend.
 use std::{borrow::Cow, sync::Arc};
 
-use pyo3::{
-    exceptions::{PyRuntimeError, PyValueError},
-    prelude::*,
-    types::PySet,
-};
+use pyo3::{exceptions::PyValueError, prelude::*, types::PySet};
 
 use eppo_core::{ufc::UniversalFlagConfig, Configuration as CoreConfiguration};
 
@@ -33,7 +29,7 @@ impl Configuration {
                 PyValueError::new_err(format!("argument 'flags_configuration': {err:?}"))
             })?;
         let bandits_config = bandits_configuration
-            .map(|it| serde_json::from_slice(it))
+            .map(serde_json::from_slice)
             .transpose()
             .map_err(|err| {
                 PyValueError::new_err(format!("argument 'bandits_configuration': {err:?}"))
@@ -49,28 +45,28 @@ impl Configuration {
 
     // Returns a set of all flag keys that have been initialized.
     // This can be useful to debug the initialization process.
-    fn get_flag_keys<'py>(&'py self, py: Python<'py>) -> PyResult<Bound<PySet>> {
-        PySet::new_bound(py, self.configuration.flag_keys())
+    fn get_flag_keys<'py>(&'py self, py: Python<'py>) -> PyResult<Bound<'py, PySet>> {
+        PySet::new(py, self.configuration.flag_keys())
     }
 
     // Returns a set of all bandit keys that have been initialized.
     // This can be useful to debug the initialization process.
-    fn get_bandit_keys<'py>(&'py self, py: Python<'py>) -> PyResult<Bound<PySet>> {
-        PySet::new_bound(py, self.configuration.bandit_keys())
+    fn get_bandit_keys<'py>(&'py self, py: Python<'py>) -> PyResult<Bound<'py, PySet>> {
+        PySet::new(py, self.configuration.bandit_keys())
     }
 
     /// Return bytes representing flags configuration.
     ///
     /// It should be treated as opaque and passed on to another Eppo client (e.g., javascript client
     /// on frontend) for initialization.
-    fn get_flags_configuration(&self) -> Option<Cow<[u8]>> {
+    fn get_flags_configuration(&self) -> Option<Cow<'_, [u8]>> {
         self.configuration.get_flags_configuration()
     }
 
     /// Return bytes representing bandits configuration.
     ///
     /// It should be treated as opaque and passed on to another Eppo client for initialization.
-    fn get_bandits_configuration(&self) -> Option<Cow<[u8]>> {
+    fn get_bandits_configuration(&self) -> Option<Cow<'_, [u8]>> {
         self.configuration.get_bandits_configuration()
     }
 }

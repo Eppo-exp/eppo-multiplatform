@@ -250,15 +250,15 @@ impl From<EvaluationError> for BanditEvaluationCode {
 mod pyo3_impl {
     use pyo3::prelude::*;
 
-    use crate::pyo3::TryToPyObject;
-
     use super::EvaluationDetails;
 
-    impl TryToPyObject for EvaluationDetails {
-        fn try_to_pyobject(&self, py: Python) -> PyResult<PyObject> {
-            serde_pyobject::to_pyobject(py, self)
-                .map(|it| it.unbind())
-                .map_err(|err| err.0)
+    impl<'py> IntoPyObject<'py> for &EvaluationDetails {
+        type Target = PyAny;
+        type Output = Bound<'py, Self::Target>;
+        type Error = PyErr;
+
+        fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+            serde_pyobject::to_pyobject(py, self).map_err(|err| err.0)
         }
     }
 }

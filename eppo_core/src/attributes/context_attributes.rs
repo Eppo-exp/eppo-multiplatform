@@ -83,7 +83,7 @@ impl ContextAttributes {
 mod pyo3_impl {
     use std::{collections::HashMap, sync::Arc};
 
-    use pyo3::prelude::*;
+    use pyo3::{prelude::*, types::PyDict};
 
     use crate::{Attributes, CategoricalAttribute, NumericAttribute, Str};
 
@@ -129,15 +129,15 @@ mod pyo3_impl {
         /// Note that this copies internal attributes, so changes to returned value won't have
         /// effect. This may be mitigated by setting numeric attributes again.
         #[getter]
-        fn get_numeric_attributes(&self, py: Python) -> PyObject {
-            self.numeric.to_object(py)
+        fn get_numeric_attributes<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
+            self.numeric.into_pyobject(py)
         }
 
         /// Note that this copies internal attributes, so changes to returned value won't have
         /// effect. This may be mitigated by setting categorical attributes again.
         #[getter]
-        fn get_categorical_attributes(&self, py: Python) -> PyObject {
-            self.categorical.to_object(py)
+        fn get_categorical_attributes<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
+            self.categorical.into_pyobject(py)
         }
     }
 }

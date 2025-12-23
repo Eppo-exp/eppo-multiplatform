@@ -21,7 +21,7 @@ pub fn init(config: Bound<ClientConfig>) -> PyResult<Py<EppoClient>> {
 
     let py = config.py();
 
-    let client = Bound::new(py, EppoClient::new(py, &*config.borrow())?)?.unbind();
+    let client = Bound::new(py, EppoClient::new(py, &config.borrow())?)?.unbind();
 
     // minimizing the scope of holding the write lock
     let existing = {
