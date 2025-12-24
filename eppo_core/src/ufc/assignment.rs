@@ -380,8 +380,10 @@ mod magnus_impl {
                 AssignmentValue::Integer(i) => i.into_value_with(handle),
                 AssignmentValue::Numeric(n) => n.into_value_with(handle),
                 AssignmentValue::Boolean(b) => b.into_value_with(handle),
-                AssignmentValue::Json { raw: _, parsed } => serde_magnus::serialize(&parsed)
-                    .expect("JSON value should always be serializable to Ruby"),
+                AssignmentValue::Json { raw: _, parsed } => {
+                    serde_magnus::serialize(handle, &parsed)
+                        .expect("JSON value should always be serializable to Ruby")
+                }
             }
         }
     }
@@ -392,7 +394,7 @@ mod magnus_impl {
             let _ = hash.aset(handle.sym_new("value"), self.value);
             let _ = hash.aset(
                 handle.sym_new("event"),
-                serde_magnus::serialize::<_, magnus::Value>(&self.event)
+                serde_magnus::serialize::<_, magnus::Value>(handle, &self.event)
                     .expect("AssignmentEvent should always be serializable to Ruby"),
             );
             hash.as_value()
