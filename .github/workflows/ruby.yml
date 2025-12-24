@@ -44,7 +44,7 @@ jobs:
           - "4.0.0-preview3"
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           submodules: true
 
