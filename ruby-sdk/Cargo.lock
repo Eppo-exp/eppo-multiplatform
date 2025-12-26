@@ -310,17 +310,19 @@ dependencies = [
  "env_logger",
  "eppo_core",
  "log",
- "magnus",
+ "magnus 0.8.2",
  "rb-sys",
  "serde",
  "serde_json",
- "serde_magnus",
+ "serde_magnus 0.10.0",
  "tokio",
 ]
 
 [[package]]
 name = "eppo_core"
 version = "9.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f7a2aa615d3a5848b8cd60921fe67290122054e3e51519cce8e024bd6107c8d"
 dependencies = [
  "base64",
  "chrono",
@@ -328,7 +330,7 @@ dependencies = [
  "exponential-backoff",
  "faststr",
  "log",
- "magnus",
+ "magnus 0.7.1",
  "md5",
  "rand 0.9.0",
  "regex",
@@ -337,7 +339,7 @@ dependencies = [
  "serde",
  "serde-bool",
  "serde_json",
- "serde_magnus",
+ "serde_magnus 0.9.0",
  "serde_with",
  "thiserror",
  "tokio",
@@ -894,14 +896,37 @@ dependencies = [
 
 [[package]]
 name = "magnus"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d87ae53030f3a22e83879e666cb94e58a7bdf31706878a0ba48752994146dab"
+dependencies = [
+ "magnus-macros 0.6.0",
+ "rb-sys",
+ "rb-sys-env 0.1.2",
+ "seq-macro",
+]
+
+[[package]]
+name = "magnus"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b36a5b126bbe97eb0d02d07acfeb327036c6319fd816139a49824a83b7f9012"
 dependencies = [
- "magnus-macros",
+ "magnus-macros 0.8.0",
  "rb-sys",
- "rb-sys-env",
+ "rb-sys-env 0.2.2",
  "seq-macro",
+]
+
+[[package]]
+name = "magnus-macros"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5968c820e2960565f647819f5928a42d6e874551cab9d88d75e3e0660d7f71e3"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -1194,6 +1219,12 @@ dependencies = [
 
 [[package]]
 name = "rb-sys-env"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a35802679f07360454b418a5d1735c89716bde01d35b1560fc953c1415a0b3bb"
+
+[[package]]
+name = "rb-sys-env"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08f8d2924cf136a1315e2b4c7460a39f62ef11ee5d522df9b2750fab55b868b6"
@@ -1377,10 +1408,11 @@ checksum = "a3f0bf26fd526d2a95683cd0f87bf103b8539e2ca1ef48ce002d67aad59aa0b4"
 
 [[package]]
 name = "serde"
-version = "1.0.215"
+version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6513c1ad0b11a9376da888e3e0baa0077f1aed55c17f50e7b2397136129fb88f"
+checksum = "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
 dependencies = [
+ "serde_core",
  "serde_derive",
 ]
 
@@ -1394,10 +1426,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_derive"
-version = "1.0.215"
+name = "serde_core"
+version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad1e866f866923f252f05c889987993144fb74e722403468a4ebd70c3cd756c0"
+checksum = "41d385c7d4ca58e59fc732af25c3983b67ac852c1a25000afe1175de458b67ad"
+dependencies = [
+ "serde_derive",
+]
+
+[[package]]
+name = "serde_derive"
+version = "1.0.228"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d540f220d3187173da220f885ab66608367b6574e925011a9353e4badda91d79"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1415,14 +1456,26 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.133"
+version = "1.0.147"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7fceb2473b9166b2294ef05efcb65a3db80803f0b03ef86a5fc88a2b85ee377"
+checksum = "6af14725505314343e673e9ecb7cd7e8a36aa9791eb936235a3567cc31447ae4"
 dependencies = [
  "itoa",
  "memchr",
- "ryu",
  "serde",
+ "serde_core",
+ "zmij",
+]
+
+[[package]]
+name = "serde_magnus"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51b8b945a2dadb221f1c5490cfb411cab6c3821446b8eca50ee07e5a3893ec51"
+dependencies = [
+ "magnus 0.7.1",
+ "serde",
+ "tap",
 ]
 
 [[package]]
@@ -1431,7 +1484,7 @@ version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4a5121544138e6a14036e48ecbe589fb63577f35620caaa32642257b412c317"
 dependencies = [
- "magnus",
+ "magnus 0.8.2",
  "serde",
  "tap",
 ]
@@ -2386,3 +2439,9 @@ dependencies = [
  "quote",
  "syn",
 ]
+
+[[package]]
+name = "zmij"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d0095ecd462946aa3927d9297b63ef82fb9a5316d7a37d134eeb36e58228615a"
