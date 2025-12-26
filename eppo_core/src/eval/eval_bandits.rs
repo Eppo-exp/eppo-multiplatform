@@ -1,5 +1,6 @@
-use std::collections::HashMap;
 use std::sync::Arc;
+
+use crate::hashmap::HashMap;
 
 use chrono::{DateTime, Utc};
 use serde::Serialize;

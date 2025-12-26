@@ -1,7 +1,12 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use chrono::Utc;
 use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
+
+#[cfg(feature = "ahash")]
+use eppo_core::ahash::{HashMap, HashMapExt};
+#[cfg(not(feature = "ahash"))]
+use std::collections::HashMap;
 
 use eppo_core::ufc::UniversalFlagConfig;
 use eppo_core::{
@@ -55,7 +60,11 @@ fn criterion_benchmark(c: &mut Criterion) {
     {
         let mut group = c.benchmark_group("rollout");
         group.throughput(Throughput::Elements(1));
-        let attributes = Arc::new([("country".into(), "US".into())].into());
+        let attributes = {
+            let mut map = HashMap::new();
+            map.insert("country".into(), "US".into());
+            Arc::new(map)
+        };
         group.bench_function("get_assignment", |b| {
             b.iter(|| {
                 get_assignment(
@@ -86,7 +95,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     {
         let mut group = c.benchmark_group("json-config-flag");
         group.throughput(Throughput::Elements(1));
-        let attributes = Arc::new([].into());
+        let attributes = Arc::new(HashMap::new());
         group.bench_function("get_assignment", |b| {
             b.iter(|| {
                 get_assignment(
@@ -117,7 +126,11 @@ fn criterion_benchmark(c: &mut Criterion) {
     {
         let mut group = c.benchmark_group("numeric-one-of");
         group.throughput(Throughput::Elements(1));
-        let attributes = Arc::new([("number".into(), 2.0.into())].into());
+        let attributes = {
+            let mut map = HashMap::new();
+            map.insert("number".into(), 2.0.into());
+            Arc::new(map)
+        };
         group.bench_function("get_assignment", |b| {
             b.iter(|| {
                 get_assignment(
@@ -148,7 +161,11 @@ fn criterion_benchmark(c: &mut Criterion) {
     {
         let mut group = c.benchmark_group("regex-flag");
         group.throughput(Throughput::Elements(1));
-        let attributes = Arc::new([("email".into(), "test@gmail.com".into())].into());
+        let attributes = {
+            let mut map = HashMap::new();
+            map.insert("email".into(), "test@gmail.com".into());
+            Arc::new(map)
+        };
         group.bench_function("get_assignment", |b| {
             b.iter(|| {
                 get_assignment(

@@ -8,7 +8,7 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-eppo_core = { version = "=9.3.0", path = "../eppo_core", features = ["pyo3"] }
+eppo_core = { version = "=9.3.0", path = "../eppo_core", features = ["pyo3", "ahash"] }
 log = "0.4.22"
 pyo3 = "0.27.2"
 pyo3-log = "0.13.2"

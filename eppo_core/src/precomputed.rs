@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::hashmap::HashMap;
 use base64::Engine;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -198,6 +198,8 @@ impl From<PrecomputedBandit> for ObfuscatedPrecomputedBandit {
 
 #[cfg(test)]
 mod tests {
+    use crate::hashmap::*;
+
     use super::*;
 
     #[test]

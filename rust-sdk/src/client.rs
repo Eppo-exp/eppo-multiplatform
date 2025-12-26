@@ -543,7 +543,7 @@ impl<'a> Client<'a> {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, sync::Arc};
+    use std::sync::Arc;
 
     use crate::{Client, ClientConfig};
     use eppo_core::configuration_store::ConfigurationStore;
@@ -558,7 +558,7 @@ mod tests {
 
         assert_eq!(
             client
-                .get_assignment("flag", &"subject".into(), &Arc::new(HashMap::new()))
+                .get_assignment("flag", &"subject".into(), &Default::default())
                 .unwrap(),
             None
         );

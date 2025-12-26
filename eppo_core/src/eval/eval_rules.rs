@@ -81,7 +81,9 @@ impl ConditionCheck {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, sync::Arc};
+    use std::sync::Arc;
+
+    use crate::hashmap::*;
 
     use crate::{
         eval::{eval_visitor::NoopEvalVisitor, subject::Subject},
@@ -361,7 +363,11 @@ mod tests {
             &mut NoopEvalVisitor,
             &Subject::new(
                 "key".into(),
-                Arc::new(HashMap::from([("age".into(), 11.0.into())]))
+                Arc::new({
+                    let mut map = HashMap::new();
+                    map.insert("age".into(), 11.0.into());
+                    map
+                })
             )
         ));
     }
@@ -392,21 +398,33 @@ mod tests {
             &mut NoopEvalVisitor,
             &Subject::new(
                 "key".into(),
-                Arc::new(HashMap::from([("age".into(), 20.0.into())]))
+                Arc::new({
+                    let mut map = HashMap::new();
+                    map.insert("age".into(), 20.0.into());
+                    map
+                })
             )
         ));
         assert!(!rule.eval(
             &mut NoopEvalVisitor,
             &Subject::new(
                 "key".into(),
-                Arc::new(HashMap::from([("age".into(), 17.0.into())]))
+                Arc::new({
+                    let mut map = HashMap::new();
+                    map.insert("age".into(), 17.0.into());
+                    map
+                })
             )
         ));
         assert!(!rule.eval(
             &mut NoopEvalVisitor,
             &Subject::new(
                 "key".into(),
-                Arc::new(HashMap::from([("age".into(), 110.0.into())]))
+                Arc::new({
+                    let mut map = HashMap::new();
+                    map.insert("age".into(), 110.0.into());
+                    map
+                })
             )
         ));
     }
@@ -427,7 +445,11 @@ mod tests {
             &mut NoopEvalVisitor,
             &Subject::new(
                 "key".into(),
-                Arc::new(HashMap::from([("name".into(), "alice".into())]))
+                Arc::new({
+                    let mut map = HashMap::new();
+                    map.insert("name".into(), "alice".into());
+                    map
+                })
             )
         ));
     }

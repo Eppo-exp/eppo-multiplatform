@@ -1,8 +1,12 @@
-use std::collections::HashMap;
 use std::fs::File;
 
 use chrono::Utc;
 use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
+
+#[cfg(feature = "ahash")]
+use eppo_core::ahash::{HashMap, HashMapExt};
+#[cfg(not(feature = "ahash"))]
+use std::collections::HashMap;
 
 use eppo_core::ufc::UniversalFlagConfig;
 use eppo_core::{eval::get_bandit_action, Configuration, ContextAttributes, SdkMetadata, Str};
