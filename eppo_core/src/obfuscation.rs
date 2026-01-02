@@ -1,9 +1,10 @@
+use md5::{Digest, Md5};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use crate::{ufc::ValueWire, Str};
 
-/// `md5::Digest` that implements `Serialize` and `Deserialize` (by converting to hex-encoded
+/// md5 digest that implements `Serialize` and `Deserialize` (by converting to hex-encoded
 /// string).
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -11,16 +12,8 @@ pub(crate) struct Md5HashedStr(#[serde_as(as = "serde_with::hex::Hex")] [u8; 16]
 
 impl Md5HashedStr {
     pub fn new(salt: &[u8], input: &[u8]) -> Md5HashedStr {
-        let mut ctx = md5::Context::new();
-        ctx.consume(salt);
-        ctx.consume(input);
-        ctx.compute().into()
-    }
-}
-
-impl From<md5::Digest> for Md5HashedStr {
-    fn from(value: md5::Digest) -> Self {
-        Md5HashedStr(value.0)
+        let hash = Md5::new().chain_update(salt).chain_update(input).finalize();
+        Md5HashedStr(hash.into())
     }
 }
 
@@ -60,8 +53,8 @@ mod tests {
 
     #[test]
     fn serialize_md5() {
-        let md5_digest = md5::compute(b"hello");
-        let s = Md5HashedStr::from(md5_digest);
+        let md5_digest = Md5::digest(b"hello");
+        let s = Md5HashedStr(md5_digest.into());
 
         let json = serde_json::to_string(&s).unwrap();
 
