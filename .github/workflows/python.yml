@@ -93,7 +93,7 @@ jobs:
             apt-get install --no-install-recommends -y libssl-dev libatomic1
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wheels-linux-${{ matrix.platform.target }}
           path: dist
@@ -154,7 +154,7 @@ jobs:
           sccache: "true"
           manylinux: musllinux_1_2
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wheels-musllinux-${{ matrix.platform.target }}
           path: dist
@@ -221,7 +221,7 @@ jobs:
           args: --release --out dist --find-interpreter --manifest-path ./python-sdk/Cargo.toml
           sccache: "true"
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wheels-windows-${{ matrix.platform.target }}
           path: dist
@@ -264,7 +264,7 @@ jobs:
       - name: List dist directory
         run: ls -l dist
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wheels-macos-${{ matrix.platform.target }}-py${{ matrix.python-version }}
           path: dist
@@ -289,7 +289,7 @@ jobs:
           command: sdist
           args: --out dist --manifest-path ./python-sdk/Cargo.toml
       - name: Upload sdist
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wheels-sdist
           path: dist
