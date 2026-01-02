@@ -1,18 +1,18 @@
 //! Sharder implementation.
-use md5;
+use md5::{Digest, Md5};
 
 /// A sharder that has part of its hash pre-computed with the given salt.
 #[derive(Clone)]
 pub struct PreSaltedSharder {
-    ctx: md5::Context,
+    ctx: Md5,
     total_shards: u32,
 }
 
 impl PreSaltedSharder {
     pub fn new(salt: &[impl AsRef<[u8]>], total_shards: u32) -> PreSaltedSharder {
-        let mut ctx = md5::Context::new();
+        let mut ctx = Md5::new();
         for s in salt {
-            ctx.consume(s);
+            ctx.update(s);
         }
         PreSaltedSharder { ctx, total_shards }
     }
@@ -20,9 +20,9 @@ impl PreSaltedSharder {
     pub fn shard(&self, input: &[impl AsRef<[u8]>]) -> u32 {
         let mut ctx = self.ctx.clone();
         for i in input {
-            ctx.consume(i);
+            ctx.update(i);
         }
-        let hash = ctx.compute();
+        let hash = ctx.finalize();
         let value = u32::from_be_bytes(hash[0..4].try_into().unwrap());
         value % self.total_shards
     }
@@ -43,11 +43,11 @@ impl std::fmt::Debug for PreSaltedSharder {
 /// input is compound from multiple segments.
 pub fn get_md5_shard(input: &[impl AsRef<[u8]>], total_shards: u32) -> u32 {
     let hash = {
-        let mut hasher = md5::Context::new();
+        let mut hasher = Md5::new();
         for i in input {
-            hasher.consume(i);
+            hasher.update(i);
         }
-        hasher.compute()
+        hasher.finalize()
     };
     let value = u32::from_be_bytes(hash[0..4].try_into().unwrap());
     value % total_shards
