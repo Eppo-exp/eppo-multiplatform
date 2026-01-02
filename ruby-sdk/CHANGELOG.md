@@ -1,5 +1,17 @@
 # ruby-sdk
 
+## 3.7.4
+
+### Patch Changes
+
+- [#367](https://github.com/Eppo-exp/eppo-multiplatform/pull/367) [`8a5ffef`](https://github.com/Eppo-exp/eppo-multiplatform/commit/8a5ffef082754076b8dff60232b428652ca42513) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - Bump rb_sys to 0.9.105. This is the first version that adds Ruby 3.4 to the list of supported versions.
+
+## 3.7.3
+
+### Patch Changes
+
+- [#359](https://github.com/Eppo-exp/eppo-multiplatform/pull/359) [`9dab003`](https://github.com/Eppo-exp/eppo-multiplatform/commit/9dab00339c429ee85246b65244586ae59e121a05) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - Fix `get_boolean_assignment_details` debug method incorrectly overriding boolean false values with default.
+
 ## 3.7.2
 
 ### Patch Changes

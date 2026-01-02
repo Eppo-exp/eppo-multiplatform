@@ -9,7 +9,7 @@ use crate::{gc_lock::GcLock, SDK_METADATA};
 pub(crate) fn init(ruby: &Ruby) -> Result<(), Error> {
     let eppo_client = ruby.define_module("EppoClient")?;
 
-    let configuration = eppo_client.define_class("Configuration", magnus::class::object())?;
+    let configuration = eppo_client.define_class("Configuration", ruby.class_object())?;
     configuration.define_singleton_method("new", function!(Configuration::new, 1))?;
     configuration.define_method(
         "flags_configuration",
