@@ -1,5 +1,19 @@
 # ruby-sdk
 
+## 3.8.0
+
+### Minor Changes
+
+- [#380](https://github.com/Eppo-exp/eppo-multiplatform/pull/380) [`6c66f91`](https://github.com/Eppo-exp/eppo-multiplatform/commit/6c66f91ba2b85c46591a3f361c037ce5c2d5e7a7) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - [ruby] support ruby-4.0
+
+### Patch Changes
+
+- [#386](https://github.com/Eppo-exp/eppo-multiplatform/pull/386) [`83c8fd3`](https://github.com/Eppo-exp/eppo-multiplatform/commit/83c8fd3acafc9b99e76bef9c5eaecb2de10edf0e) Thanks [@dependabot](https://github.com/apps/dependabot)! - chore(deps): bump ring from 0.17.8 to 0.17.14
+
+- [#331](https://github.com/Eppo-exp/eppo-multiplatform/pull/331) [`7a87ece`](https://github.com/Eppo-exp/eppo-multiplatform/commit/7a87ececb0870ae7302623caec7526d76b0c5193) Thanks [@dependabot](https://github.com/apps/dependabot)! - chore(deps): bump log from 0.4.22 to 0.4.28
+
+- [#392](https://github.com/Eppo-exp/eppo-multiplatform/pull/392) [`8995232`](https://github.com/Eppo-exp/eppo-multiplatform/commit/89952327ca6d5c863e7f06ce4f9903ce72e3223f) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - Improve bandit evaluation performance.
+
 ## 3.7.4
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # rust-sdk
 
+## 5.2.1
+
+### Patch Changes
+
+- [#392](https://github.com/Eppo-exp/eppo-multiplatform/pull/392) [`8995232`](https://github.com/Eppo-exp/eppo-multiplatform/commit/89952327ca6d5c863e7f06ce4f9903ce72e3223f) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - Improve bandit evaluation performance.
+
 ## 5.2.0
 
 ### Minor Changes

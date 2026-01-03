@@ -1,5 +1,19 @@
 # eppo_core
 
+## 10.0.0
+
+### Major Changes
+
+- [#382](https://github.com/Eppo-exp/eppo-multiplatform/pull/382) [`78515fb`](https://github.com/Eppo-exp/eppo-multiplatform/commit/78515fb0e706ed574acdabae75678e4e2bf10062) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - [pyo3] Update to pyo3 0.27, remove `TryToPyObject` trait because pyo3's `IntoPyObject` now properly handles errors.
+
+### Minor Changes
+
+- [#380](https://github.com/Eppo-exp/eppo-multiplatform/pull/380) [`6c66f91`](https://github.com/Eppo-exp/eppo-multiplatform/commit/6c66f91ba2b85c46591a3f361c037ce5c2d5e7a7) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - [ruby] support ruby-4.0
+
+### Patch Changes
+
+- [#392](https://github.com/Eppo-exp/eppo-multiplatform/pull/392) [`8995232`](https://github.com/Eppo-exp/eppo-multiplatform/commit/89952327ca6d5c863e7f06ce4f9903ce72e3223f) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - Improve bandit evaluation performance.
+
 ## 9.3.0
 
 ### Minor Changes
