@@ -443,7 +443,10 @@ defmodule EppoSdk.Client do
 
       {result, event} ->
         # If no variation is found, use the default value
-        value = Map.get(result, "variation") || default
+        value = case Map.get(result, "variation") do
+          nil -> default
+          value -> value
+        end
 
         Logger.debug("Assignment details", %{
           flag: flag_key,

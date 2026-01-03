@@ -27,3 +27,4 @@ eppo_sdk-*.tar
 
 # Rust binary artifacts
 /target/
+/priv/native/
