@@ -118,15 +118,21 @@ mod pyo3_impl {
 
     use crate::Str;
 
-    impl<'py> FromPyObject<'py> for Str {
-        fn extract_bound(value: &Bound<'py, PyAny>) -> PyResult<Self> {
+    impl<'a, 'py> FromPyObject<'a, 'py> for Str {
+        type Error = PyErr;
+
+        fn extract(value: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
             Ok(Str::from(value.extract::<Cow<str>>()?))
         }
     }
 
-    impl ToPyObject for Str {
-        fn to_object(&self, py: Python<'_>) -> PyObject {
-            PyString::new_bound(py, &self).into()
+    impl<'py> IntoPyObject<'py> for &Str {
+        type Target = PyString;
+        type Output = Bound<'py, Self::Target>;
+        type Error = std::convert::Infallible;
+
+        fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+            Ok(PyString::new(py, self))
         }
     }
 }

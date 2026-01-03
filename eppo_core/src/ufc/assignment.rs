@@ -348,20 +348,45 @@ impl AssignmentValue {
 mod pyo3_impl {
     use pyo3::prelude::*;
 
-    use crate::pyo3::TryToPyObject;
-
     use super::*;
 
-    impl TryToPyObject for AssignmentValue {
-        fn try_to_pyobject(&self, py: Python) -> PyResult<PyObject> {
-            let obj = match self {
-                AssignmentValue::String(s) => s.to_object(py),
-                AssignmentValue::Integer(i) => i.to_object(py),
-                AssignmentValue::Numeric(n) => n.to_object(py),
-                AssignmentValue::Boolean(b) => b.to_object(py),
-                AssignmentValue::Json { raw: _, parsed } => parsed.try_to_pyobject(py)?,
-            };
-            Ok(obj)
+    impl<'py> IntoPyObject<'py> for &AssignmentValue {
+        type Target = PyAny;
+        type Output = Bound<'py, Self::Target>;
+        type Error = PyErr;
+
+        fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+            match self {
+                AssignmentValue::String(s) => {
+                    let Ok(obj) = s.into_pyobject(py);
+                    Ok(obj.into_any())
+                }
+                AssignmentValue::Integer(i) => {
+                    let Ok(obj) = i.into_pyobject(py);
+                    Ok(obj.into_any())
+                }
+                AssignmentValue::Numeric(n) => {
+                    let Ok(obj) = n.into_pyobject(py);
+                    Ok(obj.into_any())
+                }
+                AssignmentValue::Boolean(b) => {
+                    let Ok(obj) = b.into_pyobject(py);
+                    Ok(obj.as_any().clone())
+                }
+                AssignmentValue::Json { raw: _, parsed } => {
+                    crate::pyo3::serde_to_pyobject(parsed, py)
+                }
+            }
+        }
+    }
+
+    impl<'py> IntoPyObject<'py> for AssignmentValue {
+        type Target = PyAny;
+        type Output = Bound<'py, Self::Target>;
+        type Error = PyErr;
+
+        fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+            (&self).into_pyobject(py)
         }
     }
 }

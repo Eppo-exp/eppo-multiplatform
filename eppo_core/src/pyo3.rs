@@ -4,59 +4,37 @@ use pyo3::{
     types::{PyDict, PyList},
 };
 
-/// Similar to [`pyo3::ToPyObject`] but allows the conversion to fail.
-pub trait TryToPyObject {
-    fn try_to_pyobject(&self, py: Python) -> PyResult<PyObject>;
-}
-
-// Implementing on `&T` to allow dtolnay specialization[1] (e.g., for `Option<T>` below).
-//
-// [1]: https://github.com/dtolnay/case-studies/blob/master/autoref-specialization/README.md
-impl<T: ToPyObject> TryToPyObject for &T {
-    fn try_to_pyobject(&self, py: Python) -> PyResult<PyObject> {
-        Ok(self.to_object(py))
-    }
-}
-
-impl<T> TryToPyObject for Py<T> {
-    fn try_to_pyobject(&self, py: Python) -> PyResult<PyObject> {
-        Ok(self.to_object(py))
-    }
-}
-
-impl<T: TryToPyObject> TryToPyObject for Option<T> {
-    fn try_to_pyobject(&self, py: Python) -> PyResult<PyObject> {
-        match self {
-            Some(it) => it.try_to_pyobject(py),
-            None => Ok(py.None()),
-        }
-    }
-}
-
 // Custom implementation for serde_json::Value because the default one serializes `Null` as empty
-// tuple `()`.
-impl TryToPyObject for serde_json::Value {
-    fn try_to_pyobject(&self, py: Python) -> PyResult<PyObject> {
-        let obj = match self {
-            serde_json::Value::Null => py.None(),
-            serde_json::Value::Bool(v) => v.try_to_pyobject(py)?,
-            serde_json::Value::Number(n) => serde_pyobject::to_pyobject(py, n)?.unbind(),
-            serde_json::Value::String(s) => s.try_to_pyobject(py)?,
-            serde_json::Value::Array(values) => {
-                let vals = values
-                    .iter()
-                    .map(|it| it.try_to_pyobject(py))
-                    .collect::<Result<Vec<_>, _>>()?;
-                PyList::new(py, vals)?.into_any().unbind()
+// tuple `()`. This one serializes `Null` as python's `None`.
+pub fn serde_to_pyobject<'py>(
+    value: &serde_json::Value,
+    py: Python<'py>,
+) -> PyResult<Bound<'py, PyAny>> {
+    let obj = match value {
+        serde_json::Value::Null => py.None().into_bound(py),
+        serde_json::Value::Bool(v) => {
+            let Ok(obj) = v.into_pyobject(py); // infallible
+            obj.as_any().clone()
+        }
+        serde_json::Value::Number(n) => serde_pyobject::to_pyobject(py, n)?,
+        serde_json::Value::String(s) => {
+            let Ok(obj) = s.into_pyobject(py); // infallible
+            obj.into_any()
+        }
+        serde_json::Value::Array(values) => {
+            let vals = values
+                .iter()
+                .map(|it| serde_to_pyobject(it, py))
+                .collect::<Result<Vec<_>, _>>()?;
+            PyList::new(py, vals)?.into_any()
+        }
+        serde_json::Value::Object(map) => {
+            let dict = PyDict::new(py);
+            for (key, value) in map {
+                dict.set_item(key, serde_to_pyobject(value, py)?)?;
             }
-            serde_json::Value::Object(map) => {
-                let dict = PyDict::new(py);
-                for (key, value) in map {
-                    dict.set_item(key, value.try_to_pyobject(py)?)?;
-                }
-                dict.into_any().unbind()
-            }
-        };
-        Ok(obj)
-    }
+            dict.into_any()
+        }
+    };
+    Ok(obj)
 }

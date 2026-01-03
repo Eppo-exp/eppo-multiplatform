@@ -227,50 +227,72 @@ mod pyo3_impl {
 
     use super::*;
 
-    impl ToPyObject for AttributeValue {
+    impl<'py> IntoPyObject<'py> for &AttributeValue {
+        type Target = PyAny;
+        type Output = Bound<'py, Self::Target>;
+        type Error = std::convert::Infallible;
+
         #[inline]
-        fn to_object(&self, py: Python<'_>) -> PyObject {
+        fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
             match self {
-                AttributeValue(AttributeValueImpl::Numeric(numeric)) => numeric.to_object(py),
-                AttributeValue(AttributeValueImpl::Categorical(categorical)) => {
-                    categorical.to_object(py)
+                AttributeValue(AttributeValueImpl::Numeric(numeric)) => {
+                    numeric.into_pyobject(py).map(|it| it.into_any())
                 }
-                AttributeValue(AttributeValueImpl::Null) => py.None(),
+                AttributeValue(AttributeValueImpl::Categorical(categorical)) => {
+                    categorical.into_pyobject(py).map(|it| it.into_any())
+                }
+                AttributeValue(AttributeValueImpl::Null) => Ok(py.None().into_bound(py).into_any()),
             }
         }
     }
 
-    impl ToPyObject for NumericAttribute {
+    impl<'py> IntoPyObject<'py> for &NumericAttribute {
+        type Target = PyFloat;
+        type Output = Bound<'py, Self::Target>;
+        type Error = std::convert::Infallible;
+
         #[inline]
-        fn to_object(&self, py: Python<'_>) -> PyObject {
-            self.0.to_object(py)
+        fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+            self.0.into_pyobject(py)
         }
     }
 
-    impl ToPyObject for CategoricalAttribute {
+    impl<'py> IntoPyObject<'py> for &CategoricalAttribute {
+        type Target = PyAny;
+        type Output = Bound<'py, Self::Target>;
+        type Error = std::convert::Infallible;
+
         #[inline]
-        fn to_object(&self, py: Python<'_>) -> PyObject {
+        fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
             match self {
-                CategoricalAttribute(CategoricalAttributeImpl::String(s)) => s.to_object(py),
-                CategoricalAttribute(CategoricalAttributeImpl::Number(v)) => v.to_object(py),
-                CategoricalAttribute(CategoricalAttributeImpl::Boolean(v)) => v.to_object(py),
+                CategoricalAttribute(CategoricalAttributeImpl::String(s)) => {
+                    s.into_pyobject(py).map(|it| it.into_any())
+                }
+                CategoricalAttribute(CategoricalAttributeImpl::Number(v)) => {
+                    v.into_pyobject(py).map(|it| it.into_any())
+                }
+                CategoricalAttribute(CategoricalAttributeImpl::Boolean(v)) => {
+                    v.into_pyobject(py).map(|it| it.as_any().clone())
+                }
             }
         }
     }
 
-    impl<'py> FromPyObject<'py> for AttributeValue {
-        fn extract_bound(value: &Bound<'py, PyAny>) -> PyResult<AttributeValue> {
-            if let Ok(s) = value.downcast::<PyString>() {
+    impl<'a, 'py> FromPyObject<'a, 'py> for AttributeValue {
+        type Error = PyErr;
+
+        fn extract(value: Borrowed<'a, 'py, PyAny>) -> PyResult<AttributeValue> {
+            if let Ok(s) = value.cast::<PyString>() {
                 return Ok(AttributeValue::categorical(s.to_cow()?));
             }
             // In Python, Bool inherits from Int, so it must be checked first here.
-            if let Ok(s) = value.downcast::<PyBool>() {
+            if let Ok(s) = value.cast::<PyBool>() {
                 return Ok(AttributeValue::categorical(s.is_true()));
             }
-            if let Ok(s) = value.downcast::<PyFloat>() {
+            if let Ok(s) = value.cast::<PyFloat>() {
                 return Ok(AttributeValue::numeric(s.value()));
             }
-            if let Ok(s) = value.downcast::<PyInt>() {
+            if let Ok(s) = value.cast::<PyInt>() {
                 return Ok(AttributeValue::numeric(s.extract::<f64>()?));
             }
             if value.is_none() {
@@ -282,26 +304,29 @@ mod pyo3_impl {
         }
     }
 
-    impl<'py> FromPyObject<'py> for NumericAttribute {
+    impl<'a, 'py> FromPyObject<'a, 'py> for NumericAttribute {
+        type Error = PyErr;
+
         #[inline]
-        fn extract_bound(value: &Bound<'py, PyAny>) -> PyResult<Self> {
-            f64::extract_bound(value).map(NumericAttribute)
+        fn extract(value: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
+            f64::extract(value).map(NumericAttribute)
         }
     }
 
-    impl<'py> FromPyObject<'py> for CategoricalAttribute {
-        fn extract_bound(value: &Bound<'py, PyAny>) -> PyResult<Self> {
-            if let Ok(s) = value.downcast::<PyString>() {
+    impl<'a, 'py> FromPyObject<'a, 'py> for CategoricalAttribute {
+        type Error = PyErr;
+        fn extract(value: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
+            if let Ok(s) = value.cast::<PyString>() {
                 return Ok(s.to_cow()?.into());
             }
             // In Python, Bool inherits from Int, so it must be checked first here.
-            if let Ok(s) = value.downcast::<PyBool>() {
+            if let Ok(s) = value.cast::<PyBool>() {
                 return Ok(s.is_true().into());
             }
-            if let Ok(s) = value.downcast::<PyFloat>() {
+            if let Ok(s) = value.cast::<PyFloat>() {
                 return Ok(s.value().into());
             }
-            if let Ok(s) = value.downcast::<PyInt>() {
+            if let Ok(s) = value.cast::<PyInt>() {
                 return Ok(s.extract::<f64>()?.into());
             }
             Err(PyTypeError::new_err(
