@@ -72,3 +72,7 @@ wiremock = "0.6.2"
 [[bench]]
 name = "evaluation_details"
 harness = false
+
+[[bench]]
+name = "bandit_evaluation"
+harness = false

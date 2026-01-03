@@ -9,7 +9,7 @@ use crate::bandits::{
 };
 use crate::error::EvaluationFailure;
 use crate::events::{AssignmentEvent, BanditEvent};
-use crate::sharder::get_md5_shard;
+use crate::sharder::PreSaltedSharder;
 use crate::ufc::{Assignment, AssignmentValue, VariationType};
 use crate::{Configuration, EvaluationError, Str};
 use crate::{ContextAttributes, SdkMetadata};
@@ -28,8 +28,9 @@ pub(super) struct BanditEvaluationDetails {
     pub(super) optimality_gap: f64,
 }
 
+#[derive(Clone, Copy)]
 struct Action<'a> {
-    key: &'a str,
+    key: &'a Str,
     attributes: &'a ContextAttributes,
 }
 
@@ -189,7 +190,7 @@ fn get_bandit_action_with_visitor<V: EvalBanditVisitor>(
     let evaluation =
         match bandit
             .model_data
-            .evaluate(flag_key, subject_key, subject_attributes, actions)
+            .evaluate(flag_key, subject_key, subject_attributes, actions.iter())
         {
             Ok(evaluation) => evaluation,
             Err(err) => {
@@ -237,34 +238,50 @@ fn get_bandit_action_with_visitor<V: EvalBanditVisitor>(
 
 impl BanditModelData {
     // Exported to super, so we can use it in precomputed evaluation.
-    pub(super) fn evaluate(
+    pub(super) fn evaluate<'a>(
         &self,
         flag_key: &str,
         subject_key: &str,
         subject_attributes: &ContextAttributes,
-        actions: &HashMap<Str, ContextAttributes>,
+        actions: impl Iterator<Item = (&'a Str, &'a ContextAttributes)>,
     ) -> Result<BanditEvaluationDetails, EvaluationFailure> {
         // total_shards is not configurable at the moment.
         const TOTAL_SHARDS: u32 = 10_000;
 
-        if actions.len() == 0 {
+        let sharder = PreSaltedSharder::new(&[flag_key, "-", subject_key], TOTAL_SHARDS);
+
+        // Pseudo-random deterministic shuffle of actions. Shuffling is unique per subject, so when
+        // weights change slightly, large swatches of subjects are not reassigned from one action to
+        // the same other action (instead, if subject is pushed away from an action, it will get
+        // assigned to a pseudo-random other action).
+        let shuffled_actions = {
+            let mut shuffled_actions = actions
+                .map(|(key, attributes)| Action { key, attributes })
+                .collect::<Vec<_>>();
+            // Sort actions by their shard value. Use action key as tie breaker.
+            shuffled_actions.sort_by_cached_key(|action| {
+                let hash = sharder.shard(&["-", action.key]);
+                (hash, action.key)
+            });
+            shuffled_actions
+        };
+
+        if shuffled_actions.len() == 0 {
             return Err(EvaluationFailure::NoActionsSuppliedForBandit);
         }
 
-        let scores = actions
+        // action scores, in the same order as shuffled actions
+        let scores = shuffled_actions
             .iter()
-            .map(|(key, attributes)| {
-                (
-                    key,
-                    self.score_action(Action { key, attributes }, subject_attributes),
-                )
-            })
-            .collect::<HashMap<_, _>>();
+            .map(|it| self.score_action(*it, subject_attributes))
+            .collect::<Vec<_>>();
+        debug_assert_eq!(shuffled_actions.len(), scores.len());
 
         let best = scores
             .iter()
-            .max_by(|a, b| {
-                f64::total_cmp(a.1, b.1).then_with(|| {
+            .enumerate()
+            .max_by(|(i, a), (j, b)| {
+                f64::total_cmp(a, b).then_with(|| {
                     // In the case of multiple actions getting the same best score, we need to break
                     // the tie deterministically.
                     //
@@ -272,54 +289,32 @@ impl BanditModelData {
                     //
                     // We're reversing the comparison, so that before-ordered name is considered
                     // higher and wins the best score.
-                    Ord::cmp(a.0, b.0).reverse()
+                    Ord::cmp(&shuffled_actions[*i].key, &shuffled_actions[*j].key).reverse()
                 })
             })
-            .map(|(k, v)| (*k, *v))
-            .ok_or_else(|| {
-                debug_assert!(false, "scores should contain at least one action");
-                EvaluationFailure::NoActionsSuppliedForBandit
-            })?;
+            .map(|(i, s)| (i, *s))
+            .expect("shuffled actions, and therefore scores, contain at least one action");
 
         let weights = self.weigh_actions(&scores, best);
+        debug_assert_eq!(shuffled_actions.len(), weights.len());
 
-        // Pseudo-random deterministic shuffle of actions. Shuffling is unique per subject, so when
-        // weights change slightly, large swatches of subjects are not reassign from one action to
-        // the same other action (instead, if subject is pushed away from an action, it will get
-        // assigned to a pseudo-random other action).
-        let shuffled_actions = {
-            let mut shuffled_actions = actions.keys().collect::<Vec<_>>();
-            // Sort actions by their shard value. Use action key as tie breaker.
-            shuffled_actions.sort_by_cached_key(|&action_key| {
-                let hash =
-                    get_md5_shard(&[flag_key, "-", subject_key, "-", action_key], TOTAL_SHARDS);
-                (hash, action_key)
-            });
-            shuffled_actions
-        };
-
-        let selection_hash = (get_md5_shard(&[flag_key, "-", subject_key], TOTAL_SHARDS) as f64)
-            / (TOTAL_SHARDS as f64);
+        let selection_hash = sharder.shard(&[] as &[&str; 0]) as f64 / TOTAL_SHARDS as f64;
 
         let selected_action = {
             let mut cumulative_weight = 0.0;
-            *shuffled_actions
+            weights
                 .iter()
-                .find(|&action_key| {
-                    cumulative_weight += weights[action_key];
+                .position(|weight| {
+                    cumulative_weight += *weight;
                     cumulative_weight > selection_hash
                 })
-                .or_else(|| shuffled_actions.last())
-                .ok_or_else(|| {
-                    debug_assert!(false, "shuffled_actions should contain at least one action");
-                    EvaluationFailure::NoActionsSuppliedForBandit
-                })?
+                .unwrap_or_else(|| weights.len() - 1)
         };
 
         let optimality_gap = best.1 - scores[selected_action];
 
         Ok(BanditEvaluationDetails {
-            action_key: selected_action.to_owned(),
+            action_key: shuffled_actions[selected_action].key.to_owned(),
             // action_attributes: actions[selected_action].to_owned(),
             action_weight: weights[selected_action],
             optimality_gap,
@@ -330,32 +325,32 @@ impl BanditModelData {
     /// best action which receive the remainder weight.
     fn weigh_actions<'a>(
         &self,
-        scores: &HashMap<&'a Str, f64>,
-        (best_action, best_score): (&'a Str, f64),
-    ) -> HashMap<&'a Str, f64> {
-        let mut weights = HashMap::<&Str, f64>::new();
-
+        scores: &[f64],
+        (best_action, best_score): (usize, f64),
+    ) -> Vec<f64> {
         let n_actions = scores.len() as f64;
 
-        let mut remainder_weight = 1.0;
-        for (action, score) in scores {
-            if *action != best_action {
-                let min_probability = self.action_probability_floor / n_actions;
-                let weight =
-                    min_probability.max(1.0 / (n_actions + self.gamma * (best_score - score)));
+        let mut weights = scores
+            .iter()
+            .enumerate()
+            .map(|(i, score)| {
+                if i == best_action {
+                    0.0 // to be overwritten later
+                } else {
+                    let min_probability = self.action_probability_floor / n_actions;
+                    let weight = 1.0 / (n_actions + self.gamma * (best_score - score));
+                    f64::max(weight, min_probability)
+                }
+            })
+            .collect::<Vec<_>>();
 
-                weights.insert(action, weight);
-                remainder_weight -= weight;
-            }
-        }
-
-        weights.insert(best_action, f64::max(remainder_weight, 0.0));
+        weights[best_action] = f64::max(1.0 - weights.iter().sum::<f64>(), 0.0);
 
         weights
     }
 
     fn score_action(&self, action: Action, subject_attributes: &ContextAttributes) -> f64 {
-        let Some(coefficients) = self.coefficients.get(action.key) else {
+        let Some(coefficients) = self.coefficients.get(action.key.as_str()) else {
             return self.default_action_score;
         };
 

@@ -95,7 +95,7 @@ pub fn get_precomputed_configuration(
 
                     let bandit_evaluation = bandit_model
                         .model_data
-                        .evaluate(flag_key, subject_key, subject_attributes, actions)
+                        .evaluate(flag_key, subject_key, subject_attributes, actions.iter())
                         .ok()?;
 
                     let selected_action = &actions[&bandit_evaluation.action_key];
