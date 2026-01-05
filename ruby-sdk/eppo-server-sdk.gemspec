@@ -17,11 +17,10 @@ Gem::Specification.new do |spec|
   spec.required_rubygems_version = ">= 3.3.11"
 
   spec.metadata = {
-    "bug_tracker_uri" => "https://github.com/Eppo-exp/ruby-sdk/issues",
+    "bug_tracker_uri" => "https://github.com/Eppo-exp/eppo-multiplatform/issues",
     "documentation_uri" => "https://docs.geteppo.com/feature-flags/sdks/server-sdks/ruby/",
     "homepage_uri" => "https://geteppo.com/",
-    "source_code_uri" => "https://github.com/Eppo-exp/ruby-sdk",
-    "wiki_uri" => "https://github.com/Eppo-exp/ruby-sdk/wiki"
+    "source_code_uri" => "https://github.com/Eppo-exp/eppo-multiplatform/tree/main/ruby-sdk",
   }
 
   spec.files = Dir["{lib,ext}/**/*", "LICENSE", "README.md", "Cargo.*"]
