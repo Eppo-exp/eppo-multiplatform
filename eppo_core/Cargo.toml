@@ -64,7 +64,7 @@ wasmtimer = "0.4.1"
 [target.'cfg(all(target_os = "linux", target_arch = "s390x"))'.dependencies]
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.8", features = ["html_reports"] }
 tokio = { version = "1.34.0", features = ["test-util"] }
 env_logger = "0.11.3"
 wiremock = "0.6.2"
