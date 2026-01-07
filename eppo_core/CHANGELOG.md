@@ -1,5 +1,27 @@
 # eppo_core
 
+## 10.0.0
+
+### Major Changes
+
+- [#382](https://github.com/Eppo-exp/eppo-multiplatform/pull/382) [`78515fb`](https://github.com/Eppo-exp/eppo-multiplatform/commit/78515fb0e706ed574acdabae75678e4e2bf10062) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - [pyo3] Update to pyo3 0.27, remove `TryToPyObject` trait because pyo3's `IntoPyObject` now properly handles errors.
+
+### Minor Changes
+
+- [#393](https://github.com/Eppo-exp/eppo-multiplatform/pull/393) [`21b48a2`](https://github.com/Eppo-exp/eppo-multiplatform/commit/21b48a2fdebb29c402670282935d8f958edc75c1) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - [ahash] Add "ahash" feature flag to use faster hash function for all hashmaps. It is changing the public interface so is disabled by default so as to not cause breakage across SDKs and allow them to update one by one.
+
+- [#380](https://github.com/Eppo-exp/eppo-multiplatform/pull/380) [`6c66f91`](https://github.com/Eppo-exp/eppo-multiplatform/commit/6c66f91ba2b85c46591a3f361c037ce5c2d5e7a7) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - [ruby] support ruby-4.0
+
+### Patch Changes
+
+- [#394](https://github.com/Eppo-exp/eppo-multiplatform/pull/394) [`aa6130d`](https://github.com/Eppo-exp/eppo-multiplatform/commit/aa6130d19693b6318c826e450ec09bc455460b86) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - Added experimental support for CityHash-based hashing in bandit evaluation via the `EPPO_EXPERIMENTAL_BANDITS_CITYHASH` environment variable (set to `"1"`, `"true"`, or `"TRUE"` to enable). This provides significant performance improvements over the default MD5 implementation, especially when evaluating bandits with many actions.
+
+  **Warning**: This feature is experimental and unstable. Enabling CityHash will produce different bandit evaluation results compared to the default MD5 implementation and other Eppo SDKs. Do not enable this if you need consistent results across multiple SDKs, services, or for historical data comparisons.
+
+- [#391](https://github.com/Eppo-exp/eppo-multiplatform/pull/391) [`415a90f`](https://github.com/Eppo-exp/eppo-multiplatform/commit/415a90f188cae978e98a8f944502ef7662bd7861) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - Use faster md5 implementation.
+
+- [#392](https://github.com/Eppo-exp/eppo-multiplatform/pull/392) [`8995232`](https://github.com/Eppo-exp/eppo-multiplatform/commit/89952327ca6d5c863e7f06ce4f9903ce72e3223f) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - Improve bandit evaluation performance.
+
 ## 9.3.0
 
 ### Minor Changes
