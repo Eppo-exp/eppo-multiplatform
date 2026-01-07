@@ -17,6 +17,6 @@ log = { version = "0.4.29", features = ["kv_serde"] }
 magnus = { version = "0.8.2" }
 serde = { version = "1.0.203", features = ["derive"] }
 serde_magnus = "0.10.0"
-rb-sys = "0.9.120"
+rb-sys = "0.9.124"
 serde_json = "1.0.147"
 tokio = { version = "1.49.0", default-features = false, features = ["time"] }
