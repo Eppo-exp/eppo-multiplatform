@@ -8,6 +8,13 @@ use crate::{
     Str,
 };
 
+/// Hashing algorithm to use for bandit evaluation.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum BanditHashingAlgorithm {
+    Md5,
+    CityHash,
+}
+
 /// Remote configuration for the eppo client. It's a central piece that defines client behavior.
 #[derive(Debug)]
 pub struct Configuration {
@@ -17,6 +24,8 @@ pub struct Configuration {
     pub(crate) flags: UniversalFlagConfig,
     /// Bandits configuration.
     pub(crate) bandits: Option<BanditResponse>,
+    /// Hashing algorithm for bandit evaluation.
+    pub(crate) bandit_hashing_algorithm: BanditHashingAlgorithm,
 }
 
 impl Configuration {
@@ -27,10 +36,23 @@ impl Configuration {
     ) -> Configuration {
         let now = Utc::now();
 
+        // Check environment variable for experimental CityHash support
+        let bandit_hashing_algorithm = std::env::var("EPPO_EXPERIMENTAL_BANDITS_CITYHASH")
+            .ok()
+            .and_then(|val| {
+                if val == "1" || val == "true" || val == "TRUE" {
+                    Some(BanditHashingAlgorithm::CityHash)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(BanditHashingAlgorithm::Md5);
+
         Configuration {
             fetched_at: now,
             flags: config,
             bandits,
+            bandit_hashing_algorithm,
         }
     }
 
