@@ -65,6 +65,8 @@ jobs:
       - run: rustup update stable && rustup default stable
       - run: cargo update eppo_core
         working-directory: ruby-sdk
+      - run: cargo update eppo_core
+        working-directory: elixir-sdk
       - name: Open pull request
         uses: peter-evans/create-pull-request@v8
         with:
