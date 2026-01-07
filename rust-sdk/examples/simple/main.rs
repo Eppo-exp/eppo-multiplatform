@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Duration};
+use std::time::Duration;
 
 pub fn main() -> eppo::Result<()> {
     // Configure env_logger to see Eppo SDK logs.
@@ -26,7 +26,7 @@ pub fn main() -> eppo::Result<()> {
         .get_boolean_assignment(
             "a-boolean-flag",
             &"test-subject".into(),
-            &HashMap::new().into(),
+            &Default::default(),
         )
         .unwrap_or_default()
         // default assignment

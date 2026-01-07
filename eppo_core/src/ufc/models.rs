@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-
+use crate::hashmap::HashMap;
 use derive_more::From;
 use regex::Regex;
 use semver::Version;

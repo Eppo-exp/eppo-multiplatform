@@ -10,6 +10,9 @@ categories = ["config"]
 rust-version = "1.80.0"
 
 [features]
+# Use ahash for HashMaps. This is currently disabled by default to
+# allow SDKs adapt their usage one by one.
+ahash = ["dep:ahash"]
 # Unstable feature flag for an upcoming feature.
 event_ingestion = ["dep:uuid", "dep:exponential-backoff"]
 # Add implementation of `FromPyObject`/`ToPyObject` for some types.
@@ -24,6 +27,7 @@ rustler = ["dep:rustler"]
 vendored = []
 
 [dependencies]
+ahash = { version = "0.8.12", optional = true }
 base64 = "0.22.1"
 chrono = { version = "0.4.38", features = ["serde"] }
 derive_more = { version = "2.0.0", default-features = false, features = ["from", "into"] }

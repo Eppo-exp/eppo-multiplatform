@@ -1,8 +1,8 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use crate::Str;
+use crate::{hashmap::*, Str};
 
 use super::{
     AttributeValue, AttributeValueImpl, Attributes, CategoricalAttribute, NumericAttribute,
@@ -81,11 +81,11 @@ impl ContextAttributes {
 
 #[cfg(feature = "pyo3")]
 mod pyo3_impl {
-    use std::{collections::HashMap, sync::Arc};
+    use std::sync::Arc;
 
     use pyo3::{prelude::*, types::PyDict};
 
-    use crate::{Attributes, CategoricalAttribute, NumericAttribute, Str};
+    use crate::{hashmap::*, Attributes, CategoricalAttribute, NumericAttribute, Str};
 
     use super::ContextAttributes;
 

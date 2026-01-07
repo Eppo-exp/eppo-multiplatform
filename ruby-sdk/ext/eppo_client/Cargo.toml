@@ -12,7 +12,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 env_logger = { version = "0.11.3", features = ["unstable-kv"] }
-eppo_core = { version = "=9.3.0", features = ["magnus", "event_ingestion"] }
+eppo_core = { version = "=9.3.0", features = ["magnus", "event_ingestion", "ahash"] }
 log = { version = "0.4.29", features = ["kv_serde"] }
 magnus = { version = "0.8.2" }
 serde = { version = "1.0.203", features = ["derive"] }

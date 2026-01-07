@@ -1,6 +1,6 @@
 #![allow(missing_docs)]
 
-use std::collections::HashMap;
+use crate::hashmap::HashMap;
 
 use serde::{Deserialize, Serialize};
 

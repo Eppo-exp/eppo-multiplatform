@@ -49,6 +49,10 @@
 
 #![warn(rustdoc::missing_crate_level_docs)]
 
+// Re-export public dependencies.
+#[cfg(feature = "ahash")]
+pub use ahash;
+
 pub mod attributes;
 pub mod background;
 pub mod bandits;
@@ -67,6 +71,7 @@ pub mod ufc;
 
 mod configuration;
 mod error;
+mod hashmap;
 mod obfuscation;
 mod precomputed;
 mod sdk_key;

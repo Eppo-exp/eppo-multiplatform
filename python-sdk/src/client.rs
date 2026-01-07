@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     ops::Deref,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -17,6 +16,7 @@ use pyo3::{
 };
 
 use eppo_core::{
+    ahash::HashMap,
     background::BackgroundThread,
     configuration_fetcher::ConfigurationFetcher,
     configuration_poller::{

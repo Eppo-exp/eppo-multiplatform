@@ -1,8 +1,8 @@
-use std::{borrow::Cow, collections::HashMap, sync::Arc};
+use std::{borrow::Cow, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 
-use crate::Str;
+use crate::{hashmap::HashMap, Str};
 
 mod context_attributes;
 
