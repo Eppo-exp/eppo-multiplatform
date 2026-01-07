@@ -1,6 +1,6 @@
 [package]
 name = "eppo_py"
-version = "4.4.0"
+version = "4.4.1"
 edition = "2021"
 publish = false
 
@@ -8,7 +8,7 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-eppo_core = { version = "=9.3.0", path = "../eppo_core", features = ["pyo3", "ahash"] }
+eppo_core = { version = "=10.0.0", path = "../eppo_core", features = ["pyo3", "ahash"] }
 log = "0.4.22"
 pyo3 = "0.27.2"
 pyo3-log = "0.13.2"
