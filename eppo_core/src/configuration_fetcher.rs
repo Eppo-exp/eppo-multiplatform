@@ -72,7 +72,7 @@ impl ConfigurationFetcher {
             ],
         )
         .map_err(|err| {
-            log::warn!(target: "eppo", "failed to parse flags configuration URL: {err:?}");
+            log::warn!(target: "eppo", "failed to parse flags configuration URL: {err}");
             Error::InvalidBaseUrl(err)
         })?;
 
@@ -85,8 +85,9 @@ impl ConfigurationFetcher {
                     self.unauthorized = true;
                     return Error::Unauthorized;
                 } else {
-                    log::warn!(target: "eppo", "received non-200 response while fetching new configuration: {:?}", err);
-                    return Error::from(err);
+                    let err = Error::from(err); // sanitize URL to avoid exposing SDK key
+                    log::warn!(target: "eppo", "received non-200 response while fetching new configuration: {err}");
+                    return err;
 
             }
         })?;
@@ -112,7 +113,7 @@ impl ConfigurationFetcher {
             ],
         )
         .map_err(|err| {
-            log::warn!(target: "eppo", "failed to parse bandits configuration URL: {err:?}");
+            log::warn!(target: "eppo", "failed to parse bandits configuration URL: {err}");
             Error::InvalidBaseUrl(err)
         })?;
 
@@ -125,8 +126,9 @@ impl ConfigurationFetcher {
                     self.unauthorized = true;
                     return Error::Unauthorized;
                 } else {
-                    log::warn!(target: "eppo", "received non-200 response while fetching new configuration: {:?}", err);
-                    return Error::from(err);
+                    let err = Error::from(err); // sanitize URL to avoid exposing SDK key
+                    log::warn!(target: "eppo", "received non-200 response while fetching new configuration: {err}");
+                    return err;
 
             }
         })?;
@@ -136,5 +138,107 @@ impl ConfigurationFetcher {
         log::debug!(target: "eppo", "successfully fetched UFC bandits configuration");
 
         Ok(configuration)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Error, SdkMetadata};
+    use log::{Level, Log, Metadata, Record};
+    use std::sync::{Arc, Mutex};
+    use wiremock::{matchers::method, Mock, MockServer, ResponseTemplate};
+
+    // Simple logger that captures log messages
+    static CAPTURED_LOGS: std::sync::OnceLock<Arc<Mutex<Vec<String>>>> = std::sync::OnceLock::new();
+
+    struct TestLogger;
+
+    unsafe impl Send for TestLogger {}
+    unsafe impl Sync for TestLogger {}
+
+    impl Log for TestLogger {
+        fn enabled(&self, metadata: &Metadata) -> bool {
+            metadata.target() == "eppo"
+        }
+
+        fn log(&self, record: &Record) {
+            if self.enabled(record.metadata()) {
+                if let Some(logs) = CAPTURED_LOGS.get() {
+                    let message = format!("{}", record.args());
+                    logs.lock().unwrap().push(message);
+                }
+            }
+        }
+
+        fn flush(&self) {}
+    }
+
+    fn setup_test_logger() -> Arc<Mutex<Vec<String>>> {
+        let logs = Arc::new(Mutex::new(Vec::new()));
+        CAPTURED_LOGS.set(logs.clone()).ok();
+        // Try to set logger, ignore error if already set
+        let _ = log::set_boxed_logger(Box::new(TestLogger));
+        log::set_max_level(log::LevelFilter::Warn);
+        logs
+    }
+
+    #[tokio::test]
+    async fn test_sdk_key_not_exposed_in_error_logs() {
+        let logs = setup_test_logger();
+        logs.lock().unwrap().clear();
+
+        let test_api_key = "secret-api-key-12345";
+
+        // Create a mock server that returns 500 error
+        let mock_server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .respond_with(ResponseTemplate::new(500))
+            .mount(&mock_server)
+            .await;
+
+        // Create ConfigurationFetcher with the test API key pointing to mock server
+        let mut fetcher = ConfigurationFetcher::new(ConfigurationFetcherConfig {
+            base_url: mock_server.uri(),
+            api_key: test_api_key.to_string(),
+            sdk_metadata: SdkMetadata {
+                name: "test-sdk",
+                version: "1.0.0",
+            },
+        });
+
+        // Attempt to fetch configuration, which will fail and trigger error logging
+        let result = fetcher.fetch_configuration().await;
+
+        // Verify the request failed
+        assert!(result.is_err(), "Expected configuration fetch to fail");
+
+        // Get captured logs
+        let captured_logs = logs.lock().unwrap();
+        let all_logs = captured_logs.join(" ");
+
+        // Verify the API key is NOT in any of the log messages
+        assert!(
+            !all_logs.contains(test_api_key),
+            "API key should not appear in log messages. Logs: {}",
+            all_logs
+        );
+
+        // Also verify the returned error doesn't contain the API key
+        if let Err(eppo_error) = result {
+            let error_string = format!("{}", eppo_error);
+            let error_debug = format!("{:?}", eppo_error);
+
+            assert!(
+                !error_string.contains(test_api_key),
+                "API key should not appear in error Display: {}",
+                error_string
+            );
+            assert!(
+                !error_debug.contains(test_api_key),
+                "API key should not appear in error Debug: {}",
+                error_debug
+            );
+        }
     }
 }

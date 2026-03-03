@@ -29,6 +29,8 @@ pub(super) enum EventDeliveryError {
 
 impl From<reqwest::Error> for EventDeliveryError {
     fn from(err: reqwest::Error) -> Self {
+        let err = err.without_url(); // sanitize URL to avoid exposing SDK key
+
         if err.is_builder() || err.is_request() {
             // Issue with request. Most likely a json serialization error.
             EventDeliveryError::NonRetriableError(err)
