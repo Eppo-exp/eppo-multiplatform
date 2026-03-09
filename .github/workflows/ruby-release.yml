@@ -210,7 +210,7 @@ jobs:
           ruby-version: "4.0"
 
       - name: Download the cross-compiled gems
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: cross-gem-*
           merge-multiple: true
