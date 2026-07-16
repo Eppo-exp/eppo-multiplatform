@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
 #[derive(Debug, Clone)]
-#[pyclass(frozen, subclass, module = "eppo_client")]
+#[pyclass(frozen, subclass, module = "eppo_client", from_py_object)]
 pub struct AssignmentLogger {}
 
 #[pymethods]

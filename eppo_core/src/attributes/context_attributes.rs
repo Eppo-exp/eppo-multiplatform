@@ -15,7 +15,7 @@ use super::{
 // it and make it an internal type.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[cfg_attr(feature = "pyo3", pyo3::pyclass(module = "eppo_client"))]
+#[cfg_attr(feature = "pyo3", pyo3::pyclass(module = "eppo_client", from_py_object))]
 pub struct ContextAttributes {
     /// Numeric attributes are quantitative (e.g., real numbers) and define a scale.
     ///
