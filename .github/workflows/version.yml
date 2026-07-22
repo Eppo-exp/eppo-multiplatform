@@ -38,7 +38,14 @@ jobs:
         run: rustup update stable && rustup default stable
 
       - name: Install cargo-edit
-        run: cargo install cargo-edit
+        run: cargo install cargo-edit@0.13.13
+
+      # So cargo-edit sees correct version of eppo_core inside nested workspaces
+      - name: Override eppo_core
+        run: |
+          mkdir -p ~/.cargo/
+          echo "[patch.crates-io.eppo_core]" >> "${CARGO_HOME:-$HOME/.cargo}/config.toml"
+          echo "path = '$PWD/eppo_core'" >> "${CARGO_HOME:-$HOME/.cargo}/config.toml"
 
       - name: Create Version Pull Request
         uses: changesets/action@v1
