@@ -1,5 +1,11 @@
 # rust-sdk
 
+## 5.2.2
+
+### Patch Changes
+
+- [#410](https://github.com/Eppo-exp/eppo-multiplatform/pull/410) [`c080b7c`](https://github.com/Eppo-exp/eppo-multiplatform/commit/c080b7ceb5ec9bed6d1fde5f683836c565c4f1f2) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - Sanitize sdkKey from logs on non-200 responses.
+
 ## 5.2.1
 
 ### Patch Changes

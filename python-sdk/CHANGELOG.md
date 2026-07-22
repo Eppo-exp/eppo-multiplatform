@@ -1,5 +1,13 @@
 # python-sdk
 
+## 4.4.2
+
+### Patch Changes
+
+- [#410](https://github.com/Eppo-exp/eppo-multiplatform/pull/410) [`c080b7c`](https://github.com/Eppo-exp/eppo-multiplatform/commit/c080b7ceb5ec9bed6d1fde5f683836c565c4f1f2) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - Sanitize sdkKey from logs on non-200 responses.
+
+- [#422](https://github.com/Eppo-exp/eppo-multiplatform/pull/422) [`bee3e1c`](https://github.com/Eppo-exp/eppo-multiplatform/commit/bee3e1c7c22a862ad36315aaa91ff9fa9190c704) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - Update pyo3 from 0.27 to 0.29. Raises MSRV to 1.83.
+
 ## 4.4.1
 
 ### Patch Changes
