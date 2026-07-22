@@ -1,5 +1,13 @@
 # elixir-sdk
 
+## 0.2.5
+
+### Patch Changes
+
+- [#420](https://github.com/Eppo-exp/eppo-multiplatform/pull/420) [`9c813d4`](https://github.com/Eppo-exp/eppo-multiplatform/commit/9c813d45679921d87b9142a454492c15c70a33c4) Thanks [@aarsilv](https://github.com/aarsilv)! - Update `serde_with` 3.20 → 3.21.
+
+- [#410](https://github.com/Eppo-exp/eppo-multiplatform/pull/410) [`c080b7c`](https://github.com/Eppo-exp/eppo-multiplatform/commit/c080b7ceb5ec9bed6d1fde5f683836c565c4f1f2) Thanks [@dd-oleksii](https://github.com/dd-oleksii)! - Sanitize sdkKey from logs on non-200 responses.
+
 ## 0.2.4
 
 ### Patch Changes
