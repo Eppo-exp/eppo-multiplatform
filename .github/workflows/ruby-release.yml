@@ -65,7 +65,7 @@ jobs:
           # - platform: x64-mingw32
           # - platform: x86-mingw-ucrt
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: oxidize-rb/actions/setup-ruby-and-rust@v1
         with:
@@ -196,7 +196,7 @@ jobs:
     if: ${{ github.event_name == 'release' && startsWith(github.ref_name, 'ruby-sdk@') }}
     needs: cross_gems
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
 
