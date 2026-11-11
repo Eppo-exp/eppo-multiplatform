@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, sync::Arc};
 
 use chrono::{DateTime, Utc};
 
@@ -21,7 +21,7 @@ pub struct Configuration {
     /// Timestamp when configuration was fetched by the SDK.
     pub(crate) fetched_at: DateTime<Utc>,
     /// Flags configuration.
-    pub(crate) flags: UniversalFlagConfig,
+    pub(crate) flags: Arc<UniversalFlagConfig>,
     /// Bandits configuration.
     pub(crate) bandits: Option<BanditResponse>,
     /// Hashing algorithm for bandit evaluation.
@@ -32,6 +32,13 @@ impl Configuration {
     /// Create a new configuration from server responses.
     pub fn from_server_response(
         config: UniversalFlagConfig,
+        bandits: Option<BanditResponse>,
+    ) -> Configuration {
+        Self::from_shared_flags(Arc::new(config), bandits)
+    }
+
+    pub(crate) fn from_shared_flags(
+        config: Arc<UniversalFlagConfig>,
         bandits: Option<BanditResponse>,
     ) -> Configuration {
         let now = Utc::now();

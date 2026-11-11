@@ -1,5 +1,10 @@
 //! An HTTP client that fetches configuration from the server.
-use reqwest::{StatusCode, Url};
+use std::sync::Arc;
+
+use reqwest::{
+    header::{HeaderValue, ETAG, IF_NONE_MATCH},
+    StatusCode, Url,
+};
 
 use crate::{
     bandits::BanditResponse, ufc::UniversalFlagConfig, Configuration, Error, Result, SdkMetadata,
@@ -25,6 +30,7 @@ pub struct ConfigurationFetcher {
     /// If we receive a 401 Unauthorized error during a request, it means the API key is not
     /// valid. We cache this error so we don't issue additional requests to the server.
     unauthorized: bool,
+    cached_flags: Option<(HeaderValue, Arc<UniversalFlagConfig>)>,
 }
 
 impl ConfigurationFetcher {
@@ -41,6 +47,7 @@ impl ConfigurationFetcher {
             client,
             config,
             unauthorized: false,
+            cached_flags: None,
         }
     }
 
@@ -58,10 +65,10 @@ impl ConfigurationFetcher {
             Some(self.fetch_bandits_configuration().await?)
         };
 
-        Ok(Configuration::from_server_response(ufc, bandits))
+        Ok(Configuration::from_shared_flags(ufc, bandits))
     }
 
-    async fn fetch_ufc_configuration(&mut self) -> Result<UniversalFlagConfig> {
+    async fn fetch_ufc_configuration(&mut self) -> Result<Arc<UniversalFlagConfig>> {
         let url = Url::parse_with_params(
             &format!("{}{}", self.config.base_url, UFC_ENDPOINT),
             &[
@@ -77,7 +84,16 @@ impl ConfigurationFetcher {
         })?;
 
         log::debug!(target: "eppo", "fetching UFC flags configuration");
-        let response = self.client.get(url).send().await?;
+        let mut request = self.client.get(url);
+        if let Some((etag, _)) = &self.cached_flags {
+            request = request.header(IF_NONE_MATCH, etag);
+        }
+        let response = request.send().await?;
+        if response.status() == StatusCode::NOT_MODIFIED {
+            if let Some((_, flags)) = &self.cached_flags {
+                return Ok(Arc::clone(flags));
+            }
+        }
 
         let response = response.error_for_status().map_err(|err| {
             if err.status() == Some(StatusCode::UNAUTHORIZED) {
@@ -92,10 +108,16 @@ impl ConfigurationFetcher {
             }
         })?;
 
-        let configuration = UniversalFlagConfig::from_json(
+        let etag = response.headers().get(ETAG).cloned();
+        let configuration = Arc::new(UniversalFlagConfig::from_json(
             self.config.sdk_metadata,
             response.bytes().await?.into(),
-        )?;
+        )?);
+        // Browser fetch manages its own HTTP cache. Adding If-None-Match there can trigger a
+        // CORS preflight and require server headers that existing clients do not need.
+        if !cfg!(target_arch = "wasm32") {
+            self.cached_flags = etag.map(|tag| (tag, Arc::clone(&configuration)));
+        }
 
         log::debug!(target: "eppo", "successfully fetched UFC flags configuration");
 
@@ -181,6 +203,53 @@ mod tests {
         let _ = log::set_boxed_logger(Box::new(TestLogger));
         log::set_max_level(log::LevelFilter::Warn);
         logs
+    }
+
+    #[tokio::test]
+    async fn reuses_validated_flags_on_not_modified() {
+        use wiremock::matchers::{header, header_exists};
+
+        let server = MockServer::start().await;
+        let url = server.uri();
+        let body =
+            r#"{"createdAt":"2025-01-01T00:00:00Z","environment":{"name":"test"},"flags":{}}"#;
+        Mock::given(method("GET"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .insert_header("etag", r#""v1""#)
+                    .set_body_raw(body, "application/json"),
+            )
+            .up_to_n_times(1)
+            .expect(1)
+            .mount(&server)
+            .await;
+        Mock::given(header("if-none-match", r#""v1""#))
+            .respond_with(ResponseTemplate::new(304))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let mut fetcher = ConfigurationFetcher::new(ConfigurationFetcherConfig {
+            base_url: url,
+            api_key: "test-key".to_owned(),
+            sdk_metadata: SdkMetadata {
+                name: "test-sdk",
+                version: "1.0",
+            },
+        });
+        let first = fetcher.fetch_configuration().await.unwrap();
+        let second = fetcher.fetch_configuration().await.unwrap();
+        assert!(Arc::ptr_eq(&first.flags, &second.flags));
+
+        server.reset().await;
+        Mock::given(header_exists("if-none-match"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let replacement = fetcher.fetch_configuration().await.unwrap();
+        assert!(!Arc::ptr_eq(&second.flags, &replacement.flags));
+        assert!(fetcher.cached_flags.is_none());
     }
 
     #[tokio::test]
