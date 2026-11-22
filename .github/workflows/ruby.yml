@@ -29,6 +29,13 @@ concurrency:
 jobs:
   ruby_test:
     runs-on: ${{ matrix.os }}-latest
+    env:
+      # Ruby 3.2 built with GCC 15 (the ubuntu-26.04 image) has no HAVE_STDBOOL_H
+      # in config.h (https://bugs.ruby-lang.org/issues/21340), and bindgen parses
+      # the Ruby headers as gnu17, so `bool` is not defined. Include <stdbool.h>
+      # first, as https://github.com/oxidize-rb/rb-sys/pull/814 does. Remove this
+      # after an rb-sys release has that fix.
+      BINDGEN_EXTRA_CLANG_ARGS: "-include stdbool.h"
     strategy:
       fail-fast: false
       matrix:
