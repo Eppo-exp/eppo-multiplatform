@@ -244,7 +244,7 @@ jobs:
         platform:
           - runner: macos-15-intel
             target: x86_64
-          - runner: macos-14
+          - runner: macos-15
             target: aarch64
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
