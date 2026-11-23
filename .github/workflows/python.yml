@@ -46,7 +46,12 @@ jobs:
           - runner: ubuntu-latest
             target: x86_64
             manylinux: auto
-          - runner: ubuntu-latest
+          # Pinned to ubuntu-24.04 (Docker 28.0.4): on ubuntu-26.04 (Docker 29),
+          # name resolution fails in the i686 manylinux2014 container with
+          # Docker's default seccomp profile, so `yum` cannot resolve
+          # vault.centos.org. Revisit when GitHub retires ubuntu-24.04 or moves
+          # it to Docker 29.
+          - runner: ubuntu-24.04
             target: i686-unknown-linux-gnu
             manylinux: auto
           - runner: ubuntu-latest
@@ -78,11 +83,6 @@ jobs:
           args: --release --out dist --find-interpreter --manifest-path ./python-sdk/Cargo.toml
           sccache: "true"
           manylinux: ${{ matrix.platform.manylinux }}
-          # On ubuntu-26.04 (Docker 29), name resolution fails in the i686
-          # manylinux2014 container with the default seccomp profile, so `yum`
-          # cannot resolve vault.centos.org. It works with seccomp=unconfined.
-          # The x86_64 container is not affected.
-          docker-options: ${{ startsWith(matrix.platform.target, 'i686') && '--security-opt seccomp=unconfined' || '' }}
           before-script-linux: |
             yum install -y perl-IPC-Cmd devtoolset-10-libatomic-devel
       - name: Build wheels
