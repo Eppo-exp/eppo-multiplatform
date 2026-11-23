@@ -46,7 +46,12 @@ jobs:
           - runner: ubuntu-latest
             target: x86_64
             manylinux: auto
-          - runner: ubuntu-latest
+          # Pinned to ubuntu-24.04 (Docker 28.0.4): on ubuntu-26.04 (Docker 29),
+          # name resolution fails in the i686 manylinux2014 container with
+          # Docker's default seccomp profile, so `yum` cannot resolve
+          # vault.centos.org. Revisit when GitHub retires ubuntu-24.04 or moves
+          # it to Docker 29.
+          - runner: ubuntu-24.04
             target: i686-unknown-linux-gnu
             manylinux: auto
           - runner: ubuntu-latest
@@ -244,7 +249,7 @@ jobs:
         platform:
           - runner: macos-15-intel
             target: x86_64
-          - runner: macos-14
+          - runner: macos-15
             target: aarch64
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:

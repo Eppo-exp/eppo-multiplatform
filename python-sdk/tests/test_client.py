@@ -7,8 +7,12 @@ from eppo_client.config import Config, AssignmentLogger
 from .util import init
 
 
+# Tests of the "no configuration" state use the "missing" suite. The mock
+# server does not serve it, so the client never loads a configuration. With a
+# real suite, the background fetch can finish before the assertion, and the
+# test fails at random.
 def test_is_initialized_false():
-    client = init("ufc", wait_for_init=False)
+    client = init("missing", wait_for_init=False)
     assert client.is_initialized() == False
 
 
@@ -34,7 +38,7 @@ def test_shutdown():
 
 
 def test_get_flag_keys_none():
-    client = init("ufc", wait_for_init=False)
+    client = init("missing", wait_for_init=False)
     assert client.get_flag_keys() == set()
 
 
@@ -48,7 +52,7 @@ def test_get_flag_keys_some():
 
 
 def test_get_bandit_keys_none():
-    client = init("bandit", wait_for_init=False)
+    client = init("missing", wait_for_init=False)
     assert client.get_bandit_keys() == set()
 
 
