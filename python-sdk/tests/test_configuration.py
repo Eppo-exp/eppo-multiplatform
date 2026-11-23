@@ -133,7 +133,9 @@ class TestConfiguration:
 
 @pytest.mark.rust_only
 def test_configuration_none():
-    client = init("ufc", wait_for_init=False)
+    # The mock server does not serve "missing", so no configuration loads.
+    # See the comment above test_is_initialized_false in test_client.py.
+    client = init("missing", wait_for_init=False)
     configuration = client.get_configuration()
     assert configuration == None
 
